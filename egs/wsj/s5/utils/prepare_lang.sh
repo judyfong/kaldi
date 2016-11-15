@@ -116,8 +116,8 @@ fi
 # phones.txt file provided, we will do some sanity check here.
 if [[ ! -z $phone_symbol_table ]]; then
   # Checks if we have position dependent phones
-  n1=`cat $phone_symbol_table | grep -v -E "^#[0-9]+$" | cut -d' ' -f1 | sort -u | wc -l`
-  n2=`cat $phone_symbol_table | grep -v -E "^#[0-9]+$" | cut -d' ' -f1 | sed 's/_[BIES]$//g' | sort -u | wc -l`
+  n1=`cat $phone_symbol_table | grep -v -E "^#[0-9]+$" | cut -d' ' -f1 | LC_ALL=C sort -u | wc -l`
+  n2=`cat $phone_symbol_table | grep -v -E "^#[0-9]+$" | cut -d' ' -f1 | sed 's/_[BIES]$//g' | LC_ALL=C sort -u | wc -l`
   $position_dependent_phones && [ $n1 -eq $n2 ] &&\
     echo "$0: Position dependent phones requested, but not in provided phone symbols" && exit 1;
   ! $position_dependent_phones && [ $n1 -ne $n2 ] &&\
@@ -278,7 +278,7 @@ echo $ndisambig > $tmpdir/lex_ndisambig
 if [[ ! -z $phone_symbol_table ]]; then
   start_symbol=`grep \#0 $phone_symbol_table | awk '{print $2}'`
   echo "<eps>" | cat - $dir/phones/{silence,nonsilence}.txt | awk -v f=$phone_symbol_table '
-  BEGIN { while ((getline < f) > 0) { phones[$1] = $2; }} { print $1" "phones[$1]; }' | sort -k2 -g |\
+  BEGIN { while ((getline < f) > 0) { phones[$1] = $2; }} { print $1" "phones[$1]; }' | LC_ALL=C sort -k2 -g |\
     cat - <(cat $dir/phones/disambig.txt | awk -v x=$start_symbol '{n=x+NR-1; print $1, n;}') > $dir/phones.txt
 else
   echo "<eps>" | cat - $dir/phones/{silence,nonsilence,disambig}.txt | \
@@ -312,7 +312,7 @@ if "$silprob"; then
     }' > $tmpdir/lexiconp.txt
 fi
 
-cat $tmpdir/lexiconp.txt | awk '{print $1}' | sort | uniq  | awk '
+cat $tmpdir/lexiconp.txt | awk '{print $1}' | LC_ALL=C sort | uniq  | awk '
   BEGIN {
     print "<eps> 0";
   }
@@ -357,7 +357,7 @@ perl -ape 's/(\S+\s+)\S+\s+(.+)/$1$2/;' <$tmpdir/lexiconp.txt >$tmpdir/align_lex
 [ ! -z "$silphone" ] && echo "<eps> $silphone" >> $tmpdir/align_lexicon.txt
 
 cat $tmpdir/align_lexicon.txt | \
- perl -ane '@A = split; print $A[0], " ", join(" ", @A), "\n";' | sort | uniq > $dir/phones/align_lexicon.txt
+ perl -ane '@A = split; print $A[0], " ", join(" ", @A), "\n";' | LC_ALL=C sort | uniq > $dir/phones/align_lexicon.txt
 
 # create phones/align_lexicon.int
 cat $dir/phones/align_lexicon.txt | utils/sym2int.pl -f 3- $dir/phones.txt | \

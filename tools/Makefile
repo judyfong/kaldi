@@ -2,12 +2,10 @@
 
 CXX = g++
 # CXX = clang++  # Uncomment this line to build with Clang.
-CC = gcc    # used for sph2pipe
 
-
-OPENFST_VERSION = 1.3.4
+#OPENFST_VERSION = 1.3.4
 # Uncomment the next line to build with OpenFst-1.4.1.
-# OPENFST_VERSION = 1.4.1
+OPENFST_VERSION = 1.4.1
 # Note: OpenFst >= 1.4 requires C++11 support, hence you will need to use a
 # relatively recent C++ compiler, e.g. gcc >= 4.6, clang >= 3.0.
 
@@ -27,14 +25,14 @@ else
   endif
 endif
 
-all: check_required_programs sph2pipe atlas sclite openfst
+all: check_required_programs sph2pipe openblas sclite openfst sequitur kenlm
 	@echo -e "\n\n"
 	@echo "Warning: IRSTLM is not installed by default anymore. If you need IRSTLM"
 	@echo "Warning: use the script extras/install_irstlm.sh"
 	@echo "All done OK."
 
 # make sure check_required_programs runs before anything else:
-sph2pipe atlas sclite openfst sctk: | check_required_programs
+sph2pipe openblas sclite openfst sctk sequitur kenlm: | check_required_programs
 
 check_required_programs:
 	extras/check_dependencies.sh
@@ -60,6 +58,8 @@ distclean:
 	rm -rf openfst-$(OPENFST_VERSION).tar.gz
 	rm -f openfst
 	rm -rf libsndfile-1.0.25{,.tar.gz} BeamformIt-3.51{,.tgz}
+	rm -rf kenlm
+	rm -rf sequitur{,-g2p}
 
 
 .PHONY: openfst # so target will be made even though "openfst" exists.
@@ -173,3 +173,37 @@ openblas_compiled:
 	$(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=0 -C OpenBLAS all install
 
 
+# libsndfile needed by beamformit,
+libsndfile: libsndfile-1.0.25.tar.gz libsndfile-1.0.25/lib/libsndfile.so
+libsndfile-1.0.25.tar.gz:
+	wget http://www.mega-nerd.com/libsndfile/files/libsndfile-1.0.25.tar.gz
+libsndfile-1.0.25/lib/libsndfile.so:
+	tar xvf libsndfile-1.0.25.tar.gz && cd libsndfile-1.0.25/ && \
+	./configure --prefix=$(PWD)/libsndfile-1.0.25/ && make && make install
+
+# beamforming tool,
+beamformit: libsndfile beamformit-3.51
+
+.PHONY: beamformit-3.51
+
+beamformit-3.51: beamformit-3.51.tgz
+	tar -xozf BeamformIt-3.51.tgz; \
+	cd BeamformIt-3.51; patch -p1 -N < ../extras/beamformit.patch; cmake . ; make
+
+beamformit-3.51.tgz:
+	wget -c -T 10 http://www.xavieranguera.com/beamformit/releases/BeamformIt-3.51.tgz
+
+# sequitur needed for G2P modeling
+sequitur: sequitur_compiled
+
+.PHONY: sequitur_compiled
+
+sequitur_compiled:
+	extras/install_sequitur.sh
+
+# KenLM is used for language modeling
+.PHONY: kenlm
+
+kenlm:
+	wget -O - http://kheafield.com/code/kenlm.tar.gz | tar xz && \
+	cd kenlm && ./bjam -j4

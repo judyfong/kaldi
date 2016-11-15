@@ -144,7 +144,7 @@ int main(int argc, char *argv[]) {
     } else if (!is_table_1 && is_table_2
                && opts.table_match_type == MATCH_OUTPUT) {
       // second arg is an archive, and match-side=left (default).
-      TableComposeCache<Fst<StdArc> > cache(opts);
+      //TableComposeCache<Fst<StdArc> > cache(opts);
       VectorFst<StdArc> *fst1 = ReadFstKaldi(fst1_in_str);      
       SequentialTableReader<VectorFstHolder> fst2_reader(fst2_in_str);
       TableWriter<VectorFstHolder> fst_writer(fst_out_str);
@@ -157,8 +157,30 @@ int main(int argc, char *argv[]) {
       for (; !fst2_reader.Done(); fst2_reader.Next(), n_done++) {
         VectorFst<StdArc> fst2(fst2_reader.Value());
         VectorFst<StdArc> fst_out;
-        TableCompose(*fst1, fst2, &fst_out, &cache);
+        TableCompose(*fst1, fst2, &fst_out);
         fst_writer.Write(fst2_reader.Key(), fst_out);
+      }
+      KALDI_LOG << "Composed " << n_done << " FSTs.";
+      return (n_done != 0 ? 0 : 1);
+    } else if (is_table_1 && !is_table_2
+               && opts.table_match_type == MATCH_OUTPUT) {
+      // first arg is an archive, and match-side=left (default).
+      //TableComposeCache<Fst<StdArc> > cache(opts);
+      VectorFst<StdArc> *fst2 = ReadFstKaldi(fst2_in_str);
+      SequentialTableReader<VectorFstHolder> fst1_reader(fst1_in_str);
+      TableWriter<VectorFstHolder> fst_writer(fst_out_str);
+      int32 n_done = 0;
+
+      // Checks if <fst2> is olabel sorted.
+      if (fst2->Properties(fst::kILabelSorted, true) == 0) {
+        KALDI_WARN << "The second FST is not ilabel sorted.";
+      }
+      for (; !fst1_reader.Done(); fst1_reader.Next(), n_done++) {
+        VectorFst<StdArc> fst1(fst1_reader.Value());
+        VectorFst<StdArc> fst_out;
+        //TableCompose(fst1, *fst2, &fst_out, &cache);
+        TableCompose(fst1, *fst2, &fst_out);
+        fst_writer.Write(fst1_reader.Key(), fst_out);
       }
       KALDI_LOG << "Composed " << n_done << " FSTs.";
       return (n_done != 0 ? 0 : 1);

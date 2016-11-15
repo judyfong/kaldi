@@ -1,0 +1,59 @@
+# Expand ordinals
+#
+# 2016 Inga Run Helgadottir
+
+import 'common.grm' as c;
+import 'numbers.grm' as n;
+
+insspace = "".utf8 : " ".utf8;
+
+delzero = "0".utf8 : "".utf8;
+delone  = "1".utf8 : "".utf8;
+delperiod = ".".utf8 : "".utf8;
+insand = "".utf8 : " og ".utf8;
+
+# ordUnitsCommon =
+# Optimize[StringFile['lex/ordinals_unitsCommon_lexicon.txt', 'utf8', 'utf8']];
+# ordUnitsLessCommon =
+# Optimize[StringFile['lex/ordinals_unitsLessCommon_lexicon.txt', 'utf8', 'utf8']];
+# ordUnits = (ordUnitsCommon <-1.0>) | ordUnitsLessCommon;
+ordUnits = Optimize[StringFile['lex/ordinals_units_lexicon.txt',
+'utf8', 'utf8']];
+
+ordTeens = Optimize[StringFile['lex/ordinals_teens_lexicon.txt', 'utf8', 'utf8']];
+
+ordDecades = Optimize[StringFile['lex/ordinals_decades_lexicon.txt', 'utf8', 'utf8']];
+
+ordinals_20_to_99 = ordDecades delzero delperiod | ordDecades insand ordUnits;
+
+hundreds = ((((("eitt".utf8 <2.0>) insspace) | delone)
+  ("".utf8 : ("hundrað".utf8 | "hundraðasta".utf8 | "hundraðasti".utf8)))
+  | (n.neutral_units2to9 insspace
+  ("".utf8 : ("hundruð".utf8 | "hundraðasti".utf8 | "hundraðasta".utf8 | "hundruðustu".utf8))));
+
+
+ordinals_100_to_999 = Optimize[
+  hundreds delzero delzero delperiod |
+  hundreds delzero insand ordUnits |
+  hundreds insand ordTeens |
+  hundreds (insspace | insand) ordinals_20_to_99]
+;
+
+ordinals = Optimize[
+  ordUnits |
+  ordTeens |
+  ordinals_20_to_99 |
+  ordinals_100_to_999]
+;
+
+#export ORDINALNAMES = Optimize[ordinals @ n.add_and];
+export ORDINALNAMES = ordinals;
+
+#delspace = (" ".utf8 : "".utf8);
+# export EXPANDORD = ArcSort[Optimize[
+#                           CDRewrite[ORDINALNAMES,
+#                                     ("[BOS]".utf8 | " ".utf8),
+#                                     ("[EOS]".utf8 | " ".utf8 | c.u8_punct),
+#                                     c.whole_alphabet*,
+#                                     'ltr',
+#                                     'obl']], 'input'];

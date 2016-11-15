@@ -341,7 +341,8 @@ if (! -d "$qdir") {
 my $queue_array_opt = "";
 if ($array_job == 1) { # It's an array job.
   if ($max_jobs_run) {
-      $queue_array_opt = "--array ${jobstart}-${jobend}%${max_jobs_run}";
+      #$queue_array_opt = "--array ${jobstart}-${jobend}%${max_jobs_run}";
+      $queue_array_opt = "--array ${jobstart}-${jobend}";
   } else {
       $queue_array_opt = "--array ${jobstart}-${jobend}";
   }

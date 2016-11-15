@@ -15,7 +15,8 @@ BINFILES = fstdeterminizestar  \
            fstmakecontextsyms fstaddsubsequentialloop fstaddselfloops  \
            fstrmepslocal fstcomposecontext fsttablecompose fstrand fstfactor \
            fstdeterminizelog fstphicompose fstrhocompose fstpropfinal fstcopy \
-	       fstpushspecial fsts-to-transcripts
+	       fstpushspecial fsts-to-transcripts fststringcompile fsttablefilter \
+           expand-numbers expand-numbers-original
 
 OBJFILES =
 
@@ -26,6 +27,6 @@ LIBFILE =
 
 ADDLIBS = ../fstext/kaldi-fstext.a ../util/kaldi-util.a \
           ../thread/kaldi-thread.a ../matrix/kaldi-matrix.a \
-          ../base/kaldi-base.a 
+          ../base/kaldi-base.a ../lm/kaldi-lm.a
 
 include ../makefiles/default_rules.mk

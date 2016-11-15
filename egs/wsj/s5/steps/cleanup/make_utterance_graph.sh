@@ -3,12 +3,15 @@
 # Copyright 2014  Guoguo Chen
 # Apache 2.0
 
+# Inga Rún - Switched SRILM out for MITLM
+
 # Begin configuration section.
 tscale=1.0      # transition scale.
 loopscale=0.1   # scale for self-loops.
 cleanup=true
 ngram_order=1
-srilm_options="-wbdiscount"   # By default, use Witten-Bell discounting in SRILM
+#srilm_options="-wbdiscount"   # By default, use Witten-Bell discounting in SRILM
+# By default, use modified Kneser-Ney smoothing in MITLM
 # End configuration section.
 
 set -e
@@ -22,8 +25,8 @@ if [ $# -ne 4 ]; then
   echo "This script builds one decoding graph for each utterance using the"
   echo "corresponding text in the given <text> file. If --ngram-order is 1,"
   echo "then utils/make_unigram_grammar.pl will be used to build the unigram"
-  echo "language model. Otherwise SRILM will be used instead. You are supposed"
-  echo "to have SRILM installed if --ngram-order is larger than 1. The format"
+  echo "language model. Otherwise MITLM will be used instead. You are supposed"
+  echo "to have MITLM installed if --ngram-order is larger than 1. The format"
   echo "of the given <text> file is same as the transcript text files in data"
   echo "directory."
   echo ""
@@ -33,7 +36,7 @@ if [ $# -ne 4 ]; then
   echo ""
   echo "Options:"
   echo "    --ngram-order           # order of n-gram language model"
-  echo "    --srilm-options         # options for ngram-count in SRILM tool"
+  # echo "    --srilm-options         # options for ngram-count in SRILM tool"
   echo "    --tscale                # transition scale"
   echo "    --loopscale             # scale for self-loops"
   echo "    --cleanup               # if true, removes the intermediate files"
@@ -55,26 +58,38 @@ done
 
 mkdir -p $graph_dir/sub_graphs
 
-# If --ngram-order is larger than 1, we will have to use SRILM
-if [ $ngram_order -gt 1 ]; then
-  ngram_count=`which ngram-count` || true
-  if [ -z $ngram_count ]; then
-    if uname -a | grep 64 >/dev/null; then # some kind of 64 bit...
-      sdir=`pwd`/../../../tools/srilm/bin/i686-m64
+# If --ngram-order is larger than 1, we will have to use MITLM
+loc=`which estimate-ngram`;
+if [ -z $loc ]; then
+    sdir=/opt/mitlm/bin
+    if [ -f $sdir/estimate-ngram ]; then
+        echo "Using MITLM language modelling tool from $sdir"
+    	export PATH=$PATH:$sdir
     else
-      sdir=`pwd`/../../../tools/srilm/bin/i686
+        echo "MITLM toolkit is probably not installed."
+    	exit 1
     fi
-    if [ -f $sdir/ngram-count ]; then
-      echo Using SRILM tools from $sdir
-      export PATH=$PATH:$sdir
-    else
-      echo You appear to not have SRILM tools installed, either on your path,
-      echo or installed in $sdir.  See tools/install_srilm.sh for installation
-      echo instructions.
-      exit 1
-    fi
-  fi
 fi
+
+# if [ $ngram_order -gt 1 ]; then
+#   ngram_count=`which ngram-count` || true
+#   if [ -z $ngram_count ]; then
+#     if uname -a | grep 64 >/dev/null; then # some kind of 64 bit...
+#       sdir=`pwd`/../../../tools/srilm/bin/i686-m64
+#     else
+#       sdir=`pwd`/../../../tools/srilm/bin/i686
+#     fi
+#     if [ -f $sdir/ngram-count ]; then
+#       echo Using SRILM tools from $sdir
+#       export PATH=$PATH:$sdir
+#     else
+#       echo You appear to not have SRILM tools installed, either on your path,
+#       echo or installed in $sdir.  See tools/install_srilm.sh for installation
+#       echo instructions.
+#       exit 1
+#     fi
+#   fi
+# fi
 
 # Maps OOV words to the oov symbol.
 oov=`cat $lang/oov.int`
@@ -110,9 +125,10 @@ cat $text | utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt | \
   else
      echo $words | \
      perl -ane '@A = split; for ($n=0;$n<@A;$n++) { print "$A[$n] "; if(($n+1)%30000 == 0 || $n+1==@A) {print "\n";} }' \
-     > $wdir/text
-     ngram-count -text $wdir/text -order $ngram_order "$srilm_options" -lm - | \
-      arpa2fst --disambig-symbol=#0 \
+	  > $wdir/text
+     estimate-ngram -text $wdir/text -order $ngram_order -write-lm - | \
+     #ngram-count -text $wdir/text -order $ngram_order "$srilm_options" -lm - | \
+     arpa2fst --disambig-symbol=#0 \
              --read-symbol-table=$lang/words.txt - $wdir/G.fst || exit 1;
   fi
   fstisstochastic $wdir/G.fst || echo "$0: $uttid/G.fst not stochastic."

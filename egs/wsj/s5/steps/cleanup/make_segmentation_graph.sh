@@ -3,6 +3,8 @@
 # Copyright 2014  Guoguo Chen
 # Apache 2.0
 
+# Inga Rún - Switched SRILM out for MITLM
+
 # Begin configuration section.
 nj=4
 cmd=run.pl
@@ -10,7 +12,8 @@ tscale=1.0      # transition scale.
 loopscale=0.1   # scale for self-loops.
 cleanup=true
 ngram_order=1
-srilm_options="-wbdiscount"   # By default, use Witten-Bell discounting in SRILM
+#srilm_options="-wbdiscount"   # By default, use Witten-Bell discounting in SRILM
+# mitlm uses modified Kneser-Ney discounting by default. I just keep that
 # End configuration section.
 
 set -e
@@ -34,7 +37,7 @@ if [ $# -ne 4 ]; then
   echo ""
   echo "Options:"
   echo "    --ngram-order           # order of n-gram language model"
-  echo "    --srilm-options         # options for ngram-count in SRILM tool"
+  # echo "    --srilm-options         # options for ngram-count in SRILM tool"
   echo "    --tscale                # transition scale"
   echo "    --loopscale             # scale for self-loops"
   echo "    --cleanup               # if true, removes the intermediate files"
@@ -54,26 +57,38 @@ for f in $data/text.orig $data/orig2utt $lang/L_disambig.fst \
   fi
 done
 
-# If --ngram-order is larger than 1, we will have to use SRILM
-if [ $ngram_order -gt 1 ]; then
-  ngram_count=`which ngram-count` || true
-  if [ -z $ngram_count ]; then
-    if uname -a | grep 64 >/dev/null; then # some kind of 64 bit...
-      sdir=`pwd`/../../../tools/srilm/bin/i686-m64
+# If --ngram-order is larger than 1, we will have to use MITLM
+loc=`which estimate-ngram`;
+if [ -z $loc ]; then
+    sdir=/opt/mitlm/bin
+    if [ -f $sdir/estimate-ngram ]; then
+        echo "Using MITLM language modelling tool from $sdir"
+    	export PATH=$PATH:$sdir
     else
-      sdir=`pwd`/../../../tools/srilm/bin/i686
+        echo "MITLM toolkit is probably not installed."
+    	exit 1
     fi
-    if [ -f $sdir/ngram-count ]; then
-      echo Using SRILM tools from $sdir
-      export PATH=$PATH:$sdir
-    else
-      echo You appear to not have SRILM tools installed, either on your path,
-      echo or installed in $sdir.  See tools/install_srilm.sh for installation
-      echo instructions.
-      exit 1
-    fi
-  fi
 fi
+
+# if [ $ngram_order -gt 1 ]; then
+#   ngram_count=`which ngram-count` || true
+#   if [ -z $ngram_count ]; then
+#     if uname -a | grep 64 >/dev/null; then # some kind of 64 bit...
+#       sdir=`pwd`/../../../tools/srilm/bin/i686-m64
+#     else
+#       sdir=`pwd`/../../../tools/srilm/bin/i686
+#     fi
+#     if [ -f $sdir/ngram-count ]; then
+#       echo Using SRILM tools from $sdir
+#       export PATH=$PATH:$sdir
+#     else
+#       echo You appear to not have SRILM tools installed, either on your path,
+#       echo or installed in $sdir.  See tools/install_srilm.sh for installation
+#       echo instructions.
+#       exit 1
+#     fi
+#   fi
+# fi
 
 # Creates one graph for each transcript. We parallelize the process a little
 # bit.
@@ -96,9 +111,11 @@ utils/split_scp.pl $data/text.orig $split_texts
 $cmd JOB=1:$nj $graph_dir/log/make_utterance_graph.JOB.log \
   steps/cleanup/make_utterance_graph.sh --cleanup $cleanup \
   --tscale $tscale --loopscale $loopscale \
-  --ngram-order $ngram_order --srilm-options "$srilm_options" \
+  --ngram-order $ngram_order  \
   $graph_dir/split$nj/JOB/text $lang \
   $model_dir $graph_dir/split$nj/JOB || exit 1;
+
+# --srilm-options "$srilm_options" took out after $ngram_order
 
 # Copies files from lang directory.
 mkdir -p $graph_dir

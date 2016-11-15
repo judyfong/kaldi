@@ -1,0 +1,41 @@
+#!/bin/bash -eu
+
+set -o pipefail
+
+# Select segments to keep based on words/second ratio for each congressman.
+# Cut out segments with wps outside 5 and 95 percentiles.
+
+if [ $# -ne 2 ]; then
+    echo "Usage: $0 <orig-data-dir> <new-data-dir>" >&2
+    echo "Eg. $0 data/all_reseg data/all_reseg_filtered" >&2
+    exit 1;
+fi
+
+dir=$1
+newdir=$2
+mkdir -p $newdir
+for s in spk2utt text utt2spk wav.scp wps_stats.txt wps.txt; do
+  [ ! -e ${newdir}/$s ] && cp -r ${dir}/$s ${newdir}/$s
+done
+
+LC_ALL=C sort -k2 ${newdir}/wps.txt > temp && mv temp ${newdir}/wps.txt
+LC_ALL=C sort ${newdir}/wps_stats_per_speaker.txt > temp && mv temp ${newdir}/wps_stats_per_speaker.txt
+
+# Find the ID of the segments that fulfill the requirements
+IFS=$'\n'
+for line in $(cat ${newdir}/wps_stats_per_speaker.txt); do
+  ID=$(echo $line | cut -d" " -f1)
+  p5=$(echo $line | cut -d" " -f10)
+  p95=$(echo $line | cut -d" " -f14)
+  awk -v var1="$ID" -v var2="$p5" -v var3="$p95" '{if ($3 == var1 && $1 > var2 && $1 < var3) print $2}' \
+      < ${newdir}/wps.txt >> ${newdir}/segm_keep.tmp
+done
+
+# Filter the segments
+join -1 1 -2 1 <(sort ${newdir}/segm_keep.tmp) <(sort ${dir}/segments) | LC_ALL=C sort > ${newdir}/segments
+
+# Sort and filter the other files
+utils/validate_data_dir.sh --no-feats ${newdir} || utils/fix_data_dir.sh ${newdir}
+
+rm *.tmp
+exit 0

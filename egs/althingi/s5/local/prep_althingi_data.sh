@@ -25,9 +25,10 @@ datadir=$(readlink -f $1); shift
 outdir=$1; shift
 mkdir -p $outdir
 
-name_id_file=~/data/althingi/name_id_gender.tsv # I made it by hand
 #iconv -f ISO-8859-1 -t UTF-8 ${datadir}/metadata.csv > ${datadir}/metadata_u8.csv
-meta=${datadir}/metadata_u8.csv
+
+name_id_file=${datadir}/name_id_gender.tsv # I made it by hand
+meta=${datadir}/metadata.csv
 
 # Need to convert from mp3 to wav
 samplerate=16000
@@ -124,9 +125,16 @@ if [ $stage -le 2 ]; then
     # I remove also the "forseti"-tag. Should I keep that in some way to note that it is a different speaker?
     # The first two commands remove links. The second one removes linkes within ská-, fleitletrað or mgr tags.
     for n in bb endanlegt; do
-	perl -pe 's/<!--.*?-->|<[^>]*?>[^<]*?http[^<]*?<\/.*?[^>]>|<[^>]*?>:[^<]*?<\/.*?[^>]>|<ræðutexti>|<\/ræðutexti>|<frammíkall.*?>.*?<\/frammíkall>|<frammíkall\/>|<truflun>.*?<\/truflun>|<truflun\/>|<forseti.*?>|<\/forseti>|<línubil\/>|<mgr jöfnun=.*?>|<mgr\/>|<atburður>.*?<\/atburður>|<vísa>|<\/vísa>|<skáletrað>|<\/skáletrað>|<skáletrað\/>|<feitletrað>|<\/feitletrað>|<feitletrað\/>//g' ${outdir}/text_orig_${n}.txt | perl -pe 's/<mgr>|<\/mgr>|<lína>|<\/lína>|<brot.*?>|<\/brot>|<erindi>|<\/erindi>|<bjalla\/>/ /g' > ${outdir}/text_noXML_${n}.txt
+	perl -pe 's/<mgr>\/\/[^\/<]*?\/\/<\/mgr>|<!--.*?-->|<[^>]*?>[^<]*?http[^<]*?<\/.*?[^>]>|<[^>]*?>:[^<]*?ritun[^<]*?<\/.*?[^>]>|<mgr>[^\/]*?\/\/<\/mgr>|<frammíkall.*?>.*?<\/frammíkall>|<truflun>.*?<\/truflun>|<atburður>.*?<\/atburður>|<málsheiti>.*?<\/málsheiti>/ /g' ${outdir}/text_orig_${n}.txt | perl -pe 's/\b([0-9])\/([0-9]{1,2})\b/$1 $2\./g' \
+	    | perl -pe 's/\/?([0-9]+)\/([0-9]+)/ $1 $2/g' | perl -pe 's/([0-9]+)\/([A-Z]{2,})/$1 $2/g' \
+	    | perl -pe 's/\([^\/\(<>]*?\)/ /g' | perl -pe 's/\([^\/<>\)]*?(\/|\/\/)|\[[^<>\]]*?\]/ /g' | perl -pe 's/\/[^\/<>\)]*?\)+/ /g' \
+	    | perl -pe 's/<[^<>]*?>/ /g' | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noXML_${n}.txt	
     done
 fi
+
+#perl -pe 's/<mgr>\/\/[^\/<]*?\/\/<\/mgr>|<!--.*?-->|<[^>]*?>[^<]*?http[^<]*?<\/.*?[^>]>|<[^>]*?>:[^<]*?ritun[^<]*?<\/.*?[^>]>|<mgr>[^\/]*?\/\/<\/mgr>|<frammíkall.*?>.*?<\/frammíkall>|<truflun>.*?<\/truflun>|<atburður>.*?<\/atburður>|<málsheiti>.*?<\/málsheiti>|<[^>]*?>/ /g' ${outdir}/text_orig_${n}.txt | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noXML_${n}.txt
+
+#perl -pe 's/<!--.*?-->|<[^>]*?>[^<]*?http[^<]*?<\/.*?[^>]>|<[^>]*?>:[^<]*?<\/.*?[^>]>|<ræðutexti>|<\/ræðutexti>|<frammíkall.*?>.*?<\/frammíkall>|<frammíkall\/>|<truflun>.*?<\/truflun>|<truflun\/>|<forseti.*?>|<\/forseti>|<línubil\/>|<mgr jöfnun=.*?>|<mgr\/>|<atburður>.*?<\/atburður>|<vísa>|<\/vísa>|<skáletrað>|<\/skáletrað>|<skáletrað\/>|<feitletrað>|<\/feitletrað>|<feitletrað\/>//g' ${outdir}/text_orig_${n}.txt | perl -pe 's/<mgr>|<\/mgr>|<lína>|<\/lína>|<brot.*?>|<\/brot>|<erindi>|<\/erindi>|<bjalla\/>/ /g' > ${outdir}/text_noXML_${n}.txt
 
 if [ $stage -le 3 ]; then
     
@@ -137,7 +145,7 @@ if [ $stage -le 3 ]; then
 	python3 -c "
 import re
 import sys
-roman_path='/home/staff/inga/kaldi/egs/althingi/s5/text_norm'
+roman_path='/home/staff/inga/kaldi/egs/althingi/s5/local'
 if not roman_path in sys.path:
     sys.path.append(roman_path)
 import roman
@@ -171,7 +179,7 @@ if [ $stage -le 4 ]; then
 
     echo "Rewrite and remove punctuations"
     # 1) Change from utterance filename to uttID,
-    # 2) Remove comments like "(*...)", "(...)", "[...]" and "(.../" and make space around "<bjalla/>",
+    # 2) Remove comments like "til 16.26/", which appears in the beginnig of speeches, and "(...)", "[...]" and "(.../",
     # 3) Remove punctuations which is safe to remove, incl. parentheses. NOTE! Change?
     # 4) Rewrite time and remove ":" before space because need to do that before I remove periods,
     # 5) Rewrite fractions
@@ -185,15 +193,15 @@ if [ $stage -le 4 ]; then
     # 13) Remove "," when not followed by a number, change spaces to one between words
     for n in bb endanlegt; do
 	join -j 1 <(sort -k1 ${outdir}/filename_uttID.txt) <(sort -k1 ${outdir}/text_noRoman_${n}.txt) | cut -d" " -f2- \
-	    | perl -pe 's/\(.*?[\)\/]/ /g' | perl -pe 's/\([^ ]+\// /g' | perl -pe 's/\[.*?\]/ /g' | perl -pe 's/<bjalla\/>/ <bjalla\/> /g'\
-	    | perl -pe 's/!|\+|\*|×|…|\(|\)|\.\.\.|\.\.|,,|”|“|„|\"|´|__+|\x27|<U+0090>|­|//g' \
+	    | perl -pe 's/(rad\d+T\d+) til \d+\.\d+\/ /$1 /' | perl -pe 's/\(.*?[\)\/]|\[.*?\]/ /g' \
+	    | perl -pe 's/!|\+|\*|×|…|\(|\)|\.\.\.|\.\.|,,|”|“|„|\"|´|__+|\x27|<U+0090>|­||«|»//g' \
 	    | perl -pe 's/([0-9]):([0-9][0-9])/$1 $2/g' | perl -pe 's/&amp;/og/g' | perl -pe 's/\?|:|;| | \./ /g' \
 	    | perl -pe 's/\b([0-9])\/([0-9]{1,2})\b/$1 $2\./g' \
 	    | perl -pe 's/\/?([0-9]+)\/([0-9]+)\/?/ $1 $2 /g' \
 	    | sed -e 's/\([a-záðéíóúýþæö0-9][\.\/%]\)\([A-ZÁÐÉÍÓÚÝÞÆÖ\/]\)/\1 \2/g' \
 	    | perl -pe 's/\.(is|net|com)(\W)/ punktur $1$2/g' | perl -pe 's/([0-9]\.)([a-záðéíóúýþæö])/$1 $2/g' | perl -pe 's/([a-záðéíóúýþæö]\.)([0-9])/$1 $2/g'\
 	    | sed -e 's/ \+\([0-9]\.\) \+\([A-ZÁÐÉÍÓÚÝÞÆÖ]\)/ \1 \L\2/g' \
-	    | perl -pe 's/([^ ])–([^ ])/$1 til $2/g' | perl -pe 's/([0-9\.%])-([0-9])/$1 til $2/g' \
+	    | perl -pe 's/([^ ])–([^ ])/$1 til $2/g' | perl -pe 's/(\d)tilstr\w*?\.?(\d)/$1 til $2/g' | perl -pe 's/([0-9\.%])-([0-9])/$1 til $2/g' \
 	    | perl -pe 's/([0-9]+),([0-46-9])/$1 komma $2/g' | perl -pe 's/ (0(?!,5))/ $1 /g' | perl -pe 's/komma (0? ?)(\d)(\d)(\d)(\d?)/komma $1$2 $3 $4 $5/g' \
 	    | perl -pe 's/¼/ einn fjórði/g' | perl -pe 's/¾/ þrír fjórðu/g' | perl -pe 's/½/ 0,5 /g' \
 	    | perl -pe 's/,([^0-9])/$1/g' | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noPuncts1_${n}.txt
@@ -217,14 +225,14 @@ if [ $stage -le 5 ]; then
     for n in bb endanlegt; do
 	sed -e 's/\.\( \+[A-ZÁÐÉÍÓÚÝÞÆÖ]\|$\)/\1/g' ${outdir}/text_noPuncts1_${n}.txt \
 	    | perl -pe 's/([^0-9])\./$1/g' | perl -pe 's/([0-9]{4})\.(\s+|$)/$1$2/g' \
-	    | sed 's/ .\+/\L&/g' | perl -pe 's/\/a( |$)/ á ári$1/g' | perl -pe 's/\/s( |$)/ á sekúndu$1/g' \
+	    | sed 's/ .\+/\L&/g' | perl -pe 's/\/a( |$)/ á ári$1/g' | perl -pe 's/\/kg( |$)/ á kíló$1/g' | perl -pe 's/\/s( |$)/ á sekúndu$1/g' \
 	    | perl -pe 's/([0-9]+)\.([0-9]{3})\.?/$1$2/g' \
-	    | perl -pe 's/(\d{1,2})\.(\d{1,2})((\.(\d{1,2}| ))| )\.?/$1 $2 $5/g' \
-	    | perl -pe 's/( [a-záðéíóúýþæö]+)-?([0-9]+)(\W)/$1 $2$3/g' | perl -pe 's/( [0-9]+%?)-?([a-záðéíóúýþæö]+)(\W)/$1 $2$3/g' \
+	    | perl -pe 's/(\d{1,2})\.(\d{1,2})((\.(\d{1,2}|( |$)))| )\.?/$1 $2 $5$6/g' \
+	    | perl -pe 's/( [a-záðéíóúýþæö]+)-?([0-9]+)(\W)/$1 $2$3/g' | perl -pe 's/( [0-9,]+%?)-?([a-záðéíóúýþæö]+)(\W)/$1 $2$3/g' \
 	    | perl -pe 's/\/í s.*?\// /g' | perl -pe 's/\/[a-záðéíóúýþæö]*? ?[a-záðéíóúýþæö]+\// /g' \
 	    | perl -pe 's/([a-záðéíóúýþæö])-([a-záðéíóúýþæö])/$1 $2/g' \
 	    | perl -pe 's/\/[0-9\. ]+\// /g' | perl -pe 's/\/[ a-záðéíóúýþæö0-9\.&-]+?\/\/?/ /g' \
-	    | perl -pe 's/—|–|-|\/|&lt|&gt//g' | perl -pe 's/&/ og /g' | perl -pe 's/[0-9]+\.[0-9]+%?/<unk>/g' | perl -pe 's/, / /g' | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noPuncts_${n}.txt
+	    | perl -pe 's/—|–|-|\/|\]|\[|&lt|&gt|tilstr\w*?\.?//g' | perl -pe 's/&/ og /g' | perl -pe 's/[0-9]+\.[0-9]+%?/<unk>/g' | perl -pe 's/, / /g' | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noPuncts_${n}.txt
     done
 fi
 

@@ -92,7 +92,7 @@ if [ $stage -le 2 ]; then
     cat ${dir}/vocab_alth_only.txt >> ${dir}/wordlist30_plusAlthingi.txt
     
     # Here I add the expanded abbreviations that were filtered out and althingi-only-vocab.
-    abbr_expanded=$(cut -f2 ~/kaldi/egs/althingi/s5/text_norm/lex/abbr_lexicon.txt | cut -d" " -f1)
+    abbr_expanded=$(cut -f2 ~/kaldi/egs/althingi/s5/text_norm/lex/abbr_lexicon.txt | tr " " "\n" | sort -u)
     for abbr in $abbr_expanded
     do
 	grep -q "\b${abbr}\b" ${dir}/wordlist30_plusAlthingi.txt || echo -e ${abbr} >> ${dir}/wordlist30_plusAlthingi.txt
@@ -211,7 +211,7 @@ if [ $stage -le 6 ]; then
     rm ${dir}/numbertext.txt
 
     # Fix spelling errors on LC_ALL=C sort ${althdir}/text_exp2_bb.txt | tail -n18 > tail18_text_unexpanded.txt
-    #cut -d" " -f2- ${althdir}/text | head -n980 >> ${dir}/numbertext.txt
+    #cut -d" " -f2- ${althdir}/text | head -n900 >> ${dir}/numbertext.txt
     # cut -d" " -f2- ${althdir}/tail18_text_unexpanded.txt >> ${dir}/numbertext.txt
 fi
 

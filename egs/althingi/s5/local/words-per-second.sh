@@ -7,13 +7,13 @@ set -o pipefail
 
 if [ $# -ne 1 ]; then
     echo "Usage: $0 <data-dir> " >&2
-    echo "Eg. $0 data/all_reseg_filtered" >&2
+    echo "Eg. $0 data/all_reseg" >&2
     exit 1;
 fi
 
 data=$1
-if [ -f ${data}/words_per_second.txt ]; then
-  rm ${data}/words_per_second.txt
+if [ -f ${data}/wps.txt ]; then
+  rm ${data}/wps.txt
 fi
 # Calculate the length of each segment
 awk 'NR >= 1 { $5 = $4 - $3 } 1' < ${data}/segments > segments_diff.tmp

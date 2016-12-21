@@ -37,9 +37,13 @@ if __name__ == "__main__":
         for w_endanlegt in vocab_endanlegt:
             dist=MinEditDist(word,w_endanlegt)
             if dist < 3:
-                # Substitute if a match was found
-                speech_bb = re.sub(" "+word+" "," "+w_endanlegt+" ",speech_bb)
-                break
+                if len(word) < 5 and len(w_endanlegt) >= len(word)-1:
+                    # Substitute if a match was found
+                    speech_bb = re.sub(" "+word+" "," "+w_endanlegt+" ",speech_bb)
+                    break
+                elif len(word) >= 5:
+                    speech_bb = re.sub(" "+word+" "," "+w_endanlegt+" ",speech_bb)
+                    break
 
     print(speech_bb, file=speech_bb_fixed)
     speech_bb_fixed.close()

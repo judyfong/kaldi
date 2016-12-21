@@ -11,9 +11,9 @@ with open(sys.argv[1]+'/wps.txt','r',encoding='utf-8') as f:
     lines=f.read().splitlines()
 
 spk_dict={}
-speakers = set([line.split()[2] for line in lines])
+speakers = set([line.split()[2].split('-')[0] for line in lines])
 for spk in speakers:
-    spk_dict[spk] = [float(line.split()[0]) for line in lines if line.split()[2]==spk]
+    spk_dict[spk] = [float(line.split()[0]) for line in lines if line.split()[2].split('-')[0]==spk]
 
 for spk in spk_dict.keys():
     perc = np.percentile(spk_dict[spk],[3,5,10,50,90,95,97])

@@ -102,6 +102,11 @@ if [ ! -z "$transform_dir" ]; then
 
   if [ $feat_type == "raw" ]; then trans=raw_trans;
   else trans=trans; fi
+  # if [ $feat_type == "lda" ] && \
+  #   ! cmp $transform_dir/final.mat $srcdir/final.mat; then
+  #   echo "$0: LDA transforms differ between $srcdir and $transform_dir"
+  #   exit 1;
+  # fi
   if [ $feat_type == "lda" ] && \
     ! cmp $transform_dir/../final.mat $srcdir/final.mat && \
     ! cmp $transform_dir/final.mat $srcdir/final.mat; then

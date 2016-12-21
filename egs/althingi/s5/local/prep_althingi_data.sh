@@ -27,13 +27,14 @@ mkdir -p $outdir
 
 #iconv -f ISO-8859-1 -t UTF-8 ${datadir}/metadata.csv > ${datadir}/metadata_u8.csv
 
-name_id_file=${datadir}/name_id_gender.tsv # I made it by hand
+name_id_file=${datadir}/name_id_gender.tsv
 meta=${datadir}/metadata.csv
 
 # Need to convert from mp3 to wav
 samplerate=16000
 # SoX converts all audio files to an internal uncompressed format before performing any audio processing
-wav_cmd="sox -tmp3 - -c1 -esigned -r$samplerate -G -twav - "
+#wav_cmd="sox -tmp3 - -c1 -esigned -r$samplerate -G -twav - "
+wav_cmd="sox -tflac - -c1 -esigned -twav - "
 
 if [ $stage -le 0 ]; then
     
@@ -54,13 +55,14 @@ if [ $stage -le 0 ]; then
 	spkID=$(grep $spkname ${name_id_file} | cut -f2)
 
 	# Print to utt2spk
-	printf "%s %s\n" ${spkID}_${filename} ${spkID} | tr -d $'\r' >> ${outdir}/utt2spk
+	printf "%s %s\n" ${spkID}-${filename} ${spkID} | tr -d $'\r' >> ${outdir}/utt2spk
 
 	# Make a helper file with mapping between the filenames and uttID
-	echo -e ${filename} ${spkID}_${filename} | tr -d $'\r' | LC_ALL=C sort -n >> ${outdir}/filename_uttID.txt
+	echo -e ${filename} ${spkID}-${filename} | tr -d $'\r' | LC_ALL=C sort -n >> ${outdir}/filename_uttID.txt
 	
 	#Print to wav.scp
-	echo -e ${spkID}_${filename} $wav_cmd" < "$(readlink -f ${datadir}/audio/${filename}".mp3")" |" | tr -d $'\r' >> ${outdir}/wav.scp
+	#echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f ${datadir}/audio/${filename}".mp3")" |" | tr -d $'\r' >> ${outdir}/wav.scp
+	echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f ${datadir}/audio/${filename}".flac")" |" | tr -d $'\r' >> ${outdir}/wav.scp
     done
     rm spkname_filename.tmp
 
@@ -119,20 +121,31 @@ fi
 
 if [ $stage -le 2 ]; then
 
-    echo "Remove most xml-tags"
+    echo "Remove xml-tags and comments"
 
     # As a first analysis I remove <frammíkall>, <truflun> and <atburður>. Switch out for a silence/noise model later!! NOTE!
     # I remove also the "forseti"-tag. Should I keep that in some way to note that it is a different speaker?
-    # The first two commands remove links. The second one removes linkes within ská-, fleitletrað or mgr tags.
-    for n in bb endanlegt; do
-	perl -pe 's/<mgr>\/\/[^\/<]*?\/\/<\/mgr>|<!--.*?-->|<[^>]*?>[^<]*?http[^<]*?<\/.*?[^>]>|<[^>]*?>:[^<]*?ritun[^<]*?<\/.*?[^>]>|<mgr>[^\/]*?\/\/<\/mgr>|<frammíkall.*?>.*?<\/frammíkall>|<truflun>.*?<\/truflun>|<atburður>.*?<\/atburður>|<málsheiti>.*?<\/málsheiti>/ /g' ${outdir}/text_orig_${n}.txt | perl -pe 's/\b([0-9])\/([0-9]{1,2})\b/$1 $2\./g' \
-	    | perl -pe 's/\/?([0-9]+)\/([0-9]+)/ $1 $2/g' | perl -pe 's/([0-9]+)\/([A-Z]{2,})/$1 $2/g' \
-	    | perl -pe 's/\([^\/\(<>]*?\)/ /g' | perl -pe 's/\([^\/<>\)]*?(\/|\/\/)|\[[^<>\]]*?\]/ /g' | perl -pe 's/\/[^\/<>\)]*?\)+/ /g' \
-	    | perl -pe 's/<[^<>]*?>/ /g' | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noXML_${n}.txt	
-    done
-fi
+    # In the following I separate the numbers on "|":
+    # 1) removes comments on the form "<mgr>//....//</mgr>"
+    # 2) removes comments on the form "<!--...-->"
+    # 3) removes links that were not written like 2)
+    # 4) removes f.ex. <mgr>::afritun af þ. 287::</mgr>
+    # 5) removes comments on the form "<mgr>....//</mgr>"
+    # 6-7) removes comments before the beginning of speeches
+    # 8-11) removes comments like "<truflun>Kliður í salnum.</truflun>"
+    # 12) (in a new line) Rewrite fractions
+    # 13-15) Rewrite law numbers
+    # 16-19) Remove comments in a) parentheses, b) left: "(", right "/" or "//", c) left: "/", right one or more ")" and maybe a "/", d) left and right one or more "/"
+    # 20-21) Remove the remaining tags and reduce the spacing to one between words
+    perl -pe 's/<mgr>\/\/[^\/<]*?\/\/<\/mgr>|<!--[^>]*?-->|<[^>]*?>[^<]*?http[^<]*?<\/[^>]*?>|<[^>]*?>:[^<]*?ritun[^<]*?<\/[^>]*?>|<mgr>[^\/]*?\/\/<\/mgr>|<ræðutexti> +<mgr>[^\/]*?\/<\/mgr>|<ræðutexti> +<mgr>til [0-9]+\.[0-9]+<\/mgr>|<truflun>[^<]*?<\/truflun>|<atburður>[^<]*?<\/atburður>|<málsheiti>[^<]*?<\/málsheiti>/ /g' ${outdir}/text_orig_bb.txt \
+	    | perl -pe 's/\b([0-9])\/([0-9]{1,2})\b/$1 $2\./g' \
+	    | perl -pe 's/\/?([0-9]+)\/([0-9]+)/ $1 $2/g' | perl -pe 's/([0-9]+)\/([A-Z]{2,})/$1 $2/g' | perl -pe 's/([0-9])\/ ([0-9])/$1 $2/g' \
+	    | perl -pe 's/\([^\/\(<>]*?\)/ /g' | perl -pe 's/\([^\/<>\)]*?\/+/ /g' | perl -pe 's/\/[^\/<>\)]*?\)+\/?/ /g' | perl -pe 's/\/+[^\/<>\)]*?\/+/ /g'\
+	    | perl -pe 's/<[^<>]*?>/ /g' | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noXML_bb.txt	
 
-#perl -pe 's/<mgr>\/\/[^\/<]*?\/\/<\/mgr>|<!--.*?-->|<[^>]*?>[^<]*?http[^<]*?<\/.*?[^>]>|<[^>]*?>:[^<]*?ritun[^<]*?<\/.*?[^>]>|<mgr>[^\/]*?\/\/<\/mgr>|<frammíkall.*?>.*?<\/frammíkall>|<truflun>.*?<\/truflun>|<atburður>.*?<\/atburður>|<málsheiti>.*?<\/málsheiti>|<[^>]*?>/ /g' ${outdir}/text_orig_${n}.txt | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noXML_${n}.txt
+    perl -pe 's/<!--[^>]*?-->|<truflun>[^<]*?<\/truflun>|<atburður>[^<]*?<\/atburður>|<málsheiti>[^<]*?<\/málsheiti>|\([^\(\)<>]*?\)|<[^>]*?>/ /g' ${outdir}/text_orig_endanlegt.txt | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noXML_endanlegt.txt
+
+fi
 
 #perl -pe 's/<!--.*?-->|<[^>]*?>[^<]*?http[^<]*?<\/.*?[^>]>|<[^>]*?>:[^<]*?<\/.*?[^>]>|<ræðutexti>|<\/ræðutexti>|<frammíkall.*?>.*?<\/frammíkall>|<frammíkall\/>|<truflun>.*?<\/truflun>|<truflun\/>|<forseti.*?>|<\/forseti>|<línubil\/>|<mgr jöfnun=.*?>|<mgr\/>|<atburður>.*?<\/atburður>|<vísa>|<\/vísa>|<skáletrað>|<\/skáletrað>|<skáletrað\/>|<feitletrað>|<\/feitletrað>|<feitletrað\/>//g' ${outdir}/text_orig_${n}.txt | perl -pe 's/<mgr>|<\/mgr>|<lína>|<\/lína>|<brot.*?>|<\/brot>|<erindi>|<\/erindi>|<bjalla\/>/ /g' > ${outdir}/text_noXML_${n}.txt
 
@@ -179,8 +192,8 @@ if [ $stage -le 4 ]; then
 
     echo "Rewrite and remove punctuations"
     # 1) Change from utterance filename to uttID,
-    # 2) Remove comments like "til 16.26/", which appears in the beginnig of speeches, and "(...)", "[...]" and "(.../",
-    # 3) Remove punctuations which is safe to remove, incl. parentheses. NOTE! Change?
+    # 2) Remove comments that appear at the end of certain speeches (still here because contained <skáletrað> in original text)
+    # 3) Remove punctuations which is safe to remove
     # 4) Rewrite time and remove ":" before space because need to do that before I remove periods,
     # 5) Rewrite fractions
     # 6) Rewrite law numbers, f.ex. "2011/77/ESB" to "2011 77 ESB" and "lög nr 77/2011" to "lög nr 77 2011"
@@ -190,11 +203,11 @@ if [ $stage -le 4 ]; then
     # 10) Rewrite en dash (x96) and regular dash to " til ", if sandwitched between words or numbers,
     # 11) Rewrite decimals, f.ex "0,045" to "0 komma 0 45" and "0,00345" to "0 komma 0 0 3 4 5" and remove space before a "%",
     # 12 Rewrite vulgar fractions
-    # 13) Remove "," when not followed by a number, change spaces to one between words
+    # 13) Remove "," when not followed by a number, turn words containing non-Icelandic characters or punctuations that have not yet been cleared away to <unk>, change spaces to one between words
     for n in bb endanlegt; do
 	join -j 1 <(sort -k1 ${outdir}/filename_uttID.txt) <(sort -k1 ${outdir}/text_noRoman_${n}.txt) | cut -d" " -f2- \
-	    | perl -pe 's/(rad\d+T\d+) til \d+\.\d+\/ /$1 /' | perl -pe 's/\(.*?[\)\/]|\[.*?\]/ /g' \
-	    | perl -pe 's/!|\+|\*|×|…|\(|\)|\.\.\.|\.\.|,,|”|“|„|\"|´|__+|\x27|<U+0090>|­||«|»//g' \
+	    | perl -pe 's/\[Þingmenn risu úr sætum.*?]/ /g' \
+	    | perl -pe 's/!|\+|\*|×|…|\(|\)|\]|\[|\.\.\.|\.\.|,,|”|“|„|\"|´|__+|\x27|<U+0090>|­||«|»|¬|<U+2015>//g' \
 	    | perl -pe 's/([0-9]):([0-9][0-9])/$1 $2/g' | perl -pe 's/&amp;/og/g' | perl -pe 's/\?|:|;| | \./ /g' \
 	    | perl -pe 's/\b([0-9])\/([0-9]{1,2})\b/$1 $2\./g' \
 	    | perl -pe 's/\/?([0-9]+)\/([0-9]+)\/?/ $1 $2 /g' \
@@ -202,9 +215,9 @@ if [ $stage -le 4 ]; then
 	    | perl -pe 's/\.(is|net|com)(\W)/ punktur $1$2/g' | perl -pe 's/([0-9]\.)([a-záðéíóúýþæö])/$1 $2/g' | perl -pe 's/([a-záðéíóúýþæö]\.)([0-9])/$1 $2/g'\
 	    | sed -e 's/ \+\([0-9]\.\) \+\([A-ZÁÐÉÍÓÚÝÞÆÖ]\)/ \1 \L\2/g' \
 	    | perl -pe 's/([^ ])–([^ ])/$1 til $2/g' | perl -pe 's/(\d)tilstr\w*?\.?(\d)/$1 til $2/g' | perl -pe 's/([0-9\.%])-([0-9])/$1 til $2/g' \
-	    | perl -pe 's/([0-9]+),([0-46-9])/$1 komma $2/g' | perl -pe 's/ (0(?!,5))/ $1 /g' | perl -pe 's/komma (0? ?)(\d)(\d)(\d)(\d?)/komma $1$2 $3 $4 $5/g' \
-	    | perl -pe 's/¼/ einn fjórði/g' | perl -pe 's/¾/ þrír fjórðu/g' | perl -pe 's/½/ 0,5 /g' \
-	    | perl -pe 's/,([^0-9])/$1/g' | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noPuncts1_${n}.txt
+	    | perl -pe 's/([0-9]+),([0-46-9])/$1 komma $2/g' | perl -pe 's/([0-9]+),5([0-9])/$1 komma $2/g' | perl -pe 's/ (0(?!,5))/ $1 /g' | perl -pe 's/komma (0? ?)(\d)(\d)(\d)(\d?)/komma $1$2 $3 $4 $5/g' \
+	    | perl -pe 's/¼/ einn fjórði/g' | perl -pe 's/¾/ þrír fjórðu/g' | perl -pe 's/(\d)½/$1,5 /g' | perl -pe 's/ ½/ 0,5 /g' \
+	    | perl -pe 's/,([^0-9])/$1/g' | perl -pe 's/\b[^ ]*([^a-yáðéíóúýþæöA-YÁÉÍÓÚÝÞÆÖ0-9%‰°º\., ]|[cqw])[^ ]*\b/<unk>/g' | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noPuncts1_${n}.txt
     done
 fi
 
@@ -212,15 +225,14 @@ if [ $stage -le 5 ]; then
 
     echo "Lowercase, rewrite and remove punctuations"
     # The following are a bit changed because of the effect of tagging and untagging the text
-    # 1) Remove final period (mostly to distinguish between numbers and ordinals) and period after letters,
-    # 2) Reverse some of the changes made when tagging and untagging.
+    # 1-2) Remove final period (mostly to distinguish between numbers and ordinals) and period after letters,
     # 3) Lowercase text (not uttID) and rewrite "/a " to "á ári" and "/s " to "á sekúndu"
     # 4) Rewrite thousands and millions, f.ex. 3.500 to 3500,
-    # 5) Rewrite chapter and clause numbers, f.ex. "ákvæði 2.1.3" to "ákvæði 2 1 3",
+    # 5) Rewrite chapter and clause numbers and time, f.ex. "ákvæði 2.1.3" to "ákvæði 2 1 3" and "kl 15.30" to "kl 15 30",
     # 6) Add spaces between letters and numbers in alpha-numeric words,
-    # 7) Remove comments on what to add in text endanlegt f.ex "/í skj.: til að/" and "/dittó/",
+    ## 7) Remove comments on what to add in text endanlegt f.ex "/í skj.: til að/" and "/dittó/",
     # 8) Swap "-" and "/" out for a space when sandwitched between words, f.ex. "suður-kórea" and "svart/hvítt",
-    # 9) Remove comments on what to add in text endanlegt f.ex "/þ. 278/"
+    ## 9) Remove comments on what to add in text endanlegt f.ex "/þ. 278/"
     # 10) Remove remaining punctuations, fix some leftover stuff, and change spaces to one between words and write.
     for n in bb endanlegt; do
 	sed -e 's/\.\( \+[A-ZÁÐÉÍÓÚÝÞÆÖ]\|$\)/\1/g' ${outdir}/text_noPuncts1_${n}.txt \
@@ -229,13 +241,13 @@ if [ $stage -le 5 ]; then
 	    | perl -pe 's/([0-9]+)\.([0-9]{3})\.?/$1$2/g' \
 	    | perl -pe 's/(\d{1,2})\.(\d{1,2})((\.(\d{1,2}|( |$)))| )\.?/$1 $2 $5$6/g' \
 	    | perl -pe 's/( [a-záðéíóúýþæö]+)-?([0-9]+)(\W)/$1 $2$3/g' | perl -pe 's/( [0-9,]+%?)-?([a-záðéíóúýþæö]+)(\W)/$1 $2$3/g' \
-	    | perl -pe 's/\/í s.*?\// /g' | perl -pe 's/\/[a-záðéíóúýþæö]*? ?[a-záðéíóúýþæö]+\// /g' \
 	    | perl -pe 's/([a-záðéíóúýþæö])-([a-záðéíóúýþæö])/$1 $2/g' \
-	    | perl -pe 's/\/[0-9\. ]+\// /g' | perl -pe 's/\/[ a-záðéíóúýþæö0-9\.&-]+?\/\/?/ /g' \
-	    | perl -pe 's/—|–|-|\/|\]|\[|&lt|&gt|tilstr\w*?\.?//g' | perl -pe 's/&/ og /g' | perl -pe 's/[0-9]+\.[0-9]+%?/<unk>/g' | perl -pe 's/, / /g' | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noPuncts_${n}.txt
+	    | perl -pe 's/—|–|-|\/|&lt|&gt|tilstr\w*?\.?/ /g' | perl -pe 's/&/ og /g' | perl -pe 's/([0-9]+)\.([0-9]+%?)/$1 $2/g' | perl -pe 's/, / /g' | perl -pe 's/ %/%/g'| sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noPuncts_${n}.txt
     done
 fi
 
+# Line 7: | perl -pe 's/\/í s.*?\// /g' | perl -pe 's/\/[a-záðéíóúýþæö]*? ?[a-záðéíóúýþæö]+\// /g' \
+# Line 9: | perl -pe 's/\/[0-9\. ]+\// /g' | perl -pe 's/\/[ a-záðéíóúýþæö0-9\.&-]+?\/\/?/ /g' \
 
 # I have the problem that tagging and untagging the text changes it with regard to punctuations. Hence I need to split up the
 # punctuation removal. Tagging the text works way worse after periods have been removed.
@@ -282,7 +294,7 @@ fi
 if [ $stage -le 7 ]; then
     
     echo "Fix spelling errors"
-    cut -d" " -f2- ${outdir}/text_exp2_endanlegt.txt | perl -pe 's/\.|,|[0-9]|%|°c|ºc//g' | tr " " "\n" | grep -v "^$" | sort -u > ${outdir}/words_text_endanlegt.txt
+    cut -d" " -f2- ${outdir}/text_exp2_endanlegt.txt | perl -pe 's/\.|,|[0-9]|%|°c|ºc//g' | tr " " "\n" | egrep -v "^\s*$" | sort -u > ${outdir}/words_text_endanlegt.txt
     if [ -f ${outdir}/text_bb_SpellingFixed.txt ]; then
 	rm ${outdir}/text_bb_SpellingFixed.txt
     fi
@@ -292,12 +304,13 @@ if [ $stage -le 7 ]; then
     for speech in $(cat ${outdir}/text_exp2_bb.txt)
     do
         uttID=$(echo $speech | cut -d" " -f1)
-	echo $speech | cut -d" " -f2- | perl -pe 's/\.|,|[0-9]|%|°c|ºc//g' | tr " " "\n" | grep -v "^$" | sort -u > vocab_speech.tmp
+	echo $speech | cut -d" " -f2- | perl -pe 's/\.|,|[0-9]|%|°c|ºc//g' | tr " " "\n" | egrep -v "^\s*$" | sort -u > vocab_speech.tmp
+	
 	# Find words that are not in any text_endanlegt speech 
 	comm -23 <(cat vocab_speech.tmp) <(cat  ${outdir}/words_text_endanlegt.txt) > vocab_speech_only.tmp
 	
 	grep $uttID ${outdir}/text_exp2_endanlegt.txt > text_endanlegt_speech.tmp
-	cut -d" " -f2- text_endanlegt_speech.tmp | perl -pe 's/\.|,|[0-9]|%|°c|ºc//g' | tr " " "\n" | grep -v "^$" | sort -u > vocab_text_endanlegt_speech.tmp
+	cut -d" " -f2- text_endanlegt_speech.tmp | perl -pe 's/\.|,|[0-9]|%|°c|ºc//g' | tr " " "\n" | egrep -v "^\s*$" | sort -u > vocab_text_endanlegt_speech.tmp
 
 	# Find an approximate match in the vocab_text_endanlegt_speech
 	# Substitute $word and the match in $speech

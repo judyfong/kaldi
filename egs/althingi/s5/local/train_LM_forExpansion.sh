@@ -208,7 +208,6 @@ if [ $stage -le 6 ]; then
     # Add the Althingi data to numbertext to make sure everything will be printed out after expansion.
     cut -d" " -f2- ${althdir}/text_bb_SpellingFixed.txt >> ${dir}/numbertext.txt
     gzip -c ${dir}/numbertext.txt > ${dir}/numbertext.txt.gz
-    rm ${dir}/numbertext.txt
 
     # Fix spelling errors on LC_ALL=C sort ${althdir}/text_exp2_bb.txt | tail -n18 > tail18_text_unexpanded.txt
     #cut -d" " -f2- ${althdir}/text | head -n900 >> ${dir}/numbertext.txt

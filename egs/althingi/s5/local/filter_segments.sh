@@ -14,20 +14,26 @@ fi
 dir=$1
 newdir=$2
 mkdir -p $newdir
+
+#local/wps_speakerDependent.py $dir
+
 for s in spk2utt text utt2spk wav.scp wps_stats.txt wps.txt; do
   [ ! -e ${newdir}/$s ] && cp -r ${dir}/$s ${newdir}/$s
 done
 
 LC_ALL=C sort -k2 ${newdir}/wps.txt > temp && mv temp ${newdir}/wps.txt
-LC_ALL=C sort ${newdir}/wps_stats_per_speaker.txt > temp && mv temp ${newdir}/wps_stats_per_speaker.txt
+LC_ALL=C sort ${newdir}/wps_stats.txt > temp && mv temp ${newdir}/wps_stats.txt
 
-# Find the ID of the segments that fulfill the requirements
+wps15percentile=$(cut -d" " -f1 ${newdir}/wps.txt | sort -n | awk '{all[NR] = $0} END{print all[int(NR*0.15 + 0.5)]}')
+wps85percentile=$(cut -d" " -f1 ${newdir}/wps.txt | sort -n | awk '{all[NR] = $0} END{print all[int(NR*0.85 - 0.5)]}')
+
+# Find the ID of the segments that fulfill the requirements.
 IFS=$'\n'
-for line in $(cat ${newdir}/wps_stats_per_speaker.txt); do
+for line in $(cat ${newdir}/wps_stats.txt); do
   ID=$(echo $line | cut -d" " -f1)
   p5=$(echo $line | cut -d" " -f10)
   p95=$(echo $line | cut -d" " -f14)
-  awk -v var1="$ID" -v var2="$p5" -v var3="$p95" '{if ($3 == var1 && $1 > var2 && $1 < var3) print $2}' \
+  awk -v var1="$ID" -v var2="$p5" -v var3="$p95" -v var4="$wps15percentile" -v var5="$wps85percentile" '{if ($3 ~ var1 && ($1 > var2 || $1 > var4) && ($1 < var3 || $1 < var5)) print $2}'  \
       < ${newdir}/wps.txt >> ${newdir}/segm_keep.tmp
 done
 

@@ -55,7 +55,7 @@ add_layers_period=2 # by default, add new layers every 2 iterations.
 num_hidden_layers=3
 stage=-5
 
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
+#io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
 splice_width=4 # meaning +- 4 frames on each side for second LDA
 randprune=4.0 # speeds up LDA.
 alpha=4.0 # relates to preconditioning.
@@ -188,12 +188,21 @@ feat_dim=$(cat $dir/feat_dim) || exit 1;
 ivector_dim=$(cat $dir/ivector_dim) || exit 1;
 lda_dim=$(cat $dir/lda_dim) || exit 1;
 
+# if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
+#   echo "$0: calling get_egs.sh"
+#   steps/nnet2/get_egs.sh $egs_opts "${extra_opts[@]}" \
+#       --samples-per-iter $samples_per_iter \
+#       --num-jobs-nnet $num_jobs_nnet --stage $get_egs_stage \
+#       --cmd "$cmd" $egs_opts --io-opts "$io_opts" \
+#       $data $lang $alidir $dir || exit 1;
+# fi
+
 if [ $stage -le -3 ] && [ -z "$egs_dir" ]; then
   echo "$0: calling get_egs.sh"
   steps/nnet2/get_egs.sh $egs_opts "${extra_opts[@]}" \
       --samples-per-iter $samples_per_iter \
       --num-jobs-nnet $num_jobs_nnet --stage $get_egs_stage \
-      --cmd "$cmd" $egs_opts --io-opts "$io_opts" \
+      --cmd "$cmd" $egs_opts \
       $data $lang $alidir $dir || exit 1;
 fi
 
@@ -290,7 +299,7 @@ function set_target_objf_change {
   [ "$target_multiplier" == "0" -o "$target_multiplier" == "0.0" ] && return;
   [ $x -le $finish_add_layers_iter ] && return;
   wait=2  # the compute_prob_{train,valid} from 2 iterations ago should
-          # most likey be done even though we backgrounded them.
+          # most likely be done even though we backgrounded them.
   [ $[$x-$wait] -le 0 ] && return;
   while true; do
     # Note: awk 'some-expression' is the same as: awk '{if(some-expression) print;}'

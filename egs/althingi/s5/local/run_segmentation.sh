@@ -22,8 +22,8 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then
-    echo "Usage: local/run_segmentation.sh [options] <data-dir> <lang-dir> <model-dir>"
-    echo " e.g.: local/run_segmentation.sh data/all data/lang exp/tri3_0.2_mmi"
+    echo "Usage: local/run_segmentation.sh [options] <data-dir> <lang-dir> <model-dir> <date>"
+    echo " e.g.: local/run_segmentation.sh data/all data/lang exp/tri3_0.2_mmi 20161128"
     exit 1;
 fi
 
@@ -31,32 +31,36 @@ datadir=$1
 base=$(basename $datadir)
 langdir=$2
 modeldir=$3
-d=$(date +'%Y%m%d')
+d=$4
+#d=$(date +'%Y%m%d')
+#d="20161128"
 
-echo "Append all utterances by the same speaker"
-local/append_utterances.sh ${datadir} ${datadir}_long_$d
-# I increased the overlap time to 15s because of mismatch in recording and text
+#echo "Append all utterances by the same speaker"
+#local/append_utterances.sh ${datadir} ${datadir}_long_$d
 
 echo "Truncate the long audio into smaller overlapping segments"
 steps/cleanup/split_long_utterance.sh \
-  --seg-length 30 --overlap-length 15 \
-  ${datadir}_long_$d ${datadir}_split_$d
+  --seg-length 30 --overlap-length 5 \
+  ${datadir} ${datadir}_split_$d
+
+#${datadir}_long_$d ${datadir}_split_$d
 
 echo "Make MFCC features and compute CMVN stats"
-steps/make_mfcc.sh --cmd "$train_cmd" --nj 22 \
+steps/make_mfcc.sh --cmd "$train_cmd" --nj 64 \
   ${datadir}_split_$d exp/make_mfcc/${base}_split_$d mfcc || exit 1;
+utils/fix_data_dir.sh ${datadir}_split_$d
 steps/compute_cmvn_stats.sh ${datadir}_split_$d \
   exp/make_mfcc/${base}_split_$d mfcc || exit 1;
 
 echo "Make segmentation graph, i.e. build one decoding graph for each truncated utterance in segmentation."
 steps/cleanup/make_segmentation_graph.sh \
-  --cmd "$mkgraph_cmd" --nj 22 \
+  --cmd "$mkgraph_cmd" --nj 32 \
   ${datadir}_split_$d ${langdir} ${modeldir} \
   ${modeldir}/graph_${base}_split_$d || exit 1;
 
 echo "Decode segmentation"
 steps/cleanup/decode_segmentation.sh \
-  --nj 60 --cmd "$decode_cmd" --skip-scoring true \
+  --nj 64 --cmd "$decode_cmd" --skip-scoring true \
   ${modeldir}/graph_${base}_split_$d \
   ${datadir}_split_$d ${modeldir}/decode_${base}_split_$d || exit 1;
 
@@ -65,9 +69,9 @@ steps/get_ctm.sh --cmd "$decode_cmd" ${datadir}_split_$d \
   ${modeldir}/graph_${base}_split_$d ${modeldir}/decode_${base}_split_$d
 
 echo "Make segmentation data dir"
-steps/cleanup/make_segmentation_datadir_dir.sh --wer-cutoff 0.9 \
+steps/cleanup/make_segmentation_data_dir.sh --wer-cutoff 0.9 \
   --min-sil-length 0.5 --max-seg-length 15 --min-seg-length 1 \
-  ${modeldir}/decode_${base}_split_$d/score_10/${base}_split.ctm \
+  ${modeldir}/decode_${base}_split_$d/score_10/${base}_split_$d.ctm \
   ${datadir}_split_$d ${datadir}_reseg_$d
 
 # Here I think I should end this script, go back to run.sh

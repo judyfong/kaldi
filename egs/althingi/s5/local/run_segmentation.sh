@@ -23,7 +23,7 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ $# != 3 ]; then
     echo "Usage: local/run_segmentation.sh [options] <data-dir> <lang-dir> <model-dir> <date>"
-    echo " e.g.: local/run_segmentation.sh data/all data/lang exp/tri3_0.2_mmi 20161128"
+    echo " e.g.: local/run_segmentation.sh data/all malromur/lang malromur 20161128"
     exit 1;
 fi
 
@@ -35,15 +35,10 @@ d=$4
 #d=$(date +'%Y%m%d')
 #d="20161128"
 
-#echo "Append all utterances by the same speaker"
-#local/append_utterances.sh ${datadir} ${datadir}_long_$d
-
 echo "Truncate the long audio into smaller overlapping segments"
 steps/cleanup/split_long_utterance.sh \
   --seg-length 30 --overlap-length 5 \
   ${datadir} ${datadir}_split_$d
-
-#${datadir}_long_$d ${datadir}_split_$d
 
 echo "Make MFCC features and compute CMVN stats"
 steps/make_mfcc.sh --cmd "$train_cmd" --nj 64 \

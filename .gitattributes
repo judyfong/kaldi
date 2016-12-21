@@ -18,3 +18,10 @@ windows/NewGuidCmd.exe binary
 # Prevent git changing CR-LF to LF when archiving (patch requires CR-LF on Windows).
 **/*.patch            -text
 
+# Denote all files that are truly binary and should not be modified.
+*.ark binary
+*.mdl binary
+*.mat binary
+*.alimdl binary
+trans.* binary
+tree binary

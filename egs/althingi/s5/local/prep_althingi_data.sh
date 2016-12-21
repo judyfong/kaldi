@@ -2,10 +2,10 @@
 
 set -o pipefail
 
-# Get the Althingi data on a proper format for kaldi
-# 2016 Inga Rún
+# Copyright 2016  Reykjavik University (Author: Inga Rún Helgadóttir)
+# Get the Althingi data on a proper format for kaldi.
 
-. ./path.sh
+. ./path.sh # Needed for KALDI_ROOT
 . ./cmd.sh
 
 tmp=$(mktemp -d)

@@ -6,11 +6,6 @@
 !/src/*/Makefile
 !/src/*/README
 
-# Text files and fst's
-*.fst
-tmp
-*.syms
-
 # Compiled Object files and python ciles
 *.slo
 *.lo

@@ -58,6 +58,8 @@ done
 
 mkdir -p $graph_dir/sub_graphs
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $model_dir/phones.txt
+
 # If --ngram-order is larger than 1, we will have to use MITLM
 loc=`which estimate-ngram`;
 if [ -z $loc ]; then

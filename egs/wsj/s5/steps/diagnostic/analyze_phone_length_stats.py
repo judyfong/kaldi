@@ -81,6 +81,8 @@ for boundary_type in [ 'begin', 'end', 'all' ]:
 total_phones = defaultdict(int)
 # total_frames is a dict from boundary_type to total number of frames.
 total_frames = defaultdict(int)
+# total_frames is a dict from num-frames to count of num-utterances with that
+# num-frames.
 
 while True:
     line = sys.stdin.readline()
@@ -102,7 +104,7 @@ while True:
                  "seen (lang directory mismatch?): {1}".format(phone, str(e)))
 
 if len(phone_lengths) == 0:
-    sys.exit("analyze_phone_lengths.py: read no input")
+    sys.exit("analyze_phone_length_stats.py: read no input")
 
 # work out the optional-silence phone
 try:
@@ -174,7 +176,7 @@ for boundary_type in 'begin', 'end':
     # maybe half a second.  If your database is not like this, you should know;
     # you may want to mess with the segmentation to add more silence.
     if frequency_percentage < 80.0:
-        print("analyze_phone_lengths.py: WARNING: optional-silence {0} is seen only {1}% "
+        print("analyze_phone_length_stats.py: WARNING: optional-silence {0} is seen only {1}% "
               "of the time at utterance {2}.  This may not be optimal.".format(
                 optional_silence_phone_text, frequency_percentage, boundary_type))
 

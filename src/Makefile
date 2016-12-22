@@ -21,6 +21,7 @@ CUDAMEMTESTDIR = cudamatrix
 
 SUBDIRS_LIB = $(filter-out %bin, $(SUBDIRS))
 
+KALDI_SONAME ?= libkaldi.so
 
 # Optional subdirectories
 EXT_SUBDIRS = online onlinebin  # python-kaldi-decoding
@@ -50,7 +51,9 @@ checkversion:
 ifeq ($(shell ./configure --version),$(CONFIGURE_VERSION))
 	@echo "The version of configure script matches kaldi.mk version. Good."
 else
-	$(error The kaldi.mk file was generated using a different version of configure script. Run the configure script again.)
+	@echo "The kaldi.mk file was generated using a different version of configure script. Please rerun the configure again"
+	@test -f ./kaldi.mk && echo  "Hint: Previous configure command line: " && head -n 2 ./kaldi.mk | grep configure | sed 's/^# *//g'
+	@false
 endif
 
 biglib: $(SUBDIRS_LIB)
@@ -60,7 +63,7 @@ ifeq ($(shell uname), Darwin)
 else
 ifeq ($(shell uname), Linux)
 	#$(warning the following command will probably fail, in that case add -fPIC to your CXXFLAGS and remake all)
-	$(CXX) -shared -o $(KALDILIBDIR)/libkaldi.so -Wl,-soname=libkaldi.so,--whole-archive  $(SUBDIRS_LIB:=/kaldi-*.a) -Wl,--no-whole-archive
+	$(CXX) -shared -o $(KALDILIBDIR)/$(KALDI_SONAME) -Wl,-soname=$(KALDI_SONAME),--whole-archive  $(SUBDIRS_LIB:=/kaldi-*.a) $(LDLIBS) -Wl,--no-whole-archive
 else
 	$(error Dynamic libraries not supported on this platform. Run configure with --static flag. )
 endif
@@ -105,6 +108,9 @@ check_portaudio:
 clean: rmlibdir
 	-for x in $(SUBDIRS) $(EXT_SUBDIRS); do $(MAKE) -C $$x clean; done
 
+distclean: clean
+	-for x in $(SUBDIRS) $(EXT_SUBDIRS); do $(MAKE) -C $$x distclean; done
+
 test: $(addsuffix /test, $(SUBDIRS))
 
 ext_test: $(addsuffix /test, $(EXT_SUBDIRS))
@@ -121,6 +127,8 @@ cudavalgrind:
 valgrind:
 	-for x in $(MEMTESTDIRS); do $(MAKE) -C $$x valgrind || { echo "valgrind on $$x failed"; exit 1; }; done
 
+base/.depend.mk:
+	$(MAKE) depend
 
 depend: $(addsuffix /depend, $(SUBDIRS))
 
@@ -150,7 +158,7 @@ bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin cha
  lm decoder lat cudamatrix nnet nnet2 nnet3 ivector chain kws online2
 
 #2)The libraries have inter-dependencies
-base:
+base: base/.depend.mk
 matrix: base
 thread: base
 util: base matrix thread

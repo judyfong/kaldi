@@ -50,6 +50,8 @@ dir=$5
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+
 sdata1=$data1/split$nj
 sdata2=$data2/split$nj
 [[ -d $sdata1 && $data1/feats.scp -ot $sdata1 ]] || split_data.sh $data1 $nj || exit 1;
@@ -177,7 +179,7 @@ else
       split_data.sh --per-utt $sdata2/$n $sub_split || exit 1;
       mkdir -p $dir/log/$n
       mkdir -p $dir/part
-      feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split$sub_split/JOB/:g`
+      feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split${sub_split}utt/JOB/:g`
 
       $cmd $parallel_opts JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
         gmm-latgen-faster --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \

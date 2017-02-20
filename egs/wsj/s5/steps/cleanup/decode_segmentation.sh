@@ -74,8 +74,7 @@ else
 fi
 sdata=$data/split$nj;
 
-[[ -d $sdata && $data/feats.scp -ot $sdata  && $data/cmvn.scp -ot $sdata]] || split_data.sh $data $nj || exit 1;
-
+[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 
 if [ -z "$model" ]; then # if --model <mdl> was not specified on the command line...

@@ -14,7 +14,7 @@
 # This script does not use the trained model from the source directory to
 # initialize the diagonal GMM; instead, we initialize the GMM using
 # gmm-global-init-from-feats, which sets the means to random data points and
-# then does some iterations of E-M in memory.  After the in-memory
+# then does some iterations of E-M in memory. After the in-memory
 # initialization we train for a few iterations in parallel.
 # Note that there is a slight mismatch in that the source LDA+MLLT matrix
 # (final.mat) will have been estimated using standard CMVN, and we're using
@@ -35,7 +35,7 @@ subsample=2 # subsample all features with this periodicity, in the main E-M phas
 cleanup=true
 min_gaussian_weight=0.0001
 remove_low_count_gaussians=true # set this to false if you need #gauss to stay fixed.
-num_threads=32
+num_threads=24
 parallel_opts=  # ignored now.
 online_cmvn_config=conf/online_cmvn.conf
 # End configuration section.

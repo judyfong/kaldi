@@ -18,7 +18,7 @@ initial_effective_lrate=0.01
 final_effective_lrate=0.001
 pnorm_input_dim=3000
 pnorm_output_dim=300
-relu_dim=  # you can use this to make it use ReLU's instead of p-norms.
+relu_dim=450  # you can use this to make it use ReLU's instead of p-norms.
 rand_prune=4.0 # Relates to a speedup we do for LDA.
 minibatch_size=512  # This default is suitable for GPU-based training.
                     # Set it to 128 for multi-threaded CPU-based training.
@@ -390,7 +390,7 @@ if [ $num_iters_combine -gt $half_iters_after_add_layers ]; then
 fi
 first_model_combine=$[$num_iters-$num_iters_combine+1]
 
-x=0
+x=0 # NOTE! Change to 286
 
 for realign_time in $realign_times; do
   # Work out the iterations on which we will re-align, if the --realign-times

@@ -12,6 +12,7 @@
 # right, and this ends up getting shared.  This is at the expense of slightly
 # higher disk I/O while training.
 
+#NOTE! Changed because of old slurm version. Change back after updating slurm!
 
 # Begin configuration section.
 cmd=run.pl
@@ -225,7 +226,9 @@ $reduced && echo "$0: reduced frames_per_eg to $frames_per_eg because amount of 
 # We may have to first create a smaller number of larger archives, with number
 # $num_archives_intermediate, if $num_archives is more than the maximum number
 # of open filehandles that the system allows per process (ulimit -n).
-max_open_filehandles=$(ulimit -n) || exit 1
+#NOTE! Changed because I get "Invalid job array specification" when I run this:
+#max_open_filehandles=$(ulimit -n) || exit 1
+max_open_filehandles=250 || exit 1
 num_archives_intermediate=$num_archives
 archives_multiple=1
 while [ $[$num_archives_intermediate+4] -gt $max_open_filehandles ]; do

@@ -145,7 +145,7 @@ if [ $stage -le 6 ]; then
        steps/cleanup/internal/taint_ctm_edits.py $dir/ctm_edits.modified $dir/ctm_edits.tainted
   echo "... Stats, including global cor/ins/del/sub stats, are in $dir/log/taint_ctm_edits.log."
 fi
-
+G
 
 if [ $stage -le 7 ]; then
   echo "$0: creating segmentation from ctm-edits file."

@@ -11,7 +11,7 @@
 # 
 
 nj=20
-nj_decode=30 
+nj_decode=32 
 stage=-100
 corpus_zip=~/data/althingi/tungutaekni.tar.gz
 datadir=data/local/corpus
@@ -471,10 +471,20 @@ if [ $stage -le 25 ]; then
     cat ~/data/althingi/pronDict_LM/scrapedAlthingiTexts_clean.txt <(cut -f2- data/train/text) > data/train/LMtext_big
     local/make_arpa.sh --order 3 data/train/LMtext_big data/lang_tg_bd
 
+    
     echo "Making G.fst"
     utils/format_lm.sh data/lang_bd data/lang_tg_bd/lm_tg.arpa.gz data/local/dict_bd/lexicon.txt data/lang_tg_bd
 
-
+    echo "Make a 5g LM"
+    mkdir -p data/lang_fg_bd
+    for s in L_disambig.fst L.fst oov.int oov.txt phones phones.txt \
+                            topo words.txt; do
+        [ ! -e data/lang_fg_bd/$s ] && cp -r data/lang_bd/$s data/lang_fg_bd/$s
+    done
+    # NOTE! Since I made the td file I seem to have renames LMtext_bd to LMtext
+    local/make_arpa.sh --order 5 data/train/LMtext data/lang_fg_bd
+    utils/slurm.pl data/lang_fg_bd/format_lm.log utils/format_lm.sh data/lang_bd data/lang_fg_bd/lm_fg.arpa.gz data/local/dict_bd/lexicon.txt data/lang_fg_bd
+    
     echo "Trying the larger dictionary ('big-dict'/bd) + locally produced LM."
     utils/mkgraph.sh \
 	data/lang_tg_bd \
@@ -509,15 +519,225 @@ if [ $stage -le 26 ]; then
 
 fi
 
-# NNET
 if [ $stage -le 27 ]; then
-    #echo "Run the main nnet2 recipe on top of fMLLR features"
-    #local/nnet2/run_5d.sh
-
-    echo "Run the main dnn recipe on top of fMLLR features"
-    local/nnet/run_dnn.sh &
-
-    echo "Run the main tdnn recipe on top of fMLLR features"
-    local/nnet3/run_tdnn.sh
+    echo "Clean and resegment the training data"
+    steps/cleanup/clean_and_segment_data.sh \
+        --stage 3 \
+        --nj $nj_decode \
+        --cmd "$decode_cmd" \
+        data/train data/lang \
+        exp/tri3 exp/tri3_cleanup \
+        data/train_cleaned &
 fi
 
+if [ $stage -le 16 ]; then
+    echo "Make subsets of the training data to use for the first mono and triphone trainings"
+
+    # Now make subset with 40000 utterances from train.
+    utils/subset_data_dir.sh data/train_cleaned 50000 data/train_cleaned_90hrs
+
+    # Now make subset with the shortest 5k utterances from train_40k.
+    utils/subset_data_dir.sh --shortest data/train_cleaned_90hrs 10000 data/train_10kshort
+
+    # Now make subset with half of the data from train_40k.
+    utils/subset_data_dir.sh data/train_cleaned_90hrs 25000 data/train_cleaned_90hrs_half
+
+    # Make one for the dev set so that I can get a quick estimate for the first training steps
+    utils/subset_data_dir.sh data/dev 1000 data/dev_1k || exit 1;
+fi
+
+if [ $stage -le 16 ]; then
+    echo "Training mono system"
+    steps/train_mono.sh    \
+        --nj $nj           \
+        --cmd "$train_cmd" \
+        --totgauss 4000    \
+        data/train_10kshort \
+        data/lang          \
+        exp/mono_cleaned
+
+    echo "Creating decoding graph (trigram lm), monophone model"
+    utils/mkgraph.sh       \
+        --mono             \
+        data/lang_tg        \
+        exp/mono_cleaned           \
+        exp/mono_cleaned/graph_tg
+
+    echo "mono alignment. Align train_20k to mono"
+    steps/align_si.sh \
+        --nj $nj --cmd "$train_cmd" \
+        data/train_cleaned_90hrs_half data/lang exp/mono_cleaned exp/mono_cleaned_ali
+
+    echo "first triphone training"
+    steps/train_deltas.sh  \
+        --cmd "$train_cmd" \
+        2000 10000         \
+        data/train_cleaned_90hrs_half data/lang exp/mono_cleaned_ali exp/tri1_cleaned
+
+    echo "First triphone decoding"
+    
+    echo "Creating decoding graph (trigram), triphone model"
+    utils/mkgraph.sh   \
+        data/lang_tg   \
+        exp/tri1_cleaned      \
+        exp/tri1_cleaned/graph_tg
+
+    echo "Decoding dev and eval sets with trigram language model"
+    steps/decode.sh    \
+        --nj $nj_decode --cmd "$decode_cmd" \
+        exp/tri1_cleaned/graph_tg \
+        data/dev \
+        exp/tri1_cleaned/decode_tg_dev
+
+    steps/align_si.sh \
+        --nj $nj --cmd "$train_cmd" \
+        --use-graphs true \
+        data/train_cleaned_90hrs data/lang \
+        exp/tri1_cleaned exp/tri1_cleaned_ali
+
+    #ATH What splice-opts to use?? Start with a total of 7 frames. Try maybe later 9 frames
+    echo "Training LDA+MLLT system tri2"
+    steps/train_lda_mllt.sh \
+        --cmd "$train_cmd" \
+	--splice-opts "--left-context=3 --right-context=3" \
+        3000 25000 \
+        data/train_cleaned_90hrs \
+        data/lang  \
+        exp/tri1_cleaned_ali \
+        exp/tri2_cleaned
+
+    echo "Creating decoding graph (trigram), triphone model"
+    utils/mkgraph.sh   \
+        data/lang_tg   \
+        exp/tri2_cleaned      \
+        exp/tri2_cleaned/graph_tg
+
+    echo "Decoding dev and eval sets with trigram language model"
+    steps/decode.sh    \
+        --nj $nj_decode --cmd "$decode_cmd" \
+        exp/tri2_cleaned/graph_tg \
+        data/dev \
+        exp/tri2_cleaned/decode_tg_dev
+
+    steps/decode.sh    \
+        --nj $nj_decode --cmd "$decode_cmd" \
+        exp/tri2_cleaned/graph_tg \
+        data/eval \
+        exp/tri2_cleaned/decode_tg_eval
+
+    echo "Aligning train_40k to tri2"
+    steps/align_si.sh \
+        --nj $nj --cmd "$train_cmd" \
+        --use-graphs true \
+        data/train_cleaned_90hrs data/lang \
+        exp/tri2_cleaned exp/tri2_cleaned_ali
+
+    # ATH which options to use??
+    echo "From system 2 train tri3 which is LDA + MLLT + SAT"
+    steps/train_sat.sh    \
+        --cmd "$train_cmd" \
+        4000 40000    \
+        data/train_cleaned_90hrs    \
+        data/lang     \
+        exp/tri2_cleaned_ali   \
+	exp/tri3_cleaned
+
+    echo "Creating decoding graph"
+    utils/mkgraph.sh       \
+        data/lang_tg          \
+        exp/tri3_cleaned           \
+        exp/tri3_cleaned/graph_tg
+
+    # I can send three models into decode_fmllr.sh
+    echo "Decoding"
+    steps/decode_fmllr.sh   \
+	--config conf/decode.config \
+        --nj $nj_decode   \
+	--cmd "$decode_cmd" \
+	exp/tri3_cleaned/graph_tg  \
+	data/dev  \
+	exp/tri3_cleaned/decode_tg_dev & 
+
+    steps/decode_fmllr.sh   \
+	--config conf/decode.config \
+        --nj $nj_decode   \
+	--cmd "$decode_cmd" \
+	exp/tri3_cleaned/graph_tg  \
+	data/eval  \
+	exp/tri3_cleaned/decode_tg_eval
+
+    echo "Aligning train to tri3"
+    steps/align_fmllr.sh \
+        --nj $nj --cmd "$train_cmd" \
+        data/train_cleaned data/lang \
+        exp/tri3_cleaned exp/tri3_cleaned_ali
+
+    
+    echo "Trying the larger dictionary ('big-dict'/bd) + locally produced LM."
+    utils/mkgraph.sh \
+	data/lang_tg_bd \
+        exp/tri3_cleaned \
+	exp/tri3_cleaned/graph_tg_bd
+
+    echo "Decoding"
+    steps/decode_fmllr.sh   \
+	--config conf/decode.config \
+        --nj $nj_decode   \
+	--cmd "$decode_cmd" \
+	exp/tri3_cleaned/graph_tg_bd  \
+	data/dev  \
+	exp/tri3_cleaned/decode_tg_bd_dev
+
+    steps/decode_fmllr.sh   \
+	--config conf/decode.config \
+        --nj $nj_decode   \
+	--cmd "$decode_cmd" \
+	exp/tri3_cleaned/graph_tg_bd  \
+	data/eval  \
+	exp/tri3_cleaned/decode_tg_bd_eval
+fi
+
+# NNET
+if [ $stage -le 28 ]; then
+    echo "Run the main nnet2 recipe on top of fMLLR features"
+    local/nnet2/run_5d.sh
+
+    #echo "Run the main dnn recipe on top of fMLLR features"
+    #local/nnet/run_dnn.sh &
+
+    echo "Run the main tdnn recipe on top of fMLLR features"
+    #local/nnet3/run_tdnn.sh
+    echo "Use speed perturbations"
+    local/nnet3/run_tdnn.sh  --train-set train --gmm tri3 --nnet3-affix "_sp" --stage 12 &>tdnn_stout.out &
+
+    echo "Run the wsj lstm recipe without sp"
+    local/nnet3/run_lstm_noSP.sh --stage 8 >>lstm_noSP_stout_Feb20.out 2>&1 &
+
+    echo "Run the swbd lstm recipe with sp"
+    local/nnet3/run_lstm.sh --stage 11 >>lstm_stout.out 2>&1 &
+fi
+
+# steps/make_mfcc.sh \
+#     --nj $nj       \
+#     --mfcc-config conf/mfcc.conf \
+#     --cmd "$train_cmd"           \
+#     data/dev exp/make_mfcc mfcc
+
+# steps/compute_cmvn_stats.sh \
+#     data/dev exp/make_mfcc mfcc
+
+# steps/decode_fmllr.sh   \
+#     --config conf/decode.config \
+#     --nj $nj_decode   \
+#     --cmd "$decode_cmd" \
+#     exp/tri3_cleaned/graph_tg_bd  \
+#     data/dev  \
+#     exp/tri3_cleaned/decode_tg_bd_dev_cleaned
+
+# steps/decode_fmllr.sh   \
+#     --config conf/decode.config \
+#     --nj $nj_decode   \
+#     --cmd "$decode_cmd" \
+#     exp/tri3/graph_tg_bd  \
+#     data/dev  \
+#     exp/tri3/decode_tg_bd_dev_cleaned

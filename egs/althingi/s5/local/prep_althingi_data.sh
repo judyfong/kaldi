@@ -2,7 +2,7 @@
 
 set -o pipefail
 
-# Copyright 2016  Reykjavik University (Author: Inga Rún Helgadóttir)
+# 2016  Reykjavik University (Author: Inga Rún Helgadóttir)
 # Get the Althingi data on a proper format for kaldi.
 
 . ./path.sh # Needed for KALDI_ROOT
@@ -18,7 +18,7 @@ if [ $# -ne 2 ]; then
 fi
 
 nj=25
-stage=2
+stage=0
 #datadir=data/local/corpus
 #outdir=data/all
 datadir=$(readlink -f $1); shift

@@ -3,17 +3,32 @@
 # this is the standard "tdnn" system, built in nnet3; it's what we use to
 # call multi-splice.
 
-. cmd.sh
+# without cleanup:
+# local/nnet3/run_tdnn.sh  --train-set train960 --gmm tri6b --nnet3-affix "" & 
 
 
 # At this script level we don't support not running on GPU, as it would be painfully slow.
 # If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,
 # --num-threads 16 and --minibatch-size 128.
 
+# First the options that are passed through to run_ivector_common.sh
+# (some of which are also used in this script directly).
 stage=0
+decode_nj=32
+min_seg_len=1.55
+train_set=train
+gmm=tri3  # this is the source gmm-dir for the data-type of interest; it
+                   # should have alignments for the specified training data.
+nnet3_affix=_sp
+
+# Options which are not passed through to run_ivector_common.sh
+affix=
 train_stage=-10
-dir=exp/nnet3/nnet_tdnn_a
-. cmd.sh
+common_egs_dir=
+reporting_email=
+remove_egs=true
+
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -26,49 +41,109 @@ where "nvcc" is installed.
 EOF
 fi
 
-local/nnet3/run_ivector_common.sh --stage $stage || exit 1;
+local/nnet3/run_ivector_common.sh --stage $stage \
+                                  --min-seg-len $min_seg_len \
+                                  --train-set $train_set \
+                                  --gmm $gmm \
+                                  --nnet3-affix "$nnet3_affix" || exit 1;
 
-if [ $stage -le 8 ]; then
-  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
-    utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
-  fi
 
+gmm_dir=exp/${gmm}
+graph_dir=$gmm_dir/graph_tg_bd
+ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
+dir=exp/nnet3${nnet3_affix}/tdnn${affix:+_$affix}_sp
+train_data_dir=data/${train_set}_sp_hires_comb
+train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
+
+
+for f in $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
+     $graph_dir/HCLG.fst $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
+  [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
+done
+
+if [ $stage -le 11 ]; then
   steps/nnet3/train_tdnn.sh --stage $train_stage \
     --num-epochs 8 --num-jobs-initial 2 --num-jobs-final 14 \
     --splice-indexes "-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0" \
     --feat-type raw \
-    --online-ivector-dir exp/nnet3/ivectors_train_si284 \
+    --online-ivector-dir $train_ivector_dir \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
+    --relu-dim 450 \
     --initial-effective-lrate 0.005 --final-effective-lrate 0.0005 \
     --cmd "$decode_cmd" \
-    --pnorm-input-dim 2000 \
-    --pnorm-output-dim 250 \
-    data/train_si284_hires data/lang exp/tri4b_ali_si284 $dir  || exit 1;
+    $train_data_dir data/lang $ali_dir $dir  || exit 1;
 fi
 
+## I comment out the following because I get an error regarding one of the config parameters. --max-change is unused.
+# if [ $stage -le 11 ]; then
+#   echo "$0: creating neural net configs";
 
-if [ $stage -le 9 ]; then
-  # this does offline decoding that should give the same results as the real
-  # online decoding.
-  for lm_suffix in tgpr bd_tgpr; do
-    graph_dir=exp/tri4b/graph_${lm_suffix}
-    # use already-built graphs.
-    for year in eval92 dev93; do
-      steps/nnet3/decode.sh --nj 8 --cmd "$decode_cmd" \
-          --online-ivector-dir exp/nnet3/ivectors_test_$year \
-         $graph_dir data/test_${year}_hires $dir/decode_${lm_suffix}_${year} || exit 1;
-    done
+#   # create the config files for nnet initialization. Original relu-dim = 1280
+#   python steps/nnet3/tdnn/make_configs.py  \
+#     --feat-dir $train_data_dir \
+#     --ivector-dir $train_ivector_dir \
+#     --ali-dir $ali_dir \
+#     --relu-dim 640 \
+#     --splice-indexes "-2,-1,0,1,2 -1,2 -3,3 -7,2 0"  \
+#     --use-presoftmax-prior-scale true \
+#     --max-change-per-component 0 \
+#    $dir/configs || exit 1;
+# fi
+
+
+
+# if [ $stage -le 12 ]; then
+#   # I added the samples-per-iter and use-gpu arguments. Samples-per-iter was by default 20000 but in train_tdnn.sh it was 400000
+#   steps/nnet3/train_dnn.py --stage=$train_stage \
+#     --cmd="$decode_cmd" \
+#     --feat.online-ivector-dir $train_ivector_dir \
+#     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
+#     --trainer.num-epochs 4 \
+#     --trainer.optimization.num-jobs-initial 3 \
+#     --trainer.optimization.num-jobs-final 16 \
+#     --trainer.optimization.initial-effective-lrate 0.0017 \
+#     --trainer.optimization.final-effective-lrate 0.00017 \
+#     --trainer.samples-per-iter 20000 \
+#     --egs.dir "$common_egs_dir" \
+#     --egs.cmd="$decode_cmd" \
+#     --cleanup.remove-egs $remove_egs \
+#     --cleanup.preserve-model-interval 100 \
+#     --use-gpu true \
+#     --feat-dir=$train_data_dir \
+#     --ali-dir $ali_dir \
+#     --lang data/lang \
+#     --reporting.email="$reporting_email" \
+#     --dir=$dir  || exit 1;
+
+# fi
+
+if [ $stage -le 13 ]; then
+  # this does offline decoding that should give about the same results as the
+    # real online decoding (the one with --per-utt true)
+  rm $dir/.error 2>/dev/null || true
+  for decode_set in eval dev; do
+    (
+    steps/nnet3/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
+      --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
+      ${graph_dir} data/${decode_set}_hires $dir/decode_${decode_set}_tg_bd || exit 1
+    steps/lmrescore.sh --cmd "$decode_cmd" data/lang_{tg,fg}_bd \
+      data/${decode_set}_hires $dir/decode_${decode_set}_{tg,fg}_bd  || exit 1
+    #steps/lmrescore_const_arpa.sh \
+    #  --cmd "$decode_cmd" data/lang_{tg,fg}_bd \
+    #  data/${test}_hires $dir/decode_${test}_{tg,fg}_bd || exit 1
+    ) || touch $dir/.error &
   done
-fi
 
+  # for test in dev eval; do
+  #   (
+  #   steps/nnet3/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
+  #     --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${test}_hires \
+  #     ${graph_dir} data/${test}_hires $dir/decode_${test}_tg_bd || exit 1
+  #   ) || touch $dir/.error &
+  # done
+  wait
+  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
+fi
 
 exit 0;
 
-# results:
-grep WER exp/nnet3/nnet_tdnn_a/decode_{tgpr,bd_tgpr}_{eval92,dev93}/scoring_kaldi/best_wer
-exp/nnet3/nnet_tdnn_a/decode_tgpr_eval92/scoring_kaldi/best_wer:%WER 6.03 [ 340 / 5643, 74 ins, 20 del, 246 sub ] exp/nnet3/nnet_tdnn_a/decode_tgpr_eval92/wer_13_1.0
-exp/nnet3/nnet_tdnn_a/decode_tgpr_dev93/scoring_kaldi/best_wer:%WER 9.35 [ 770 / 8234, 162 ins, 84 del, 524 sub ] exp/nnet3/nnet_tdnn_a/decode_tgpr_dev93/wer_11_0.5
-exp/nnet3/nnet_tdnn_a/decode_bd_tgpr_eval92/scoring_kaldi/best_wer:%WER 3.81 [ 215 / 5643, 30 ins, 18 del, 167 sub ] exp/nnet3/nnet_tdnn_a/decode_bd_tgpr_eval92/wer_10_1.0
-exp/nnet3/nnet_tdnn_a/decode_bd_tgpr_dev93/scoring_kaldi/best_wer:%WER 6.74 [ 555 / 8234, 69 ins, 72 del, 414 sub ] exp/nnet3/nnet_tdnn_a/decode_bd_tgpr_dev93/wer_11_0.0
-b03:s5:

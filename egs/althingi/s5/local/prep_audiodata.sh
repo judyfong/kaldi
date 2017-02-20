@@ -3,8 +3,8 @@
 # Prepare a directory on Kaldi format, containing audio data and some auxiliary info.
 
 datadir=$1
-destdir=$2
-mkdir -p ${destdir}
+#destdir=$2
+#mkdir -p ${destdir}
 
 stage=-1
 nj=1
@@ -39,13 +39,13 @@ wav_cmd="sox -tmp3 - -c1 -esigned -r$samplerate -G -twav - "
 if [ $stage -le 0 ]; then
     
     echo "a) spk2gender" # I use the abbreviation of parliament members' names as speaker IDs
-    cut -f2- $name_id_file > ${destdir}/spk2gender
+    cut -f2- $name_id_file > ${datadir}/spk2gender
 
     echo "b) utt2spk" # Connect each utterance to a speaker.
     echo "c) wav.scp" # Connect every utterance with an audio file
     cut -d"," -f1,6 ${meta} | tr "," "\t" | LC_ALL=C sort > spkname_filename.tmp
 
-    rm ${destdir}/utt2spk ${destdir}/filename_uttID.txt ${destdir}/wav.scp
+    rm ${datadir}/utt2spk ${datadir}/filename_uttID.txt ${datadir}/wav.scp
     IFS=$'\n' # Want to separate on new lines
     for line in $(cat spkname_filename.tmp)
     do
@@ -54,19 +54,19 @@ if [ $stage -le 0 ]; then
 	spkID=$(grep $spkname ${name_id_file} | cut -f2)
 
 	# Print to utt2spk
-	printf "%s %s\n" ${spkID}-${filename} ${spkID} | tr -d $'\r' >> ${destdir}/utt2spk
+	printf "%s %s\n" ${spkID}-${filename} ${spkID} | tr -d $'\r' >> ${datadir}/utt2spk
 
 	# Make a helper file with mapping between the filenames and uttID
-	echo -e ${filename} ${spkID}-${filename} | tr -d $'\r' | LC_ALL=C sort -n >> ${destdir}/filename_uttID.txt
+	echo -e ${filename} ${spkID}-${filename} | tr -d $'\r' | LC_ALL=C sort -n >> ${datadir}/filename_uttID.txt
 	
 	#Print to wav.scp
-	echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f ${datadir}/audio/${filename}".mp3")" |" | tr -d $'\r' >> ${destdir}/wav.scp
-	#echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f ${datadir}/audio/${filename}".flac")" |" | tr -d $'\r' >> ${destdir}/wav.scp
+	echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f ${datadir}/audio/${filename}".mp3")" |" | tr -d $'\r' >> ${datadir}/wav.scp
+	#echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f ${datadir}/audio/${filename}".flac")" |" | tr -d $'\r' >> ${datadir}/wav.scp
     done
     rm spkname_filename.tmp
 
     echo "d) spk2utt"
-    utils/utt2spk_to_spk2utt.pl < ${destdir}/utt2spk > ${destdir}/spk2utt
+    utils/utt2spk_to_spk2utt.pl < ${datadir}/utt2spk > ${datadir}/spk2utt
 fi
 
 if [ $stage -le 1 ]; then
@@ -75,17 +75,17 @@ if [ $stage -le 1 ]; then
 	--nj $num_jobs      \
 	--mfcc-config conf/mfcc.conf \
 	--cmd "$train_cmd"           \
-	${destdir} || exit 1;
+	${datadir} || exit 1;
 
     echo "Computing cmvn stats"
     steps/compute_cmvn_stats.sh \
-	${destdir} || exit 1;
+	${datadir} || exit 1;
 fi
 
 if [ $stage -le 2 ]; then
     
     echo "Make sure all files are created and that everything is sorted"
-    utils/validate_data_dir.sh --no-text ${destdir} || utils/fix_data_dir.sh ${destdir}
+    utils/validate_data_dir.sh --no-text ${datadir} || utils/fix_data_dir.sh ${datadir}
 fi
 
 IFS=$' \t\n'

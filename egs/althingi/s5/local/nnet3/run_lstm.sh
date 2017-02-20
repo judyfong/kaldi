@@ -83,9 +83,10 @@ ali_dir=exp/${gmm}_ali_${train_set}_comb
 #local/nnet3/run_ivector_common.sh --stage $stage || exit 1;
 local/nnet3/run_ivector_common.sh --stage $stage \
                                   --min-seg-len $min_seg_len \
-                                  --train-set $train_set \
+                                  --train-set train \
                                   --gmm $gmm \
                                   --nnet3-affix "$nnet3_affix" || exit 1;
+
 if [ $stage -le 11 ]; then
   echo "$0: creating neural net configs";
   config_extra_opts=()
@@ -164,7 +165,6 @@ if [ $stage -le 11 ]; then
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
           data/lang_{tg,fg}_bd data/${decode_set}_hires \
           $dir/decode_${decode_set}_{tg,fg}_bd || exit 1;
-      fi
       ) &
   done
 fi

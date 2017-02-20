@@ -7,19 +7,19 @@
 
 # data dirs
 audio_zip=$1
-inputdir=$2
-datadir=$3 # or something like: data/$speechname or data/speeches_$date
-data=basename($datadir);
+audiodir=data/$(basename $audio_zip .tar.gz)
+#datadir=$2 # or something like: data/$speechname or data/speeches_$date
+data=$(basename $audiodir)
 
 # Model and lang dirs
-langdir=data/lang/bd
+langdir=data/lang_bd
 graphdir=exp/graph_tg_bd
 
 stage=-1
-mkdir -p ${inputdir}
-tar -zxvf ${audio_zip} --directory ${inputdir}/
+mkdir -p ${audiodir}
+tar -zxvf ${audio_zip} --directory ${audiodir}/
 
-n_files=$(ls $inputdir/*.mp3 | wc -l) # .wav?
+n_files=$(ls $audiodir/*.mp3 | wc -l) # .wav?
 num_jobs=$n_files
 
 . ./cmd.sh
@@ -30,13 +30,13 @@ if ! [[ $n_files > 0 ]]; then
 fi
 
 if [ $stage -le 0 ]; then
-local/prep_audiodata.sh --nj $num_jobs $audiodir $datadir
+local/prep_audiodata.sh --nj $num_jobs $audiodir
 fi
 
 if [ $stage -le 3 ]; then
 
     echo "Create high resolution MFCC features"
-    utils/copy_data_dir.sh $datadi ${datadir}_hires
+    utils/copy_data_dir.sh $datadir ${datadir}_hires
     steps/make_mfcc.sh \
 	--nj $num_jobs --mfcc-config conf/mfcc_hires.conf \
         --cmd "$train_cmd" ${datadir}_hires || exit 1;
@@ -60,7 +60,7 @@ if [ $stage -le 5 ]; then
 	--nj $num_jobs --cmd "$decode_cmd" \
 	--skip-scoring true \
 	--online-ivector-dir exp/nnet3_sp/ivectors_${data}_hires \
-	<graph-dir-with-5gLM> ${datadir}_hires ${datadir}_hires/decode_${data} || exit 1;
+	$graphdir ${datadir}_hires ${datadir}_hires/decode_${data} || exit 1;
     
 fi
 
@@ -68,12 +68,15 @@ if [ $stage -le 6 ]; then
 
     echo "Extract the transcript hypothesis from the Kaldi lattice"
     # NOTE! Fix and find which values to use!
-    lattice-best-path \
-	--lm-scale=12 \
-	--word-symbol-table=LANG-DIR/words.txt \
-	"ark:zcat DECODE-DIR/lat.N.gz |" ark,t:- |
-	utils/int2sym.pl -f 2- LANG-DIR/words.txt >${datadir}_hires/decode_${data}/transcript.txt
-
+    for n in $(seq 1 $(cat ${datadir}_hires/decode_${data}/num_jobs))
+    do	
+	lattice-best-path \
+	    --lm-scale=12 \
+	    --word-symbol-table=${langdir}/words.txt \
+	    "ark:zcat ${datadir}_hires/decode_${data}/lat.${n}.gz |" ark,t:- |
+	    utils/int2sym.pl -f 2- ${langdir}/words.txt >>${datadir}_hires/decode_${data}/transcript.txt
+    done
+    
 fi
 
 if [ $stage -le 7 ]; then

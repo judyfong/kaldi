@@ -37,7 +37,7 @@ OPENFST_VERSION = 1.6.1
 OPENFST_VER_NUM := $(shell echo $(OPENFST_VERSION) | sed 's/\./ /g' | xargs printf "%d%02d%02d")
 ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10503)","1")
     $(error OpenFst-$(OPENFST_VERSION) is not supported. \
-#             Supported versions: >= 1.5.3)
+            Supported versions: >= 1.5.3)
 # # END
 endif
 
@@ -100,7 +100,7 @@ ifeq ($(OSTYPE),cygwin)
 else ifeq ($(OS),Windows_NT)
 	cd openfst-$(OPENFST_VERSION)/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS) -O -Wa,-mbig-obj" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 else
-	cd openfst-$(OPENFST_VERSION)/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
+	cd openfst-$(OPENFST_VERSION)/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-grm --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 endif
 
 openfst-$(OPENFST_VERSION): openfst-$(OPENFST_VERSION).tar.gz
@@ -184,26 +184,26 @@ openblas_compiled:
 	# $(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=1 NUM_THREADS=64 -C OpenBLAS all install
 	$(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=0 -C OpenBLAS all install
 
-# All of the below does not exist in Kaldi update obtained 20th des 2016
-# libsndfile needed by beamformit,
-libsndfile: libsndfile-1.0.25.tar.gz libsndfile-1.0.25/lib/libsndfile.so
-libsndfile-1.0.25.tar.gz:
-	wget http://www.mega-nerd.com/libsndfile/files/libsndfile-1.0.25.tar.gz
-libsndfile-1.0.25/lib/libsndfile.so:
-	tar xvf libsndfile-1.0.25.tar.gz && cd libsndfile-1.0.25/ && \
-	./configure --prefix=$(PWD)/libsndfile-1.0.25/ && make && make install
+# # All of the below does not exist in Kaldi update obtained 20th des 2016
+# # libsndfile needed by beamformit,
+# libsndfile: libsndfile-1.0.25.tar.gz libsndfile-1.0.25/lib/libsndfile.so
+# libsndfile-1.0.25.tar.gz:
+# 	wget http://www.mega-nerd.com/libsndfile/files/libsndfile-1.0.25.tar.gz
+# libsndfile-1.0.25/lib/libsndfile.so:
+# 	tar xvf libsndfile-1.0.25.tar.gz && cd libsndfile-1.0.25/ && \
+# 	./configure --prefix=$(PWD)/libsndfile-1.0.25/ && make && make install
 
-# beamforming tool,
-beamformit: libsndfile beamformit-3.51
+# # beamforming tool,
+# beamformit: libsndfile beamformit-3.51
 
-.PHONY: beamformit-3.51
+# .PHONY: beamformit-3.51
 
-beamformit-3.51: beamformit-3.51.tgz
-	tar -xozf BeamformIt-3.51.tgz; \
-	cd BeamformIt-3.51; patch -p1 -N < ../extras/beamformit.patch; cmake . ; make
+# beamformit-3.51: beamformit-3.51.tgz
+# 	tar -xozf BeamformIt-3.51.tgz; \
+# 	cd BeamformIt-3.51; patch -p1 -N < ../extras/beamformit.patch; cmake . ; make
 
-beamformit-3.51.tgz:
-	wget -c -T 10 http://www.xavieranguera.com/beamformit/releases/BeamformIt-3.51.tgz
+# beamformit-3.51.tgz:
+# 	wget -c -T 10 http://www.xavieranguera.com/beamformit/releases/BeamformIt-3.51.tgz
 
 # sequitur needed for G2P modeling
 sequitur: sequitur_compiled

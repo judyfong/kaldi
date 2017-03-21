@@ -475,6 +475,16 @@ if [ $stage -le 25 ]; then
     echo "Making G.fst"
     utils/format_lm.sh data/lang_bd data/lang_tg_bd/lm_tg.arpa.gz data/local/dict_bd/lexicon.txt data/lang_tg_bd
 
+     echo "Make a 4g LM"
+    mkdir -p data/lang_4g_bd
+    for s in L_disambig.fst L.fst oov.int oov.txt phones phones.txt \
+                            topo words.txt; do
+        [ ! -e data/lang_4g_bd/$s ] && cp -r data/lang_bd/$s data/lang_4g_bd/$s
+    done
+    # NOTE! Since I made the td file I seem to have renames LMtext_bd to LMtext
+    local/make_arpa.sh --order 4 data/train/LMtext data/lang_4g_bd
+    utils/slurm.pl data/lang_4g_bd/format_lm.log utils/format_lm.sh data/lang_bd data/lang_4g_bd/lm_4g.arpa.gz data/local/dict_bd/lexicon.txt data/lang_4g_bd
+    
     echo "Make a 5g LM"
     mkdir -p data/lang_fg_bd
     for s in L_disambig.fst L.fst oov.int oov.txt phones phones.txt \
@@ -484,6 +494,90 @@ if [ $stage -le 25 ]; then
     # NOTE! Since I made the td file I seem to have renames LMtext_bd to LMtext
     local/make_arpa.sh --order 5 data/train/LMtext data/lang_fg_bd
     utils/slurm.pl data/lang_fg_bd/format_lm.log utils/format_lm.sh data/lang_bd data/lang_fg_bd/lm_fg.arpa.gz data/local/dict_bd/lexicon.txt data/lang_fg_bd
+
+
+    echo "Preparing bigram language model"
+    mkdir -p data/lang_bg_bd
+    for s in L_disambig.fst L.fst oov.int oov.txt phones phones.txt \
+                            topo words.txt; do
+        [ ! -e data/lang_bg_bd/$s ] && cp -r data/lang_bd/$s data/lang_bg_bd/$s
+    done
+    
+    echo "Making lm.arpa"
+    local/make_arpa.sh --order 2 data/train/LMtext data/lang_bg_bd
+
+    echo "Making G.fst"
+    utils/format_lm.sh data/lang_bd data/lang_bg_bd/lm_bg.arpa.gz data/local/dict/lexicon.txt data/lang_bg_bd
+
+    
+    ########################
+
+    echo "Try making a new 3g LM and a heavily pruned version of it also"
+    echo "unpruned"
+    mkdir -p data/lang_tg_bd_3march
+    for s in L_disambig.fst L.fst oov.int oov.txt phones phones.txt \
+                            topo words.txt; do
+        [ ! -e data/lang_tg_bd_3march/$s ] && cp -r data/lang_bd/$s data/lang_tg_bd_3march/$s
+    done  
+    /opt/kenlm/build/bin/lmplz \
+	--skip_symbols \
+        -o 3 -S 70% --prune 0 \
+        --text data/train/LMtext \
+        --limit_vocab_file <(cat data/lang_tg_bd_3march/words.txt | egrep -v "<eps>|<unk>" | cut -d' ' -f1) \
+        | gzip -c > data/lang_tg_bd_3march/kenlm_3g.arpa_unpruned.gz
+
+        arpa2fst "zcat data/lang_tg_bd_3march/kenlm_3g.arpa_unpruned.gz |" - \
+            | fstprint \
+            | utils/s2eps.pl \
+            | fstcompile --{i,o}symbols=data/lang_tg_bd_3march/words.txt --keep_{i,o}symbols=false \
+            | fstarcsort --sort_type=ilabel \
+                         > data/lang_tg_bd_3march/G.fst
+	
+    #utils/slurm.pl data/lang_3g_bd_3march/format_lm.log utils/format_lm.sh data/lang_bd data/lang_3g_bd_3march/kenlm_3g.arpa_unpruned.gz data/local/dict_bd/lexicon.txt data/lang_3g_bd_3march
+
+    echo "heavily pruned"
+    mkdir -p data/lang_tg_bd_023pruned
+    for s in L_disambig.fst L.fst oov.int oov.txt phones phones.txt \
+                            topo words.txt; do
+        [ ! -e data/lang_tg_bd_023pruned/$s ] && cp -r data/lang_bd/$s data/lang_tg_bd_023pruned/$s
+    done
+
+    /opt/kenlm/build/bin/lmplz \
+	--skip_symbols \
+        -o 3 -S 70% --prune 0 2 3 \
+        --text data/train/LMtext \
+        --limit_vocab_file <(cat data/lang_tg_bd_023pruned/words.txt | egrep -v "<eps>|<unk>" | cut -d' ' -f1) \
+        | gzip -c > data/lang_tg_bd_023pruned/kenlm_3g.arpa_023pruned.gz
+
+    arpa2fst "zcat data/lang_tg_bd_023pruned/kenlm_3g.arpa_023pruned.gz |" - \
+            | fstprint \
+            | utils/s2eps.pl \
+            | fstcompile --{i,o}symbols=data/lang_tg_bd_023pruned/words.txt --keep_{i,o}symbols=false \
+            | fstarcsort --sort_type=ilabel \
+                         > data/lang_tg_bd_023pruned/G.fst
+
+    echo "4-gram"
+    mkdir -p data/lang_4g_3march
+    for s in L_disambig.fst L.fst oov.int oov.txt phones phones.txt \
+                            topo words.txt; do
+        [ ! -e data/lang_4g_3march/$s ] && cp -r data/lang_bd/$s data/lang_4g_3march/$s
+    done  
+    /opt/kenlm/build/bin/lmplz \
+	--skip_symbols \
+        -o 4 -S 70% --prune 0 0 0 1 \
+        --text data/train/LMtext \
+        --limit_vocab_file <(cat data/lang_4g_3march/words.txt | egrep -v "<eps>|<unk>" | cut -d' ' -f1) \
+        | gzip -c > data/lang_4g_3march/kenlm_4g.arpa.gz
+
+        arpa2fst "zcat data/lang_4g_3march/kenlm_4g.arpa.gz |" - \
+            | fstprint \
+            | utils/s2eps.pl \
+            | fstcompile --{i,o}symbols=data/lang_4g_3march/words.txt --keep_{i,o}symbols=false \
+            | fstarcsort --sort_type=ilabel \
+                         > data/lang_4g_3march/G.fst
+	
+    ########################
+
     
     echo "Trying the larger dictionary ('big-dict'/bd) + locally produced LM."
     utils/mkgraph.sh \
@@ -702,20 +796,25 @@ if [ $stage -le 28 ]; then
     echo "Run the main nnet2 recipe on top of fMLLR features"
     local/nnet2/run_5d.sh
 
-    #echo "Run the main dnn recipe on top of fMLLR features"
-    #local/nnet/run_dnn.sh &
-
     echo "Run the main tdnn recipe on top of fMLLR features"
     #local/nnet3/run_tdnn.sh
     echo "Use speed perturbations"
     local/nnet3/run_tdnn.sh  --train-set train --gmm tri3 --nnet3-affix "_sp" --stage 12 &>tdnn_stout.out &
 
-    echo "Run the wsj lstm recipe without sp"
-    local/nnet3/run_lstm_noSP.sh --stage 8 >>lstm_noSP_stout_Feb20.out 2>&1 &
+    # echo "Run the wsj lstm recipe without sp"
+    # local/nnet3/run_lstm_noSP.sh --stage 8 >>lstm_noSP_stout_Feb20.out 2>&1 &
 
-    echo "Run the swbd lstm recipe with sp"
-    local/nnet3/run_lstm.sh --stage 11 >>lstm_stout.out 2>&1 &
+    # echo "Run the swbd lstm recipe with sp"
+    # local/nnet3/run_lstm.sh --stage 11 >>lstm_stout.out 2>&1 &
+
+    echo "Run the swbd lstm recipe without sp"
+    local/nnet3/run_lstm.sh --stage 13 --speed-perturb false >>lstm_stout_Feb24.out 2>&1 &
 fi
+
+    utils/mkgraph.sh \
+	data/lang_bg_bd \
+        exp/tri3 \
+	exp/tri3/graph_bg_bd &
 
 # steps/make_mfcc.sh \
 #     --nj $nj       \
@@ -741,3 +840,13 @@ fi
 #     exp/tri3/graph_tg_bd  \
 #     data/dev  \
 #     exp/tri3/decode_tg_bd_dev_cleaned
+
+steps/decode_fmllr.sh   \
+    --config conf/decode.config \
+    --si-dir exp/tri3/decode_bg_bd_eval_cleaned.si \
+    --stage 3 \
+    --nj 59 \
+    --cmd "$decode_cmd" \
+    exp/tri3/graph_bg_bd  \
+    data/eval  \
+    exp/tri3/decode_bg_bd_eval_cleaned &

@@ -62,7 +62,7 @@ if [ $stage -le 1 ]; then
 	| perl -pe 's/([^0-9])[\.\,](\s+|$)/$1$2/g' \
 	| perl -pe 's/([a-záðéíóúýþæö%0-9])[-\/]([a-záðéíóúýþæö])/$1 $2/g' \
 	| perl -pe 's/([0-9a-záðéíóúýþæö])–([0-9a-záðéíóúýþæö])/$1 til $2/g' \
-	| perl -pe 's/—|–|-|:|//g' \
+	| perl -pe 's/—|–|-|://g' \
 	| sed 's/&/og/g' | tr -s " " > ${dir}/text_no_puncts.txt
 
     # Sort the vocabulary based on frequency count

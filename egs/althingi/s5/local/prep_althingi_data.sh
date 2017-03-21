@@ -329,13 +329,15 @@ if [ $stage -le 8 ]; then
         | utils/sym2int.pl --map-oov "<unk>" -f 2- text_norm/text/words30.txt \
         | utils/int2sym.pl -f 2- text_norm/text/words30.txt > ${outdir}/text_bb_SpellingFixed_noOOV.txt
     # We want to process it in parallel.
-    nj=40
+    nj=60
     mkdir -p ${outdir}/split$nj/
     IFS=$' \t\n'
     split_text=$(for j in `seq 1 $nj`; do printf "${outdir}/split%s/text_bb_SpellingFixed_noOOV.%s.txt " $nj $j; done)
     utils/split_scp.pl ${outdir}/text_bb_SpellingFixed_noOOV.txt $split_text # problem with using $split_text if the field separator is not correct
     # Expand
     utils/slurm.pl JOB=1:$nj ${outdir}/log/expand-numbers.JOB.log expand-numbers --word-symbol-table=text_norm/text/words30.txt ark,t:${outdir}/split${nj}/text_bb_SpellingFixed_noOOV.JOB.txt text_norm/expand_to_words30.fst text_norm/text/numbertext_2g.fst ark,t:${outdir}/split${nj}/text_expanded.JOB.txt &
+
+    #utils/slurm.pl JOB=1:$nj ${outdir}/log/expand-numbers.JOB.log expand-numbers --word-symbol-table=text_norm/text/words30.txt ark,t:${outdir}/split${nj}/text_bb_SpellingFixed_noOOV.JOB.txt text_norm/expand_to_words30.fst text_norm/text/numbertext_3g.fst ark,t:${outdir}/split${nj}/text_expanded.JOB.txt &
 
     # # Put all expanded text into one file
     if [ -f ${outdir}/text_bb_expanded.txt ]; then

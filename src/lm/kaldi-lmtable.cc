@@ -23,6 +23,7 @@
  * See kaldi-lmtable.h for more details.
  */
 
+#include "base/kaldi-error.h"
 #include "lm/kaldi-lmtable.h"
 #include "base/kaldi-common.h"
 #include <sstream>
@@ -84,7 +85,7 @@ void LmFstConverter::ConnectUnusedStates(fst::StdVectorFst *pfst) {
       connected++;
     }
   }
-  cerr << "Connected " << connected << " states without outgoing arcs." << endl;
+  KALDI_ERR << "Connected " << connected << " states without outgoing arcs.";
 }
 
 void LmFstConverter::AddArcsForNgramProb(
@@ -240,7 +241,7 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
                 << "statistics of "<< orders[0] << "-grams not provided ? "
                 << "Check your arpa lm file.";
     else {
-      cerr << "Processing " << ngram_order << "-grams" << endl;
+      KALDI_ERR << "Processing " << ngram_order << "-grams";
       orders.erase(orders.begin());
     }
 
@@ -387,7 +388,7 @@ void LmTable::DumpStart(ngram ng,
   // dump level by level
   for (int l = 1; l <= max_ngram_order; l++) {
     ng.size = 0;
-    cerr << "Processing " << l << "-grams" << endl;
+    KALDI_ERR << "Processing " << l << "-grams";
     DumpContinue(ng, 1, l, 0, cursize[1],
                  fst, pStateSymbs, startSent, endSent);
   }

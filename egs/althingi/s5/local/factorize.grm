@@ -1,0 +1,201 @@
+# TODO: 1 þúsund, 5 milljónir, etc. Not import for expansion, but
+#       would be nice to have for the narrowing operation
+# TODO: ordinals (important for dates, which are common in the
+#       Læknarómur data)
+units = Optimize[
+        "1".utf8 | "2".utf8 | "3".utf8 | "4".utf8 | "5".utf8 |
+        "6".utf8 | "7".utf8 | "8".utf8 | "9".utf8 ];
+
+insspace = "".utf8 : " ".utf8;
+
+zero = "0".utf8;
+
+delzero = "0".utf8 : "".utf8;
+delone  = "1".utf8 : "".utf8;
+
+ten = ("".utf8 : "(e1)".utf8);
+hundred = ("".utf8 : "(e2)".utf8);
+thousand = ("".utf8 : "(e3)".utf8);
+tenthousand = ("".utf8 : "(e4)".utf8);
+hundredthousand = ("".utf8 : "(e5)".utf8);
+million = ("".utf8 : "(e6)".utf8);
+
+factorize_0_to_9 =  (zero | units) ;
+
+factorize_10_to_99 = units ten ((units <-1>) | delzero);
+
+factorize_100_to_999 = ((units <-1>) | delone) hundred
+                       ((units ten <-3>) | delzero)
+                       ((units <-2>) | delzero) ;
+
+s_1000_to_9999 = ((units hundred <-8>) | delzero)
+                 ((units ten <-6>) | delzero)
+                 ((units <-5>) | delzero);
+factorize_1000_to_9999 = ((units <-1>) | delone) thousand
+                         s_1000_to_9999;
+
+factorize_1100_to_1900 = units ten units hundred
+                         ((units ten <-6>) | delzero)
+                         ((units <-5>) | delzero);
+
+
+factorize_10k_to_100k = units ten (delzero | (units )) thousand
+                        s_1000_to_9999;
+
+factorize_100k_to_1M = units hundred
+                       ((units ten ) | delzero)
+                       ((units ) | delzero) thousand
+                       s_1000_to_9999;
+
+s_10k_to_100k = ((units thousand <-50>) | delzero)
+                s_1000_to_9999;
+s_100k_to_1M = ((units tenthousand <-60>) | delzero)
+               s_10k_to_100k;
+s_1M_to_9M = ((units hundredthousand <-150>) | delzero)
+             s_100k_to_1M;
+# FIXME(rkjaran): doesn't work... e.g. tvær milljónir og tvö hundruð
+#                 þúsund becomes 2000000 200000. Need to fix the
+#                 weights, I guess.
+factorize_1M_to_9M = units million
+                     s_1M_to_9M;
+
+
+export FACTLEXICON = Optimize[StringFile['text_norm/lex/factors_lexicon.txt',
+'utf8', 'utf8']];
+
+export FACTORIZE = Optimize[(factorize_1M_to_9M <-150>)   |
+                            (factorize_100k_to_1M <-40>)  |
+                            (factorize_10k_to_100k <-16>) |
+                            (factorize_1100_to_1900 <-8>) |
+                            (factorize_1000_to_9999 <-8>) |
+                            (factorize_100_to_999 <-3>)   |
+                            (factorize_10_to_99 <-1>)     |
+                            (factorize_0_to_9 <-0.1>)
+                            ];
+
+
+numbernames = FACTORIZE @ (FACTLEXICON*);
+
+alphabet = Optimize[
+           "a".utf8 | "á".utf8 | "b".utf8 | "d".utf8 | "ð".utf8 |
+           "e".utf8 | "é".utf8 | "f".utf8 | "g".utf8 | "h".utf8 |
+           "i".utf8 | "í".utf8 | "j".utf8 | "k".utf8 | "l".utf8 |
+           "m".utf8 | "n".utf8 | "o".utf8 | "ó".utf8 | "p".utf8 |
+           "r".utf8 | "s".utf8 | "t".utf8 | "u".utf8 | "ú".utf8 |
+           "v".utf8 | "x".utf8 | "y".utf8 | "ý".utf8 | "þ".utf8 |
+           "æ".utf8 | "ö".utf8 ];
+
+
+add_and = CDRewrite[" ".utf8 : " og ".utf8,
+                    alphabet+,
+                    alphabet+,
+                    (alphabet | " ".utf8)*,
+                    'rtl',
+                    'opt'];
+
+
+export NUMBERNAMES = Optimize[numbernames @ add_and];
+export NAMESNUMBER = Invert[NUMBERNAMES];
+
+u8_punct = Optimize[
+           ".".utf8 | ",".utf8 | ":".utf8 | ";".utf8 | "?".utf8 |
+           "\"".utf8 | "\'".utf8 | "-".utf8 | "“".utf8 | "„".utf8 |
+           ")".utf8 | "(".utf8 | "!".utf8 | "&".utf8 | "\\".utf8 |
+           "«".utf8 | "»".utf8 | ">".utf8 | "<".utf8 ];
+
+whole_alphabet = (alphabet | " ".utf8 | u8_punct | units | zero);
+
+export NNREWRITE = Optimize[(((whole_alphabet - Project[FACTLEXICON, 'output'])* " ".utf8)?
+                             NAMESNUMBER insspace
+                             ((whole_alphabet - Project[FACTLEXICON, 'output'])*)?)];
+
+export NNREWRITE2 = Optimize[CDRewrite[NAMESNUMBER insspace,
+                                       (" ".utf8 | "[BOS]".utf8),
+                                       (" ".utf8),
+                                       whole_alphabet*,
+                                       'sim',
+                                       'obl']];
+
+export NNREWRITE3 = ArcSort[
+                    Optimize[CDRewrite[NAMESNUMBER,
+                                       (" ".utf8 | "[BOS]".utf8),
+                                       ("".utf8),
+                                       whole_alphabet*,
+                                       'rtl',
+                                       'obl']],
+                           'input'];
+
+
+# export NNREWRITE4 = ArcSort[
+#                     Optimize[(NAMESNUMBER insspace whole_alphabet*)?
+#                              (whole_alphabet* " ".utf8
+#                               NAMESNUMBER insspace
+#                               whole_alphabet* " ".utf8)+
+#                             ],
+#                            'input'];
+
+export NARROWNUMS = ArcSort[Optimize[
+                    (((whole_alphabet)* " ".utf8)? NAMESNUMBER insspace
+                     whole_alphabet*)
+                     (NAMESNUMBER insspace
+                     whole_alphabet*)*],
+                     'input'];
+                    # ArcSort[Optimize[Determinize[
+                    #       CDRewrite[NAMESNUMBER insspace,
+                    #                 ("[BOS]".utf8 | " ".utf8),
+                    #                 ("[EOS]".utf8 | "".utf8),
+                    #                 whole_alphabet*,
+                    #                 'sim',
+                    #                 'obl']]],
+                    #               'input'];
+
+# This FST does not accept strings that aren't matched by the rewrite
+# rules, we use it for filtering
+export NNREWRITE4 = NARROWNUMS;
+export EXPANDNUMS = ArcSort[Optimize[Invert[NARROWNUMS]], 'input'];
+
+export NARROWNUMS_MAYBE = ArcSort[Optimize[Determinize[
+                          CDRewrite[NAMESNUMBER insspace,
+                                    ("[BOS]".utf8 | " ".utf8),
+                                    ("[EOS]".utf8 | "".utf8),
+                                    whole_alphabet*,
+                                    'sim',
+                                    'obl']]],
+                                  'input'];
+
+
+# Obligatory CDrewrites, no path has non-expanded numbers (this FST
+# accepts all strings)
+delspace = (" ".utf8 : "".utf8);
+export EXPANDNUMS_MAYBE = ArcSort[Optimize[
+                          CDRewrite[NUMBERNAMES delspace,
+                                    ("[BOS]".utf8 | " ".utf8),
+                                    ("[EOS]".utf8 | "".utf8),
+                                    whole_alphabet*,
+                                    'ltr',
+                                    'obl']], 'input'];
+#export EXPANDNUMS_MAYBE = ArcSort[Optimize[Invert[NARROWNUMS_MAYBE]], 'input'];
+# it has unecessary weights, which can be removed with rmweights
+
+# For abbreviate.grm
+units_3_to_9 = Optimize[
+        "3".utf8 | "4".utf8 | "5".utf8 |
+        "6".utf8 | "7".utf8 | "8".utf8 | "9".utf8 ];
+
+factorize_0_and_3_to_9 =  (zero | units_3_to_9) ;
+
+export FACTORIZE2 = Optimize[(factorize_1M_to_9M <-150>)   |
+                            (factorize_100k_to_1M <-40>)  |
+                            (factorize_10k_to_100k <-16>) |
+                            (factorize_1100_to_1900 <-8>) |
+                            (factorize_1000_to_9999 <-8>) |
+                            (factorize_100_to_999 <-3>)   |
+                            (factorize_10_to_99 <-1>)     |
+                            (factorize_0_and_3_to_9 <-0.1>)
+                            ];
+
+
+numbernames2 = FACTORIZE2 @ (FACTLEXICON*);
+
+export NUMBERNAMES2 = Optimize[numbernames2 @ add_and];
+export NAMESNUMBER2 = Invert[NUMBERNAMES2];

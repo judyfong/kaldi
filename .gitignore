@@ -122,6 +122,12 @@ GSYMS
 /tools/sequitur
 /tools/sequitur-g2p/
 /tools/srilm.tgz
+/tools/liblbfgs-1.10.tar.gz
+/tools/liblbfgs-1.10/
+/tools/openfst-1.5.0.tar.gz
+/tools/openfst-1.5.0/
+/tools/srilm-1.7.2-beta.tar.gz
+/tools/liblbfgs/
 
 /tools/IceNLPCore-12.11.zip
 

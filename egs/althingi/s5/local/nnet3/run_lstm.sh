@@ -17,7 +17,7 @@
 stage=0
 train_stage=-10
 affix=
-speed_perturb=true
+speed_perturb=false
 common_egs_dir=
 reporting_email=
 
@@ -69,7 +69,7 @@ fi
 
 suffix=
 if [ "$speed_perturb" == "true" ]; then
-  suffix=_sp
+ suffix=_sp
 fi
 dir=exp/nnet3/lstm
 dir=$dir${affix:+_$affix}
@@ -78,14 +78,18 @@ dir=${dir}$suffix
 train_set=train$suffix
 gmm=tri3
 gmm_dir=exp/${gmm}
-ali_dir=exp/${gmm}_ali_${train_set}_comb
+#ali_dir=exp/${gmm}_ali_${train_set}_comb
+ali_dir=exp/${gmm}_ali_bd
 
-#local/nnet3/run_ivector_common.sh --stage $stage || exit 1;
-local/nnet3/run_ivector_common.sh --stage $stage \
-                                  --min-seg-len $min_seg_len \
-                                  --train-set train \
-                                  --gmm $gmm \
-                                  --nnet3-affix "$nnet3_affix" || exit 1;
+if [ "$suffix" == "_sp" ]; then
+    local/nnet3/run_ivector_common.sh --stage $stage \
+                                      --min-seg-len $min_seg_len \
+                                      --train-set train \
+                                      --gmm $gmm \
+                                      --nnet3-affix "$nnet3_affix" || exit 1;
+else
+    local/nnet3/run_ivector_common_noSP.sh --stage $stage || exit 1;
+fi
 
 if [ $stage -le 11 ]; then
   echo "$0: creating neural net configs";
@@ -93,7 +97,7 @@ if [ $stage -le 11 ]; then
   [ ! -z "$lstm_delay" ] && config_extra_opts+=(--lstm-delay "$lstm_delay")
   steps/nnet3/lstm/make_configs.py  "${config_extra_opts[@]}" \
     --feat-dir data/${train_set}_hires \
-    --ivector-dir exp/nnet3_sp/ivectors_${train_set}_hires_comb \
+    --ivector-dir exp/nnet3/ivectors_${train_set} \
     --ali-dir $ali_dir \
     --num-lstm-layers $num_lstm_layers \
     --splice-indexes "$splice_indexes " \
@@ -116,7 +120,7 @@ if [ $stage -le 12 ]; then
 
   steps/nnet3/train_rnn.py --stage=$train_stage \
     --cmd="$decode_cmd" \
-    --feat.online-ivector-dir=exp/nnet3_sp/ivectors_${train_set}_hires_comb \
+    --feat.online-ivector-dir=exp/nnet3/ivectors_${train_set} \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --trainer.srand=$srand \
     --trainer.num-epochs=$num_epochs \
@@ -135,15 +139,15 @@ if [ $stage -le 12 ]; then
     --cleanup.remove-egs=$remove_egs \
     --cleanup.preserve-model-interval=100 \
     --use-gpu=true \
-    --feat-dir=data/${train_set}_hires_comb \
+    --feat-dir=data/${train_set}_hires \
     --ali-dir=$ali_dir \
-    --lang=data/lang \
+    --lang=data/lang_bd \
     --reporting.email="$reporting_email" \
     --dir=$dir  || exit 1;
 fi
 
-graph_dir=$gmm_dir/graph_tg_bd
-if [ $stage -le 11 ]; then
+graph_dir=$gmm_dir/graph_tg_bd_023pruned
+if [ $stage -le 13 ]; then
   if [ -z $extra_left_context ]; then
     extra_left_context=$chunk_left_context
   fi
@@ -153,18 +157,40 @@ if [ $stage -le 11 ]; then
   if [ -z $frames_per_chunk ]; then
     frames_per_chunk=$chunk_width
   fi
-  for decode_set in dev eval; do
+  for decode_set in dev; do
       (
+      # num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+      # steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
+      #     --extra-left-context $extra_left_context  \
+      #     --extra-right-context $extra_right_context  \
+      #     --frames-per-chunk "$frames_per_chunk" \
+      #     --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
+      #    $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_bg_bd || exit 1;
+      # steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+      #     data/lang_{bg,tg}_bd data/${decode_set}_hires \
+      #     $dir/decode_${decode_set}_{bg,tg}_bd || exit 1;
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
           --extra-left-context $extra_left_context  \
           --extra-right-context $extra_right_context  \
           --frames-per-chunk "$frames_per_chunk" \
-          --online-ivector-dir exp/nnet3_sp/ivectors_${decode_set}_hires \
-         $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_tg_bd || exit 1;
-      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-          data/lang_{tg,fg}_bd data/${decode_set}_hires \
-          $dir/decode_${decode_set}_{tg,fg}_bd || exit 1;
+          --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
+         $graph_dir data/${decode_set}_hires_trimmed2 $dir/decode_${decode_set}_tg_bd_023pruned || exit 1;
+      # steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+      #     data/lang_{bg,tg}_bd data/${decode_set}_hires_trimmed \
+      #     $dir/decode_${decode_set}_{bg,tg}_bd || exit 1;
+      steps/lmrescore.sh --cmd "$decode_cmd" \
+          data/lang_tg_bd_023pruned data/lang_fg_bd data/${decode_set}_hires_trimmed2 \
+          $dir/decode_${decode_set}_{tg,fg}_bd_023pruned || exit 1;
+      # local/decode_timelimitfix.sh --nj 59 --cmd "$decode_cmd" \
+      #     --extra-left-context $extra_left_context  \
+      #     --extra-right-context $extra_right_context  \
+      #     --frames-per-chunk "$frames_per_chunk" \
+      #     --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
+      # 	  --skip-scoring true \
+      # 	  --skip-diagnostics true \
+      #    $graph_dir data/${decode_set}_hires_trimmed2 $dir/decode_${decode_set}_tg_bd_023pruned_fix || exit 1;
+
       ) &
   done
 fi

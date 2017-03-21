@@ -32,9 +32,9 @@ destdir=$2;
 # fi
 lm_suffix=$(echo "$destdir" | awk -F'[_.]' '{print $2}')
 
-# Copy everything from data/lang into dest-dir
-mkdir -p $destdir
-cp -r data/lang/* $destdir || exit 1;
+# # Copy everything from data/lang into dest-dir
+# mkdir -p $destdir
+# cp -r data/lang_bd/* $destdir || exit 1;
 
 loc=`which estimate-ngram`;
 if [ -z $loc ]; then

@@ -33,8 +33,8 @@ meta=${datadir}/metadata.csv
 # Need to convert from mp3 to wav
 samplerate=16000
 # SoX converts all audio files to an internal uncompressed format before performing any audio processing
-wav_cmd="sox -tmp3 - -c1 -esigned -r$samplerate -G -twav - "
-#wav_cmd="sox -tflac - -c1 -esigned -twav - "
+#wav_cmd="sox -tmp3 - -c1 -esigned -r$samplerate -G -twav - "
+wav_cmd="sox -tflac - -c1 -esigned -twav - "
 
 if [ $stage -le 0 ]; then
     
@@ -43,11 +43,11 @@ if [ $stage -le 0 ]; then
 
     echo "b) utt2spk" # Connect each utterance to a speaker.
     echo "c) wav.scp" # Connect every utterance with an audio file
-    cut -d"," -f1,6 ${meta} | tr "," "\t" | LC_ALL=C sort > spkname_filename.tmp
+    cut -d"," -f1,6 ${meta} | tr "," "\t" | LC_ALL=C sort > ${datadir}/spkname_filename.tmp
 
     rm ${datadir}/utt2spk ${datadir}/filename_uttID.txt ${datadir}/wav.scp
     IFS=$'\n' # Want to separate on new lines
-    for line in $(cat spkname_filename.tmp)
+    for line in $(cat ${datadir}/spkname_filename.tmp)
     do
 	filename=$(echo $line | cut -f2)
 	spkname=$(echo $line | cut -f1)
@@ -60,10 +60,10 @@ if [ $stage -le 0 ]; then
 	echo -e ${filename} ${spkID}-${filename} | tr -d $'\r' | LC_ALL=C sort -n >> ${datadir}/filename_uttID.txt
 	
 	#Print to wav.scp
-	echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f ${datadir}/audio/${filename}".mp3")" |" | tr -d $'\r' >> ${datadir}/wav.scp
-	#echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f ${datadir}/audio/${filename}".flac")" |" | tr -d $'\r' >> ${datadir}/wav.scp
+	#echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f ${datadir}/${filename}".mp3")" |" | tr -d $'\r' >> ${datadir}/wav.scp
+	echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f ${datadir}/${filename}".flac")" |" | tr -d $'\r' >> ${datadir}/wav.scp
     done
-    rm spkname_filename.tmp
+    rm ${datadir}/spkname_filename.tmp
 
     echo "d) spk2utt"
     utils/utt2spk_to_spk2utt.pl < ${datadir}/utt2spk > ${datadir}/spk2utt
@@ -78,8 +78,7 @@ if [ $stage -le 1 ]; then
 	${datadir} || exit 1;
 
     echo "Computing cmvn stats"
-    steps/compute_cmvn_stats.sh \
-	${datadir} || exit 1;
+    steps/compute_cmvn_stats.sh ${datadir} || exit 1;
 fi
 
 if [ $stage -le 2 ]; then

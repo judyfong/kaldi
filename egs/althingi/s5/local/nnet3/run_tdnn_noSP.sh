@@ -51,15 +51,18 @@ fi
 if [ $stage -le 9 ]; then
   # this does offline decoding that should give the same results as the real
   # online decoding.
-  for lm_suffix in tg tg_bd; do
-    graph_dir=exp/tri3/graph_${lm_suffix}
+  #for lm_suffix in tg tg_bd; do
+    #graph_dir=exp/tri3/graph_${lm_suffix}
+  graph_dir=exp/tri3/graph_tg_bd
     # use already-built graphs.
-    for t in eval dev; do
+  for t in eval dev; do	    
       steps/nnet3/decode.sh --nj 8 --cmd "$decode_cmd" \
           --online-ivector-dir exp/nnet3/ivectors_$t \
-         $graph_dir data/${t}_hires $dir/decode_${lm_suffix}_${t} || exit 1;
-    done
+          $graph_dir data/${t}_hires $dir/decode_${lm_suffix}_${t} || exit 1;
+      steps/lmrescore.sh --cmd "$decode_cmd" data/lang_{tg,fg}_bd \
+          data/${t}_hires $dir/decode_${t}_{tg,fg}_bd  || exit 1
   done
+  #done
 fi
 
 

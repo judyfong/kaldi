@@ -811,11 +811,6 @@ if [ $stage -le 28 ]; then
     local/nnet3/run_lstm.sh --stage 13 --speed-perturb false >>lstm_stout_Feb24.out 2>&1 &
 fi
 
-    utils/mkgraph.sh \
-	data/lang_bg_bd \
-        exp/tri3 \
-	exp/tri3/graph_bg_bd &
-
 # steps/make_mfcc.sh \
 #     --nj $nj       \
 #     --mfcc-config conf/mfcc.conf \
@@ -841,12 +836,12 @@ fi
 #     data/dev  \
 #     exp/tri3/decode_tg_bd_dev_cleaned
 
-steps/decode_fmllr.sh   \
-    --config conf/decode.config \
-    --si-dir exp/tri3/decode_bg_bd_eval_cleaned.si \
-    --stage 3 \
-    --nj 59 \
-    --cmd "$decode_cmd" \
-    exp/tri3/graph_bg_bd  \
-    data/eval  \
-    exp/tri3/decode_bg_bd_eval_cleaned &
+# steps/decode_fmllr.sh   \
+#     --config conf/decode.config \
+#     --si-dir exp/tri3/decode_bg_bd_eval_cleaned.si \
+#     --stage 3 \
+#     --nj 59 \
+#     --cmd "$decode_cmd" \
+#     exp/tri3/graph_bg_bd  \
+#     data/eval  \
+#     exp/tri3/decode_bg_bd_eval_cleaned &

@@ -17,20 +17,25 @@
 # follows the number
 
 import 'local/common.grm' as c;
-#import 'numbers.grm' as n;
+import 'local/numbers.grm' as n;
 import 'local/ordinals.grm' as o;
 # Use factorize since Robert already had introduced appropriate wheights
-import 'local/factorize.grm' as f;
+#import 'local/factorize.grm' as f;
 
 # This transducer deletes a sequence of zero or more spaces:
 delspace = c.space* : "".utf8;
 
 insspace = "".utf8 : " ".utf8;
 
-#numbernames = n.NUMBERNAMES;
+unitnames = n.units;
+numbernames_10plus_and_0 = n.NUMBERNAMES_10plus_and_0;
 ordinalnames = o.ORDINALNAMES2; # Does not expand 1. and 2.
 ordinal = Invert[ordinalnames];
-namesnumber = f.NAMESNUMBER2;
+#namesnumber = f.NAMESNUMBER2;
+
+units = Invert[unitnames];
+#namesnumber = Invert[numbernames];
+namesnumber_10plus_and_0 = Invert[numbernames_10plus_and_0];
 
 # Abbreviations used in Alþingi paired with their expansions
 abbr = Optimize[StringFile['text_norm/lex/abbreviate_words.txt','utf8','utf8']];
@@ -39,14 +44,43 @@ Optimize[StringFile['text_norm/lex/abbreviate_if_preceded_wNumber.txt','utf8','u
 abbr3 = Optimize[StringFile['text_norm/lex/abbreviate_if_followed_byNumber.txt','utf8','utf8']];
 #kjordaemi = Optimize[StringFile['text_norm/lex/kjordaemi_abbr.txt','utf8','utf8']];
 
-NARROWNUMS_MAYBE = ArcSort[Optimize[Determinize[
-                          CDRewrite[namesnumber insspace,
-                                    ("[BOS]".utf8 | " ".utf8),
-                                    ("[EOS]".utf8 | "".utf8),
-                                    c.whole_alphabet*,
-                                    'sim',
-                                    'obl']]],
-                                  'input'];
+abbr_unit_CDbefore = Optimize[
+                     CDRewrite[units,
+                     ("númer".utf8 " ".utf8 |
+                     "til".utf8 " ".utf8 | "komma".utf8 " ".utf8),
+                     "".utf8,
+                     c.whole_alphabet*,
+                     'ltr',
+                     'obl']];
+
+abbr_unit_CDafter = Optimize[
+                     CDRewrite[units,
+                     "".utf8,
+                     ( " ".utf8 "til".utf8 | " ".utf8 "komma".utf8
+                     | " ".utf8 "og hálf".utf8 | " ".utf8 "prósent".utf8
+                     | " ".utf8 "prómill".utf8 | " ".utf8 "gráð".utf8),
+                     c.whole_alphabet*,
+                     'ltr',
+                     'obl']];
+
+# I'm thinking about the case when I have f.ex. "zero point one three
+# seven"
+abbr_unit_CDbefore2 = Optimize[
+                     CDRewrite[units,
+                     (c.Digits " ".utf8),
+                     "".utf8,
+                     c.whole_alphabet*,
+                     'ltr',
+                     'obl']];
+
+# export NARROWNUMS_MAYBE = ArcSort[Optimize[Determinize[
+#                           CDRewrite[namesnumber insspace,
+#                                     ("[BOS]".utf8 | " ".utf8),
+#                                     ("[EOS]".utf8 | "".utf8),
+#                                     c.whole_alphabet*,
+#                                     'sim',
+#                                     'obl']]],
+#                                   'input'];
 
 # This abbreviates at least one rewritable word or number, per
 # senctence. But doesn't take in senctences containing numerals
@@ -62,14 +96,16 @@ ABBR_WORD = Optimize[
                      'ltr',
                      'obl']];
 
-# ABBR_NUMBER = Optimize[
-#                      CDRewrite[number delspace,
-#                      ("[BOS]".utf8 | " ".utf8),
-#                      ("[EOS]".utf8 | " ".utf8),
-#                      c.whole_alphabet*,
-#                      'ltr',
-#                      'opt']]; # If have 'obl' instead, all "annars
-#                      # vegar" and "dag einn..." will be abbreviated
+ABBR_NUMBER_10plus_and_0 = Optimize[
+                     CDRewrite[namesnumber_10plus_and_0 delspace,
+                     ("[BOS]".utf8 | " ".utf8),
+                     ("[EOS]".utf8 | " ".utf8),
+                     c.whole_alphabet*,
+                     'ltr',
+                     'obl']];
+
+ABBR_NUMBER = Optimize[ABBR_NUMBER_10plus_and_0 @ abbr_unit_CDbefore @
+abbr_unit_CDafter @ abbr_unit_CDbefore2];
 
 ORDINAL = ArcSort[Optimize[Determinize[
                      CDRewrite[ordinal delspace,
@@ -81,7 +117,8 @@ ORDINAL = ArcSort[Optimize[Determinize[
                      'input']; # If have 'obl' instead, all "annars
                      # vegar" and "dag einn..." will be abbreviated
 
-abbreviate1 = Optimize[ABBR_WORD @ ORDINAL @ NARROWNUMS_MAYBE];
+abbreviate1 = Optimize[ABBR_WORD @ ORDINAL @ ABBR_NUMBER];
+#abbreviate1 = Optimize[ABBR_WORD @ ORDINAL @ NARROWNUMS_MAYBE];
 
 
 # Could I here add a fst that works on the output of the first
@@ -121,7 +158,7 @@ ABBR_WORD3 = Optimize[
 #                      'obl'];
 
 export ABBREVIATE = ArcSort[
-                    Optimize[Determinize[abbreviate2 @ ABBR_WORD3]],
+                    Optimize[abbreviate2 @ ABBR_WORD3],
                     'input'];
 
 ins_periods =

@@ -48,14 +48,14 @@ abbr_unit_CDbefore = Optimize[
                      CDRewrite[units,
                      ("númer".utf8 " ".utf8 |
                      "til".utf8 " ".utf8 | "komma".utf8 " ".utf8),
-                     "".utf8,
+                     (" ".utf8 | "[EOS]".utf8),
                      c.whole_alphabet*,
                      'ltr',
                      'obl']];
 
 abbr_unit_CDafter = Optimize[
                      CDRewrite[units,
-                     "".utf8,
+                     ("[BOS]".utf8 | " ".utf8),
                      ( " ".utf8 "til".utf8 | " ".utf8 "komma".utf8
                      | " ".utf8 "og hálf".utf8 | " ".utf8 "prósent".utf8
                      | " ".utf8 "prómill".utf8 | " ".utf8 "gráð".utf8),
@@ -68,7 +68,7 @@ abbr_unit_CDafter = Optimize[
 abbr_unit_CDbefore2 = Optimize[
                      CDRewrite[units,
                      (c.Digits " ".utf8),
-                     "".utf8,
+                     (" ".utf8 | "[EOS]".utf8),
                      c.whole_alphabet*,
                      'ltr',
                      'obl']];

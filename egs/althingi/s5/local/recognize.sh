@@ -104,20 +104,6 @@ fi
 if [ $stage -le 7 ]; then
 
     echo "Extract the transcript hypothesis from the Kaldi lattice"
-
-    # if [ -f ${rescoredir}/transcript.txt ]; then
-    #     rm ${rescoredir}/transcript.txt
-    # fi
-    
-    # #for n in $(seq 1 $(cat ${rescoredir}/num_jobs)) # lat.${n}.gz
-    # #do
-    # lattice-best-path \
-    #     --lm-scale=12 \
-    #     --word-symbol-table=${langdir}/words.txt \
-    #     "ark:zcat ${rescoredir}/lat.1.gz |" ark,t:- \
-    #     | utils/int2sym.pl -f 2- ${langdir}/words.txt >>${rescoredir}/transcript.txt #&>${rescoredir}/extract_transcript.log
-    # #done
-
     # NOTE! Is scale=12 good?
     lattice-best-path \
         --lm-scale=12 \
@@ -126,8 +112,6 @@ if [ $stage -le 7 ]; then
 
     # Extract the best path text (tac - concatenate and print files in reverse)
     tac ${rescoredir}/extract_transcript.log | grep -e '^[^ ]\+rad' | sort -u -t" " -k1,1 > ${rescoredir}/transcript.txt
-    # or equal but 9 times slower:
-    #utils/int2sym.pl -f 2- ${langdir}/words.txt <(grep -e '^[^ ]\+rad' ${rescoredir}/extract_transcript.log | sort -u -t" " -k1,1) > ${rescoredir}/transcript.txt
 
     # Remove utterance IDs
     perl -pe 's/[^ ]+rad[^ ]+//g' ${rescoredir}/transcript.txt | tr "\n" " " | sed -e "s/[[:space:]]\+/ /g" > ${rescoredir}/transcript_noID.txt

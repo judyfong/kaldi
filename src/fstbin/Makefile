@@ -18,6 +18,9 @@ BINFILES = fstdeterminizestar  \
 	   fstpushspecial fsts-to-transcripts fststringcompile fsttablefilter \
            expand-numbers fsts-project fsts-union fsts-scale fsts-difference
 
+# What newest Kaldi version wants instead of the last 2 lines above:
+# fstpushspecial fsts-to-transcripts fsts-project fsts-union
+
 OBJFILES =
 
 TESTFILES =
@@ -27,6 +30,10 @@ LIBFILE =
 
 ADDLIBS = ../fstext/kaldi-fstext.a ../util/kaldi-util.a \
           ../thread/kaldi-thread.a ../matrix/kaldi-matrix.a \
+<<<<<<< HEAD
           ../base/kaldi-base.a ../lm/kaldi-lm.a
+=======
+          ../base/kaldi-base.a
+>>>>>>> origkaldi
 
 include ../makefiles/default_rules.mk

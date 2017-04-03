@@ -1,44 +1,18 @@
 # SHELL += -x
 
 CXX = g++
-# CXX = clang++  # Uncomment this line to build with Clang.
-
-# #Openfst_VERSION = 1.3.4
-# # Uncomment the next line to build with OpenFst-1.4.1.
-# OPENFST_VERSION = 1.4.1
-# # Note: OpenFst >= 1.4 requires C++11 support, hence you will need to use a
-# # relatively recent C++ compiler, e.g. gcc >= 4.6, clang >= 3.0.
-
-# # On Mac OS 10.9+, clang defaults to the new c++ standard library libc++.
-# # Since OpenFst-1.3 uses stuff from the tr1 namespace, we need to tell clang
-# # to use libstdc++ instead.
-# ifeq ($(OPENFST_VERSION), 1.3.4)
-#   COMPILER = $(shell $(CXX) -v 2>&1 )
-#   ifeq ($(findstring clang,$(COMPILER)),clang)
-#     CXXFLAGS += -stdlib=libstdc++
-#     LDFLAGS += -stdlib=libstdc++
-#   endif
-# else
-#   ifneq ($(OPENFST_VERSION), 1.4.1)
-#     $(error OpenFst version $(OPENFST_VERSION) is not supported. \
-#             Supported versions: 1.3.4, 1.4.1)
-#   endif
-
-# # The following comes from the newest kaldi version:
-# # BEGIN
 CC = gcc         # used for sph2pipe
 # CXX = clang++  # Uncomment these lines
 # CC = clang     # to build with Clang.
 
 # Note: OpenFst requires a relatively recent C++ compiler with C++11 support,
 # e.g. g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3.
-OPENFST_VERSION = 1.6.1
+OPENFST_VERSION = 1.6.2
 
 OPENFST_VER_NUM := $(shell echo $(OPENFST_VERSION) | sed 's/\./ /g' | xargs printf "%d%02d%02d")
-ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10503)","1")
+ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10600)","1")
     $(error OpenFst-$(OPENFST_VERSION) is not supported. \
-            Supported versions: >= 1.5.3)
-# # END
+            Supported versions: >= 1.6.0)
 endif
 
 all: check_required_programs sph2pipe openblas sclite openfst sequitur kenlm

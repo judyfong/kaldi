@@ -512,30 +512,7 @@ if [ $stage -le 25 ]; then
     
     ########################
 
-    echo "Try making a new 3g LM and a heavily pruned version of it also"
-    echo "unpruned"
-    mkdir -p data/lang_tg_bd_3march
-    for s in L_disambig.fst L.fst oov.int oov.txt phones phones.txt \
-                            topo words.txt; do
-        [ ! -e data/lang_tg_bd_3march/$s ] && cp -r data/lang_bd/$s data/lang_tg_bd_3march/$s
-    done  
-    /opt/kenlm/build/bin/lmplz \
-	--skip_symbols \
-        -o 3 -S 70% --prune 0 \
-        --text data/train/LMtext \
-        --limit_vocab_file <(cat data/lang_tg_bd_3march/words.txt | egrep -v "<eps>|<unk>" | cut -d' ' -f1) \
-        | gzip -c > data/lang_tg_bd_3march/kenlm_3g.arpa_unpruned.gz
-
-        arpa2fst "zcat data/lang_tg_bd_3march/kenlm_3g.arpa_unpruned.gz |" - \
-            | fstprint \
-            | utils/s2eps.pl \
-            | fstcompile --{i,o}symbols=data/lang_tg_bd_3march/words.txt --keep_{i,o}symbols=false \
-            | fstarcsort --sort_type=ilabel \
-                         > data/lang_tg_bd_3march/G.fst
-	
-    #utils/slurm.pl data/lang_3g_bd_3march/format_lm.log utils/format_lm.sh data/lang_bd data/lang_3g_bd_3march/kenlm_3g.arpa_unpruned.gz data/local/dict_bd/lexicon.txt data/lang_3g_bd_3march
-
-    echo "heavily pruned"
+    echo "pruned 3g LM"
     mkdir -p data/lang_tg_bd_023pruned
     for s in L_disambig.fst L.fst oov.int oov.txt phones phones.txt \
                             topo words.txt; do
@@ -549,12 +526,7 @@ if [ $stage -le 25 ]; then
         --limit_vocab_file <(cat data/lang_tg_bd_023pruned/words.txt | egrep -v "<eps>|<unk>" | cut -d' ' -f1) \
         | gzip -c > data/lang_tg_bd_023pruned/kenlm_3g.arpa_023pruned.gz
 
-    arpa2fst "zcat data/lang_tg_bd_023pruned/kenlm_3g.arpa_023pruned.gz |" - \
-            | fstprint \
-            | utils/s2eps.pl \
-            | fstcompile --{i,o}symbols=data/lang_tg_bd_023pruned/words.txt --keep_{i,o}symbols=false \
-            | fstarcsort --sort_type=ilabel \
-                         > data/lang_tg_bd_023pruned/G.fst
+    utils/slurm.pl data/lang_tg_bd_023pruned/format_lm.log utils/format_lm.sh data/lang_bd data/lang_tg_bd_023pruned/kenlm_tg.arpa.gz data/local/dict_bd/lexicon.txt data/lang_tg_bd_023pruned
 
     echo "4-gram"
     mkdir -p data/lang_4g_3march
@@ -569,12 +541,7 @@ if [ $stage -le 25 ]; then
         --limit_vocab_file <(cat data/lang_4g_3march/words.txt | egrep -v "<eps>|<unk>" | cut -d' ' -f1) \
         | gzip -c > data/lang_4g_3march/kenlm_4g.arpa.gz
 
-        arpa2fst "zcat data/lang_4g_3march/kenlm_4g.arpa.gz |" - \
-            | fstprint \
-            | utils/s2eps.pl \
-            | fstcompile --{i,o}symbols=data/lang_4g_3march/words.txt --keep_{i,o}symbols=false \
-            | fstarcsort --sort_type=ilabel \
-                         > data/lang_4g_3march/G.fst
+    utils/slurm.pl data/lang_4g_3march/format_lm.log utils/format_lm.sh data/lang_bd data/lang_4g_3march/kenlm_4g.arpa.gz data/local/dict_bd/lexicon.txt data/lang_4g_3march
 	
     ########################
 
@@ -809,6 +776,9 @@ if [ $stage -le 28 ]; then
 
     echo "Run the swbd lstm recipe without sp"
     local/nnet3/run_lstm.sh --stage 13 --speed-perturb false >>lstm_stout_Feb24.out 2>&1 &
+
+    echo "Run the swbd chain tdnn_lstm recipe without sp"
+    local/chain/run_tdnn_lstm.sh --stage 12 --speed-perturb false >>tdnn_lstm_March31.out 2>&1 &
 fi
 
 # steps/make_mfcc.sh \

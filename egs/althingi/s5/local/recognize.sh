@@ -2,7 +2,6 @@
 
 set -o pipefail 
 # Script that takes in an audio file and returns a transcribed text.
-# This is just for me. It needs to be complete rewritten for Alþingi
 
 # local/recognize.sh <speech>
 # Example:
@@ -16,11 +15,8 @@ speechname="${speechname%.*}"
 # data dir
 datadir=recognize/speeches/$speechname
 mkdir -p ${datadir}
-# Fits well if the input something like data/radxxx.mp3.
 
 stage=-1
-
-#tar -zxvf ${audio_zip} --directory ${datadir}/
 
 #n_files=$(ls $datadir/*.flac | wc -l) # .mp3, .wav?
 #num_jobs=$n_files
@@ -40,17 +36,15 @@ rescoredir=${datadir}_segm_hires/decode_fg_bd_unpruned
 oldLMdir=data/lang_tg_bd_023pruned
 newLMdir=data/lang_fg_bd_unpruned
 
-# if ! [[ $n_files > 0 ]]; then
-#     error "$audio_zip didn't contain audio files"
-# fi
-
 if [ $stage -le 0 ]; then
+    echo "Set up a directory in the right format of Kaldi and extract features"
     #local/prep_audiodata.sh --nj $num_jobs $datadir
     local/prep_audiodata_fromName.sh $speechname $datadir
 fi
 
-# Segment audio data and create a new data dir for the segmented data
+# 
 if [ $stage -le 3 ]; then
+    echo "Segment audio data"
     local/segment_audio.sh $datadir ${datadir}_segm
 fi
 
@@ -77,8 +71,6 @@ fi
 
 if [ $stage -le 6 ]; then
 
-    # NOTE! I intended to decode using a small lm and rescore using a larger LM. But I get
-    # for some segments: Empty lattice for utterance GMJ-rad20071128T135510_00002 (incompatible LM?)
     echo "Decoding"
     extra_left_context=40
     extra_right_context=0

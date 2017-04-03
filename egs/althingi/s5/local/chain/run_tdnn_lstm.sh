@@ -21,7 +21,12 @@
 # Final train prob (xent)        -0.836    -0.931
 # Final valid prob (xent)       -0.9631   -1.0279
 
-
+# Online decoding
+# System                tdnn_lstm_1e_sp_online tdnn_lstm_1e_sp
+# WER on train_dev(tg)      12.93     12.74
+# WER on train_dev(fg)      12.05     11.87
+# WER on eval2000(tg)        15.5      15.4
+# WER on eval2000(fg)        14.0      13.8
 
 set -e
 
@@ -31,7 +36,7 @@ train_stage=-10
 get_egs_stage=-10
 speed_perturb=false #true
 dir=exp/chain/tdnn_lstm_1e # Note: _sp will get added to this if $speed_perturb == true.
-decode_iter=final
+decode_iter=
 
 # training options
 xent_regularize=0.01
@@ -53,6 +58,8 @@ extra_right_context=0
 
 remove_egs=false
 common_egs_dir=
+
+test_online_decoding=false  # if true, it will run the last decoding stage.
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -225,13 +232,19 @@ fi
 
 
 graph_dir=$dir/graph_tg_bd_023pruned
+iter_opts=
+if [ ! -z $decode_iter ]; then
+  iter_opts=" --iter $decode_iter "
+fi
+
 if [ $stage -le 15 ]; then
+  rm $dir/.error 2>/dev/null || true
   for decode_set in dev eval; do
       (
 	num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
         steps/nnet3/decode.sh --num-threads 4 \
           --acwt 1.0 --post-decode-acwt 10.0 \
-          --nj $num_jobs --cmd "$decode_cmd" --iter $decode_iter \
+          --nj $num_jobs --cmd "$decode_cmd" $iter_opts \
           --extra-left-context $extra_left_context  \
           --extra-right-context $extra_right_context  \
           --extra-left-context-initial 0 \
@@ -239,7 +252,7 @@ if [ $stage -le 15 ]; then
           --frames-per-chunk "$frames_per_chunk_primary" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
          $graph_dir data/${decode_set}_hires_trimmed2 \
-         $dir/decode_${decode_set}_tg_bd_023pruned || exit 1;
+         $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_tg_bd_023pruned || exit 1;
       steps/lmrescore.sh --cmd "$decode_cmd" \
           data/lang_tg_bd_023pruned data/lang_fg_bd_unpruned data/${decode_set}_hires_trimmed2 \
           $dir/decode_${decode_set}_tg_bd_023pruned $dir/decode_${decode_set}_fg_bd_unpruned|| exit 1;
@@ -250,13 +263,18 @@ if [ $stage -le 15 ]; then
       # fi
       ) &
   done
+  wait
+  if [ -f $dir/.error ]; then
+    echo "$0: something went wrong in decoding"
+    exit 1
+  fi
 fi
-wait;
 
 # if [ $stage -le 16 ]; then
 #   # looped decoding.  Note: this does not make sense for BLSTMs or other
 #   # backward-recurrent setups, and for TDNNs and other non-recurrent there is no
 #   # point doing it because it would give identical results to regular decoding.
+#   rm $dir/.error 2>/dev/null || true
 #   for decode_set in train_dev eval2000; do
 #     (
 #       steps/nnet3/decode_looped.sh \
@@ -272,9 +290,44 @@ wait;
 #       fi
 #       ) &
 #   done
+#   wait
+#   if [ -f $dir/.error ]; then
+#     echo "$0: something went wrong in looped decoding"
+#     exit 1
+#   fi
 # fi
-wait;
 
+
+# if $test_online_decoding && [ $stage -le 17 ]; then
+#   # note: if the features change (e.g. you add pitch features), you will have to
+#   # change the options of the following command line.
+#   steps/online/nnet3/prepare_online_decoding.sh \
+#        --mfcc-config conf/mfcc_hires.conf \
+#        $lang exp/nnet3/extractor $dir ${dir}_online
+
+#   rm $dir/.error 2>/dev/null || true
+#   for decode_set in train_dev eval2000; do
+#     (
+#       # note: we just give it "$decode_set" as it only uses the wav.scp, the
+#       # feature type does not matter.
+
+#       steps/online/nnet3/decode.sh --nj $decode_nj --cmd "$decode_cmd" $iter_opts \
+#           --acwt 1.0 --post-decode-acwt 10.0 \
+#          $graph_dir data/${decode_set}_hires \
+#          ${dir}_online/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_tg || exit 1;
+#       if $has_fisher; then
+#           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+#             data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
+#             ${dir}_online/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_{tg,fsh_fg} || exit 1;
+#       fi
+#     ) || touch $dir/.error &
+#   done
+#   wait
+#   if [ -f $dir/.error ]; then
+#     echo "$0: something went wrong in online decoding"
+#     exit 1
+#   fi
+# fi
 
 
 exit 0;

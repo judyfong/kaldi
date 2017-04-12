@@ -16,7 +16,7 @@ speechname="${speechname%.*}"
 datadir=recognize/speeches/$speechname
 mkdir -p ${datadir}
 
-stage=4
+stage=-1
 
 #n_files=$(ls $datadir/*.flac | wc -l) # .mp3, .wav?
 #num_jobs=$n_files
@@ -95,26 +95,26 @@ fi
 
 if [ $stage -le 7 ]; then
 
-    # echo "Extract the transcript hypothesis from the Kaldi lattice"
-    # # NOTE! Is scale=12 good?
-    # lattice-best-path \
-    #     --lm-scale=12 \
-    #     --word-symbol-table=${langdir}/words.txt \
-    #     "ark:zcat ${rescoredir}/lat.1.gz |" ark,t:- > ${rescoredir}/extract_transcript.log
-
-    
-    # # Extract the best path text (tac - concatenate and print files in reverse)
-    # tac ${rescoredir}/extract_transcript.log | grep -e '^[^ ]\+rad' | sort -u -t" " -k1,1 > ${rescoredir}/transcript.txt
-
-    # # Remove utterance IDs
-    # perl -pe 's/[^ ]+rad[^ ]+//g' ${rescoredir}/transcript.txt | tr "\n" " " | sed -e "s/[[:space:]]\+/ /g" > ${rescoredir}/transcript_noID.txt
-
+    echo "Extract the transcript hypothesis from the Kaldi lattice"
+    # NOTE! Is scale=12 good?
     lattice-best-path \
         --lm-scale=12 \
         --word-symbol-table=${langdir}/words.txt \
-        "ark:zcat ${rescoredir}/lat.1.gz |" ark,t:- \
-        | utils/int2sym.pl -f 2- ${langdir}/words.txt >>${rescoredir}/transcript.txt
+        "ark:zcat ${rescoredir}/lat.1.gz |" ark,t:- &> ${rescoredir}/extract_transcript.log
+
+    
+    # Extract the best path text (tac - concatenate and print files in reverse)
+    tac ${rescoredir}/extract_transcript.log | grep -e '^[^ ]\+rad' | sort -u -t" " -k1,1 > ${rescoredir}/transcript.txt
+
+    # Remove utterance IDs
     perl -pe 's/[^ ]+rad[^ ]+//g' ${rescoredir}/transcript.txt | tr "\n" " " | sed -e "s/[[:space:]]\+/ /g" > ${rescoredir}/transcript_noID.txt
+
+    # lattice-best-path \
+    #     --lm-scale=12 \
+    #     --word-symbol-table=${langdir}/words.txt \
+    #     "ark:zcat ${rescoredir}/lat.1.gz |" ark,t:- \
+    #     | utils/int2sym.pl -f 2- ${langdir}/words.txt >>${rescoredir}/transcript.txt
+    # perl -pe 's/[^ ]+rad[^ ]+//g' ${rescoredir}/transcript.txt | tr "\n" " " | sed -e "s/[[:space:]]\+/ /g" > ${rescoredir}/transcript_noID.txt
 fi
 
 # if [ $stage -le 8 ]; then

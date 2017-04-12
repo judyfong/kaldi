@@ -18,6 +18,11 @@ stage=-1
 name_id_file="data/local/corpus/name_id_gender.tsv"
 meta="data/local/corpus/metadata.csv"
 
+encoding=$(file -i ${meta} | cut -d" " -f3)
+if [[ "$encoding"=="charset=iso-8859-1" ]]; then
+    iconv -f ISO-8859-1 -t UTF-8 ${meta} > tmp && mv tmp ${meta}
+fi
+
 # NOTE! Could I get the audio files in wav format??
 # Need to convert from mp3 to wav
 samplerate=16000

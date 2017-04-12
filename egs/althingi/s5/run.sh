@@ -509,7 +509,6 @@ if [ $stage -le 25 ]; then
     echo "Making G.fst"
     utils/format_lm.sh data/lang_bd data/lang_bg_bd/lm_bg.arpa.gz data/local/dict/lexicon.txt data/lang_bg_bd
 
-    
     ########################
 
     echo "pruned 3g LM"

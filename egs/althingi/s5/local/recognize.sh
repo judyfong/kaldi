@@ -16,7 +16,7 @@ speechname="${speechname%.*}"
 datadir=recognize/speeches/$speechname
 mkdir -p ${datadir}
 
-stage=-1
+stage=4
 
 #n_files=$(ls $datadir/*.flac | wc -l) # .mp3, .wav?
 #num_jobs=$n_files
@@ -29,12 +29,12 @@ echo "$0 $@"  # Print the command line for logging
 . ./utils/parse_options.sh
 
 # Dirs used
-langdir=data/lang_bd
-graphdir=exp/tri3/graph_tg_bd_023pruned
-decodedir=${datadir}_segm_hires/decode_tg_bd_023pruned
-rescoredir=${datadir}_segm_hires/decode_fg_bd_unpruned
-oldLMdir=data/lang_tg_bd_023pruned
-newLMdir=data/lang_fg_bd_unpruned
+langdir=data/lang_cs  #data/lang_bd
+graphdir=exp/tri3/graph_3g_cs_023pruned  #exp/tri3/graph_tg_bd_023pruned
+decodedir=${datadir}_segm_hires/decode_3g_cs_023pruned  #decode_tg_bd_023pruned
+rescoredir=${datadir}_segm_hires/decode_5g_cs  #decode_fg_bd_unpruned
+oldLMdir=data/lang_3g_cs_023pruned  #data/lang_tg_bd_023pruned
+newLMdir=data/lang_5g_cs  #data/lang_fg_bd_unpruned
 
 if [ $stage -le 0 ]; then
     echo "Set up a directory in the right format of Kaldi and extract features"
@@ -110,12 +110,12 @@ if [ $stage -le 7 ]; then
     
 fi
 
-if [ $stage -le 8 ]; then
+# if [ $stage -le 8 ]; then
 
-    echo "Denormalize the transcript"
-    local/denormalize.sh \
-        ${rescoredir}/transcript_noID.txt \
-        ${rescoredir}/transcript_denormalized.txt
-    rm ${rescoredir}/*.tmp
+#     echo "Denormalize the transcript"
+#     local/denormalize.sh \
+#         ${rescoredir}/transcript_noID.txt \
+#         ${rescoredir}/transcript_denormalized.txt
+#     rm ${rescoredir}/*.tmp
 
-fi
+# fi

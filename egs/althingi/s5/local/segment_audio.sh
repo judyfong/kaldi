@@ -43,27 +43,36 @@ for line in $(cat $datadir/wav.scp); do
 
     echo "Extract the timestamps of silences in the audio and let each silence occupy one line in the file"
     ffmpeg -i $audio -af silencedetect=noise=-15dB:d=$min_sil_length -f null - &>${outdir}/ffmpeg_out.tmp
-    grep "silence_start\|silence_end" ${outdir}/ffmpeg_out.tmp | awk 'ORS=NR%2?" ":"\n"' | cut -d" " -f4,5,9,10,12,13 > ${outdir}/${filename}_silence.txt
-    rm ${outdir}/ffmpeg_out.tmp
-    
-    # Get total recording length, with 3 digits
-    total_dur=$(printf %.3f $(echo $(soxi -D $audio) | bc -l))
-    
-    # Add uttID and total duration of the recording to the silence info file
-    awk -v id="$uttID" -v dur="$total_dur" '{print id, dur, $0}' ${outdir}/${filename}_silence.txt > ${outdir}/${filename}_silence2.tmp && mv ${outdir}/${filename}_silence2.tmp ${outdir}/${filename}_silence.txt
-    # When the audio ends in silence, the last line only contains the time when the silence starts.
-    # I fill out that line, so all lines contain 8 columns
-    num_col_last=$(tail -n1 ${outdir}/${filename}_silence.txt | wc -w)
-    if [ $num_col_last == 4 ]; then
-	sil_start=$(awk 'END { print $NF }' ${outdir}/${filename}_silence.txt) 
-	sil_dur=$(echo "$total_dur - $sil_start" | bc)
-	sed -i -e "\$s/\(.*\)/\1 silence_end: $total_dur silence_duration: $sil_dur/" ${outdir}/${filename}_silence.txt
+    wait;
+    if grep -q "silencedetect" recognize/speeches/rad20110412T144030_segm/ffmpeg_out.tmp; then
+        grep "silence_start\|silence_end" ${outdir}/ffmpeg_out.tmp | awk 'ORS=NR%2?" ":"\n"' | cut -d" " -f4,5,9,10,12,13 > ${outdir}/${filename}_silence.txt
+	
+	
+	# Get total recording length, with 3 digits
+	total_dur=$(printf %.3f $(echo $(soxi -D $audio) | bc -l))
+	
+	# Add uttID and total duration of the recording to the silence info file
+	awk -v id="$uttID" -v dur="$total_dur" '{print id, dur, $0}' ${outdir}/${filename}_silence.txt > ${outdir}/${filename}_silence2.tmp && mv ${outdir}/${filename}_silence2.tmp ${outdir}/${filename}_silence.txt
+	# When the audio ends in silence, the last line only contains the time when the silence starts.
+	# I fill out that line, so all lines contain 8 columns
+	num_col_last=$(tail -n1 ${outdir}/${filename}_silence.txt | wc -w)
+	if [ $num_col_last == 4 ]; then
+	    sil_start=$(awk 'END { print $NF }' ${outdir}/${filename}_silence.txt) 
+	    sil_dur=$(echo "$total_dur - $sil_start" | bc)
+	    sed -i -e "\$s/\(.*\)/\1 silence_end: $total_dur silence_duration: $sil_dur/" ${outdir}/${filename}_silence.txt
+	fi
+	
+	# Used make_segmentation_data_dir.sh and create_segments_from_ctm.pl as bases for the segmentation step
+	echo "Make data dir with segmented audio"
+	local/make_audio_segmentation_data_dir.sh \
+    	    --min-seg-length $min_seg_length \
+    	    --min-sil-length $min_sil_length \
+    	    ${outdir}/${filename}_silence.txt $datadir $outdir
+
+    else
+        echo "No silences observed. Keep speech as whole"
+	cp -r $datadir $outdir
     fi
     
-    # Used make_segmentation_data_dir.sh and create_segments_from_ctm.pl as bases for the segmentation step
-    local/make_audio_segmentation_data_dir.sh \
-    	--min-seg-length $min_seg_length \
-    	--min-sil-length $min_sil_length \
-    	${outdir}/${filename}_silence.txt $datadir $outdir
-    
+    rm ${outdir}/ffmpeg_out.tmp
 done

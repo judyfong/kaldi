@@ -80,5 +80,7 @@ perl -pe 's:(\d+) km á klukkustund:$1 $2/klst.:g' ${dir}/denorm_BOScap.tmp | pe
 
 thraxrewrite-fileio --far=local/abbreviate.far --rules=INS_PERIODS --noutput=1 --input_mode=utf8 --output_mode=utf8 ${dir}/denorm_measure.tmp $ofile
 
+# Add rewriting rules for acronyms that are spelled out, e.g. o e c d -> OECD and e s b -> ESB
+
 # # þingm regex
 # sed -e 's/\([Hh]v\.\) \([0-9\. ]*\)þingm\w\+ \([A-ZÁÉÍÓÚÝÞÆÖ]\)/\1 \2þm\. \3/g' ${dir}/denorm_periods.tmp > ${dir}/$ofile

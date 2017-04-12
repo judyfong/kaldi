@@ -30,10 +30,6 @@ LIBFILE =
 
 ADDLIBS = ../fstext/kaldi-fstext.a ../util/kaldi-util.a \
           ../thread/kaldi-thread.a ../matrix/kaldi-matrix.a \
-<<<<<<< HEAD
           ../base/kaldi-base.a ../lm/kaldi-lm.a
-=======
-          ../base/kaldi-base.a
->>>>>>> origkaldi
 
 include ../makefiles/default_rules.mk

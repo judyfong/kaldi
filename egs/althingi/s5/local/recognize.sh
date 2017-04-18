@@ -1,11 +1,6 @@
 #!/bin/bash -eu
 
-set -o pipefail 
-# Script that takes in an audio file and returns a transcribed text.
-
-# local/recognize.sh <speech>
-# Example:
-# local/recognize.sh data/local/corpus/audio/rad20151103T133116.flac
+set -o pipefail
 
 speechfile=$1
 speechname=$(basename "$speechfile")
@@ -18,8 +13,6 @@ mkdir -p ${datadir}
 
 stage=-1
 
-#n_files=$(ls $datadir/*.flac | wc -l) # .mp3, .wav?
-#num_jobs=$n_files
 num_jobs=1
 
 echo "$0 $@"  # Print the command line for logging
@@ -37,15 +30,15 @@ oldLMdir=data/lang_3g_cs_023pruned  #data/lang_tg_bd_023pruned
 newLMdir=data/lang_5g_cs  #data/lang_fg_bd_unpruned
 
 if [ $stage -le 0 ]; then
+
     echo "Set up a directory in the right format of Kaldi and extract features"
-    #local/prep_audiodata.sh --nj $num_jobs $datadir
     local/prep_audiodata_fromName.sh $speechname $datadir
 fi
 
-# 
 if [ $stage -le 3 ]; then
+
     echo "Segment audio data"
-    local/segment_audio.sh $datadir ${datadir}_segm
+    local/segment_audio.sh ${datadir} ${datadir}_segm
 fi
 
 if [ $stage -le 4 ]; then
@@ -102,27 +95,9 @@ if [ $stage -le 7 ]; then
         --word-symbol-table=${langdir}/words.txt \
         "ark:zcat ${rescoredir}/lat.1.gz |" ark,t:- &> ${rescoredir}/extract_transcript.log
 
-    
     # Extract the best path text (tac - concatenate and print files in reverse)
     tac ${rescoredir}/extract_transcript.log | grep -e '^[^ ]\+rad' | sort -u -t" " -k1,1 > ${rescoredir}/transcript.txt
 
     # Remove utterance IDs
     perl -pe 's/[^ ]+rad[^ ]+//g' ${rescoredir}/transcript.txt | tr "\n" " " | sed -e "s/[[:space:]]\+/ /g" > ${rescoredir}/transcript_noID.txt
-
-    # lattice-best-path \
-    #     --lm-scale=12 \
-    #     --word-symbol-table=${langdir}/words.txt \
-    #     "ark:zcat ${rescoredir}/lat.1.gz |" ark,t:- \
-    #     | utils/int2sym.pl -f 2- ${langdir}/words.txt >>${rescoredir}/transcript.txt
-    # perl -pe 's/[^ ]+rad[^ ]+//g' ${rescoredir}/transcript.txt | tr "\n" " " | sed -e "s/[[:space:]]\+/ /g" > ${rescoredir}/transcript_noID.txt
 fi
-
-# if [ $stage -le 8 ]; then
-
-#     echo "Denormalize the transcript"
-#     local/denormalize.sh \
-#         ${rescoredir}/transcript_noID.txt \
-#         ${rescoredir}/transcript_denormalized.txt
-#     rm ${rescoredir}/*.tmp
-
-# fi

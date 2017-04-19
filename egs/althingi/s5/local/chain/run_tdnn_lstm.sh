@@ -255,7 +255,7 @@ if [ $stage -le 15 ]; then
          $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_tg_bd_023pruned || exit 1;
       steps/lmrescore.sh --cmd "$decode_cmd" \
           data/lang_tg_bd_023pruned data/lang_fg_bd_unpruned data/${decode_set}_hires_trimmed2 \
-          $dir/decode_${decode_set}_tg_bd_023pruned $dir/decode_${decode_set}_fg_bd_unpruned|| exit 1;
+          $dir/decode_${decode_set}_tg_bd_023pruned $dir/decode_${decode_set}_fg_bd_unpruned || exit 1;
       # if $has_fisher; then
       #     steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
       #       data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \

@@ -814,3 +814,6 @@ fi
 #     exp/tri3/graph_bg_bd  \
 #     data/eval  \
 #     exp/tri3/decode_bg_bd_eval_cleaned &
+
+# Case sensitive graph:
+utils/slurm.pl --mem 4G mkgraph_cs.log utils/mkgraph.sh --self-loop-scale 1.0 data/lang_3g_cs_023pruned exp/chain/tdnn_lstm_1e exp/chain/tdnn_lstm_1e/graph_3g_cs_023pruned &

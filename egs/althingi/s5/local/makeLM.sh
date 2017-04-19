@@ -9,7 +9,6 @@ mkdir -p data/local/dict_cs
 frob=~/data/althingi/pronDict_LM/CaseSensitive_pron_dict_Fix6.txt
 local/prep_lang.sh \
     $frob             \
-    data/train         \
     data/local/dict_cs     \
     data/lang_cs
 
@@ -33,7 +32,7 @@ echo "unpruned 5g LM"
 mkdir -p data/lang_5g_cs
 for s in L_disambig.fst L.fst oov.int oov.txt phones phones.txt \
                         topo words.txt; do
-    [ ! -e data/lang_5g_cs/$s ] && cp -r data/lang_bd/$s data/lang_5g_cs/$s
+    [ ! -e data/lang_5g_cs/$s ] && cp -r data/lang_cs/$s data/lang_5g_cs/$s
 done
 
 /opt/kenlm/build/bin/lmplz \

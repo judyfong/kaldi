@@ -15,6 +15,14 @@ dir=$(dirname $(readlink -f $ifile))
 # An implementation of thraxrewrite-tester that takes in a file and returns an output file where the option with the lowest weight is chosen
 thraxrewrite-fileio --far=local/abbreviate.far --rules=ABBREVIATE --noutput=1 --input_mode=utf8 --output_mode=utf8 $ifile ${dir}/thrax_out.tmp
 
+# Collapse first the longest acronyms, in case they contain smaller ones.
+IFS=$'\n'
+for var in $(cat data/acronyms.txt | awk '{ print length, $0 }' | sort -nrs | cut -d" " -f2)
+do
+    var1=$(echo $var | sed 's/./& /g' | sed -e 's/ +$//')
+    sed -i 's/'$var1'/\U'$var' /g' ${dir}/thrax_out.tmp
+done
+
 # 1) Change spaces to one between words.
 # 2-3) Rewrite law numbers
 # 4) Rewrite intervals
@@ -26,7 +34,7 @@ thraxrewrite-fileio --far=local/abbreviate.far --rules=ABBREVIATE --noutput=1 --
 # 11) Rewrite website names
 # 12) Rewrite "and or" as "and/or"
 sed -e "s/[[:space:]]\+/ /g" ${dir}/thrax_out.tmp \
-    | perl -pe 's:(\d+) (frá )?(\d+) (ebe|eb|esb):$1/$3/\U$4:g' \
+    | perl -pe 's:(\d+) (frá )?(\d+) (EBE|EB|ESB):$1/$3/\U$4:g' \
     | perl -pe 's:nr (\d+) (frá )?(\d+):nr $1/$3:g' \
     | perl -pe 's:(\d+) til (\d+):$1—$2:g' \
     | perl -pe 's/kl (\d+) (\d+)/kl $1:$2/g' \
@@ -61,20 +69,13 @@ cd ~/kaldi/egs/althingi/s5
 # Convert punctuation tokens back to actual punctuations
 sed -r 's/ \.PERIOD/./g; s/ \?QUESTIONMARK/?/g; s/ !EXCLAMATIONMARK/!/g; s/ ,COMMA/,/g; s/ :COLON/:/g' ${dir}/punctuator_out_wNumbers.tmp > ${dir}/punctuator_out_wPuncts.tmp
 
-# Capitalize proper names, location and organization names
-# Implement!
-
 # Some things I want to abbreviate if preceded or followed by a name (i.e. by an uppercase letter) f.ex. "doktor" and "þingmaður"
-# I will wait with that implementation for a while and do the following in the meanwhile
-sed -e 's/doktor \([a-záðéíóúýþæö]\{2,\}\)/dr\. \1/g' ${dir}/punctuator_out_wPuncts.tmp > ${dir}/text.dr.tmp
-
-cut -f1 data/name_id_2017.txt | tr " " "\n" | sort -u > ${dir}/name.tmp
-srun python local/capitalize_names.py ${dir}/text.dr.tmp ${dir}/name.tmp ${dir}/text_wCap.tmp
+sed -e 's/doktor \([A-ZÁÉÍÓÚÝÞÆÖ]\)/dr\. \1/g' ${dir}/punctuator_out_wPuncts.tmp > ${dir}/text.dr.tmp
 
 # Capitalize sentence beginnings and add periods to abbreviations.
 # Implement! Regex for capitalization and thrax for the periods.
 #sed -e 's/\([^0-9][\.:?!]\) \([a-záðéíóúýþæö]\)/\1 \u\2/g' ${dir}/text_wCap.tmp | sed -e 's/\([0-9]\{4\}[\.:?!]\) \([a-záðéíóúýþæö]\)/\1 \u\2/g' > ${dir}/denorm_BOScap.tmp
-sed -e 's/\([^0-9]\.\|\?\|:\|!\) \([a-záðéíóúýþæö]\)/\1 \u\2/g' ${dir}/text_wCap.tmp | sed -e 's/\([0-9]\{4\}[\.:?!]\) \([a-záðéíóúýþæö]\)/\1 \u\2/g' > ${dir}/denorm_BOScap.tmp
+sed -e 's/\([^0-9]\.\|\?\|:\|!\) \([a-záðéíóúýþæö]\)/\1 \u\2/g' ${dir}/text.dr.tmp | sed -e 's/\([0-9]\{4\}[\.:?!]\) \([a-záðéíóúýþæö]\)/\1 \u\2/g' > ${dir}/denorm_BOScap.tmp
 
 perl -pe 's:(\d+) km á klukkustund:$1 $2/klst.:g' ${dir}/denorm_BOScap.tmp | perl -pe 's:(\d+) kr á kíló[^m ]* ?:$1 $2\./kg :g' > ${dir}/denorm_measure.tmp
 

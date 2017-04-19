@@ -14,13 +14,12 @@ cleanup=false
 vocab=
 . utils/parse_options.sh
 if [ $# -ne 4 ]; then
-    echo "Usage: $0 <frob-tsv> <data-dir> <tmp-dir> <dest-dir>" >&2
-    echo "Eg. $0 data/local/frob.txt data/train data/local/dict data/lang" >&2
+    echo "Usage: $0 <frob-tsv> <tmp-dir> <dest-dir>" >&2
+    echo "Eg. $0 data/local/frob.txt data/local/dict data/lang" >&2
     exit 1;
 fi
 
 frob=$1;shift
-datadir=$1; shift
 dictdir=$1; shift
 langdir=$1; shift
 

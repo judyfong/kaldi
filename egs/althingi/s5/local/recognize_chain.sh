@@ -11,7 +11,7 @@ speechname="${speechname%.*}"
 datadir=recognize/speeches/$speechname
 mkdir -p ${datadir}
 
-stage=-1
+stage=6
 
 num_jobs=1
 
@@ -23,7 +23,7 @@ echo "$0 $@"  # Print the command line for logging
 
 # Dirs used
 langdir=data/lang_cs  #data/lang_bd
-graphdir=exp/tri3/graph_3g_cs_023pruned  #exp/tri3/graph_tg_bd_023pruned
+graphdir=exp/chain/tdnn_lstm_1e/graph_3g_cs_023pruned  #exp/tri3/graph_tg_bd_023pruned
 decodedir=${datadir}_segm_hires/decode_3g_cs_023pruned  #decode_tg_bd_023pruned
 rescoredir=${datadir}_segm_hires/decode_5g_cs  #decode_fg_bd_unpruned
 oldLMdir=data/lang_3g_cs_023pruned  #data/lang_tg_bd_023pruned
@@ -63,28 +63,37 @@ if [ $stage -le 5 ]; then
 fi
 
 if [ $stage -le 6 ]; then
+    rm ${datadir}_segm_hires/.error 2>/dev/null || true
 
-    echo "Decoding"
-    extra_left_context=40
+    frames_per_chunk=140,100,160
+    frames_per_chunk_primary=$(echo $frames_per_chunk | cut -d, -f1)
+    extra_left_context=50
     extra_right_context=0
-    frames_per_chunk=20
-    cp exp/nnet3/lstm_ld5/{final.mdl,final.ie.id,cmvn_opts} ${datadir}_segm_hires
-    #cp ${datadir}_segm_hires/ivectors_hires/final.ie.id ${datadir}_segm_hires
-    
+    cp exp/chain/tdnn_lstm_1e/{final.mdl,final.ie.id,cmvn_opts} ${datadir}_segm_hires
+
     steps/nnet3/decode.sh \
+	--acwt 1.0 --post-decode-acwt 10.0 \
 	--nj $num_jobs --cmd "$decode_cmd" \
 	--skip-scoring true \
 	--extra-left-context $extra_left_context  \
 	--extra-right-context $extra_right_context  \
-	--frames-per-chunk "$frames_per_chunk" \
+	--extra-left-context-initial 0 \
+	--extra-right-context-final 0 \
+	--frames-per-chunk "$frames_per_chunk_primary" \
 	--online-ivector-dir ${datadir}_segm_hires/ivectors_hires \
-	$graphdir ${datadir}_segm_hires ${decodedir} || exit 1; 
-
-    steps/lmrescore.sh --cmd "$decode_cmd" --skip-scoring true \
-          ${oldLMdir} ${newLMdir} ${datadir}_segm_hires \
-          ${decodedir} ${rescoredir} || exit 1;
+	$graphdir ${datadir}_segm_hires ${decodedir} || exit 1;
     
+    steps/lmrescore.sh --cmd "$decode_cmd" --skip-scoring true \
+	${oldLMdir} ${newLMdir} ${datadir}_segm_hires \
+	${decodedir} ${rescoredir} || exit 1;
+    
+    wait
+    if [ -f ${datadir}_segm_hires/.error ]; then
+	echo "$0: something went wrong in decoding"
+	exit 1
+    fi
 fi
+
 
 if [ $stage -le 7 ]; then
 

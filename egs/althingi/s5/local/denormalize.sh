@@ -12,9 +12,11 @@ ofile=$2
 
 dir=$(dirname $(readlink -f $ifile))
 
+echo "Abbreviate"
 # An implementation of thraxrewrite-tester that takes in a file and returns an output file where the option with the lowest weight is chosen
 thraxrewrite-fileio --far=local/abbreviate.far --rules=ABBREVIATE --noutput=1 --input_mode=utf8 --output_mode=utf8 $ifile ${dir}/thrax_out.tmp
 
+echo "Collapse acronyms pronounced as letters"
 # Collapse first the longest acronyms, in case they contain smaller ones.
 IFS=$'\n'
 for var in $(cat data/acronyms.txt | awk '{ print length, $0 }' | sort -nrs | cut -d" " -f2)
@@ -23,6 +25,7 @@ do
     sed -i 's/'$var1'/\U'$var' /g' ${dir}/thrax_out.tmp
 done
 
+echo "Rewrite"
 # 1) Change spaces to one between words.
 # 2-3) Rewrite law numbers
 # 4) Rewrite intervals
@@ -51,11 +54,15 @@ sed -e "s/[[:space:]]\+/ /g" ${dir}/thrax_out.tmp \
 set +u # otherwise I have problems with unbound variables
 cd ~/punctuator2
 source theano-env/bin/activate
+
+echo "Extract the numbers before punctuation"
 srun python ~/punctuator2/example/local/saving_numbers.py ${dir}/denorm1.tmp ${dir}/punctuator_in.tmp ${dir}/numlist.tmp
 
-srun --gres gpu:1 sh -c "cat ${dir}/punctuator_in.tmp | python ~/punctuator2/punctuator.py ~/punctuator2/Model_althingi_h256_lr0.02.pcl ${dir}/punctuator_out.tmp &>${dir}/punctuator.log" &
+echo "Punctuate"
+srun --gres gpu:1 sh -c "cat ${dir}/punctuator_in.tmp | python ~/punctuator2/punctuator.py ~/punctuator2/Model_althingi_CS_h256_lr0.02.pcl ${dir}/punctuator_out.tmp &>${dir}/punctuator.log"
 wait
 
+echo "Re-insert the numbers"
 if [ -s  ${dir}/numlist.tmp ]; then
     srun python ~/punctuator2/example/local/re-inserting-numbers.py ${dir}/punctuator_out.tmp ${dir}/numlist.tmp ${dir}/punctuator_out_wNumbers.tmp
 else
@@ -66,19 +73,20 @@ deactivate
 set -u
 cd ~/kaldi/egs/althingi/s5
 
-# Convert punctuation tokens back to actual punctuations
+echo "Convert punctuation tokens back to actual punctuations"
 sed -r 's/ \.PERIOD/./g; s/ \?QUESTIONMARK/?/g; s/ !EXCLAMATIONMARK/!/g; s/ ,COMMA/,/g; s/ :COLON/:/g' ${dir}/punctuator_out_wNumbers.tmp > ${dir}/punctuator_out_wPuncts.tmp
 
 # Some things I want to abbreviate if preceded or followed by a name (i.e. by an uppercase letter) f.ex. "doktor" and "þingmaður"
 sed -e 's/doktor \([A-ZÁÉÍÓÚÝÞÆÖ]\)/dr\. \1/g' ${dir}/punctuator_out_wPuncts.tmp > ${dir}/text.dr.tmp
 
-# Capitalize sentence beginnings and add periods to abbreviations.
+echo "Capitalize sentence beginnings and add periods to abbreviations."
 # Implement! Regex for capitalization and thrax for the periods.
 #sed -e 's/\([^0-9][\.:?!]\) \([a-záðéíóúýþæö]\)/\1 \u\2/g' ${dir}/text_wCap.tmp | sed -e 's/\([0-9]\{4\}[\.:?!]\) \([a-záðéíóúýþæö]\)/\1 \u\2/g' > ${dir}/denorm_BOScap.tmp
 sed -e 's/\([^0-9]\.\|\?\|:\|!\) \([a-záðéíóúýþæö]\)/\1 \u\2/g' ${dir}/text.dr.tmp | sed -e 's/\([0-9]\{4\}[\.:?!]\) \([a-záðéíóúýþæö]\)/\1 \u\2/g' > ${dir}/denorm_BOScap.tmp
 
 perl -pe 's:(\d+) km á klukkustund:$1 $2/klst.:g' ${dir}/denorm_BOScap.tmp | perl -pe 's:(\d+) kr á kíló[^m ]* ?:$1 $2\./kg :g' > ${dir}/denorm_measure.tmp
 
+echo "Insert periods into abbreviations"
 thraxrewrite-fileio --far=local/abbreviate.far --rules=INS_PERIODS --noutput=1 --input_mode=utf8 --output_mode=utf8 ${dir}/denorm_measure.tmp $ofile
 
 # Add rewriting rules for acronyms that are spelled out, e.g. o e c d -> OECD and e s b -> ESB

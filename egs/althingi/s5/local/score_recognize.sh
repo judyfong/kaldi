@@ -1,0 +1,119 @@
+#!/bin/bash
+# Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey, Yenda Trmal)
+# Apache 2.0
+
+[ -f ./path.sh ] && . ./path.sh
+
+# begin configuration section.
+cmd=run.pl
+stage=0
+stats=true
+beam=6
+word_ins_penalty=0.0,0.5,1.0
+min_lmwt=8
+max_lmwt=20 #20
+iter=final
+#end configuration section.
+
+echo "$0 $@"  # Print the command line for logging
+[ -f ./path.sh ] && . ./path.sh
+. parse_options.sh || exit 1;
+
+if [ $# -ne 3 ]; then
+    echo "Usage: local/score.sh [--cmd (run.pl|queue.pl...)] <speechname> <lang-dir|graph-dir> <decode-dir>"
+    echo " Options:"
+    echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
+    echo "    --stage (0|1|2)                 # start scoring script from part-way through."
+    echo "    --min_lmwt <int>                # minumum LM-weight for lattice rescoring "
+    echo "    --max_lmwt <int>                # maximum LM-weight for lattice rescoring "
+    exit 1;
+fi
+
+speechname=$1
+lang_or_graph=$2
+dir=$3
+
+symtab=$lang_or_graph/words.txt
+
+for f in $symtab $dir/lat.1.gz data/all/text_CaseSens.txt; do
+    [ ! -f $f ] && echo "score_recognize.sh: no such file $f" && exit 1;
+done
+
+echo "$0: scoring with word insertion penalty=$word_ins_penalty"
+
+mkdir -p $dir/scoring_kaldi
+grep $speechname data/all/text_CaseSens.txt | cut -d" " -f2- | sed 's/.*/'$speechname' &/' > $dir/scoring_kaldi/test_filt.txt || exit 1
+
+if [ $stage -le 0 ]; then
+
+    for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
+	mkdir -p $dir/scoring_kaldi/penalty_$wip/log
+
+	$cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring_kaldi/penalty_$wip/log/best_path.LMWT.log \
+             lattice-scale --inv-acoustic-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
+             lattice-add-penalty --word-ins-penalty=$wip ark:- ark:- \| \
+             lattice-best-path --word-symbol-table=$symtab ark:- ark,t:- \| \
+             utils/int2sym.pl -f 2- $symtab \| cat '>' $dir/scoring_kaldi/penalty_$wip/LMWT.txt || exit 1;
+
+	for lmwt in $(seq $min_lmwt $max_lmwt); do
+            perl -pe 's/[^ ]+rad[^ ]+//g' $dir/scoring_kaldi/penalty_$wip/$lmwt.txt | tr "\n" " " \
+		| sed -e 's/[[:space:]]\+/ /g' | sed 's/.*/'$speechname' &/' \
+						     > $dir/scoring_kaldi/penalty_$wip/$lmwt.tmp \
+		&& mv $dir/scoring_kaldi/penalty_$wip/$lmwt.tmp $dir/scoring_kaldi/penalty_$wip/$lmwt.txt
+	done
+
+	$cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring_kaldi/penalty_$wip/log/score.LMWT.log \
+	     cat $dir/scoring_kaldi/penalty_$wip/LMWT.txt \| \
+	     compute-wer --text --mode=present \
+	     ark:$dir/scoring_kaldi/test_filt.txt  ark,p:- ">&" $dir/wer_LMWT_$wip || exit 1;
+
+    done
+fi
+
+if [ $stage -le 1 ]; then
+
+    for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
+	for lmwt in $(seq $min_lmwt $max_lmwt); do
+	    # adding /dev/null to the command list below forces grep to output the filename
+	    grep WER $dir/wer_${lmwt}_${wip} /dev/null
+	done
+    done | utils/best_wer.sh  >& $dir/scoring_kaldi/best_wer || exit 1
+
+    best_wer_file=$(awk '{print $NF}' $dir/scoring_kaldi/best_wer)
+    best_wip=$(echo $best_wer_file | awk -F_ '{print $NF}')
+    best_lmwt=$(echo $best_wer_file | awk -F_ '{N=NF-1; print $N}')
+
+    if [ -z "$best_lmwt" ]; then
+	echo "$0: we could not get the details of the best WER from the file $dir/wer_*.  Probably something went wrong."
+	exit 1;
+    fi
+
+    if $stats; then
+	mkdir -p $dir/scoring_kaldi/wer_details
+	echo $best_lmwt > $dir/scoring_kaldi/wer_details/lmwt # record best language model weight
+	echo $best_wip > $dir/scoring_kaldi/wer_details/wip # record best word insertion penalty
+
+	$cmd $dir/scoring_kaldi/log/stats1.log \
+	     cat $dir/scoring_kaldi/penalty_$best_wip/$best_lmwt.txt \| \
+	     align-text --special-symbol="'***'" ark:$dir/scoring_kaldi/test_filt.txt ark:- ark,t:- \|  \
+	     utils/scoring/wer_per_utt_details.pl --special-symbol "'***'" \| tee $dir/scoring_kaldi/wer_details/per_utt || exit 1;
+
+	$cmd $dir/scoring_kaldi/log/stats2.log \
+	     cat $dir/scoring_kaldi/wer_details/per_utt \| \
+	     utils/scoring/wer_ops_details.pl --special-symbol "'***'" \| \
+	     sort -b -i -k 1,1 -k 4,4rn -k 2,2 -k 3,3 \> $dir/scoring_kaldi/wer_details/ops || exit 1;
+
+	$cmd $dir/scoring_kaldi/log/wer_bootci.log \
+	     compute-wer-bootci \
+             ark:$dir/scoring_kaldi/test_filt.txt ark:$dir/scoring_kaldi/penalty_$best_wip/$best_lmwt.txt \
+             '>' $dir/scoring_kaldi/wer_details/wer_bootci || exit 1;
+
+    fi
+fi
+
+# If we got here, the scoring was successful.
+# As a  small aid to prevent confusion, we remove all wer_{?,??} files;
+# these originate from the previous version of the scoring files
+rm $dir/wer_{?,??} 2>/dev/null
+
+exit 0;

@@ -102,12 +102,12 @@ if [ $stage -le 7 ]; then
     perl -pe 's/[^ ]+rad[^ ]+//g' ${rescoredir}/transcript.txt | tr "\n" " " | sed -e "s/[[:space:]]\+/ /g" > ${rescoredir}/transcript_noID.txt
 fi
 
-if [ $stage -le 8 ]; then
+# if [ $stage -le 8 ]; then
 
-    echo "Denormalize the transcript"
-    local/denormalize.sh \
-        ${rescoredir}/transcript_noID.txt \
-        ${rescoredir}/transcript_denormalized.txt
-    rm ${rescoredir}/*.tmp
+#     echo "Denormalize the transcript"
+#     local/denormalize.sh \
+#         ${rescoredir}/transcript_noID.txt \
+#         ${rescoredir}/transcript_denormalized.txt
+#     rm ${rescoredir}/*.tmp
 
-fi
+# fi

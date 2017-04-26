@@ -4,7 +4,7 @@
 # text and audio data from the parliament. The text data
 # consists of two sets of files, the intermediate text
 # and the final text
-# More training examples in: kaldi/egs/{rm,wsj}/s5/run.sh
+# More training examples in: kaldi/egs/wsj/s5/run.sh
 #
 # 2016 Inga
 #
@@ -755,6 +755,7 @@ if [ $stage -le 16 ]; then
 	exp/tri3_cleaned/graph_tg_bd  \
 	data/eval  \
 	exp/tri3_cleaned/decode_tg_bd_eval
+
 fi
 
 # NNET

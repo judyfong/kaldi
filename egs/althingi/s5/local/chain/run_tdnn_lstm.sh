@@ -34,7 +34,7 @@ set -e
 stage=0
 train_stage=-10
 get_egs_stage=-10
-speed_perturb=false #true
+speed_perturb=true
 dir=exp/chain/tdnn_lstm_1e # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 
@@ -87,27 +87,27 @@ fi
 
 dir=${dir}$suffix
 train_set=train$suffix
-ali_dir=exp/tri3_ali_bd$suffix
-treedir=exp/chain/tri4_tree$suffix # NOTE!
+ali_dir=exp/tri4_cs_ali$suffix
+treedir=exp/chain/tri5_tree$suffix # NOTE!
 lang=data/lang_chain
 
 
-# # if we are using the speed-perturbed data we need to generate
-# # alignments for it.
-# # Original
-# local/nnet3/run_ivector_common.sh --stage $stage \
-#   --speed-perturb $speed_perturb \
-#   --generate-alignments $speed_perturb || exit 1;
+# if we are using the speed-perturbed data we need to generate
+# alignments for it.
+# Original
+local/nnet3/run_ivector_common.sh --stage $stage \
+  --speed-perturb $speed_perturb \
+  --generate-alignments $speed_perturb || exit 1;
 # From older script:
-local/nnet3/run_ivector_common_noSP.sh --stage $stage || exit 1;
+#local/nnet3/run_ivector_common_noSP.sh --stage $stage || exit 1;
 
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the CTC training more freedom).
   # use the same num-jobs as the alignments
   nj=$(cat ${ali_dir}/num_jobs) || exit 1;
   steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/$train_set \
-    data/lang_bd exp/tri3 exp/tri3_lats$suffix
-  rm exp/tri3_lats$suffix/fsts.*.gz # save space
+    data/lang_cs exp/tri4_cs exp/tri4_cs_lats$suffix
+  rm exp/tri4_cs_lats$suffix/fsts.*.gz # save space
 fi
 
 
@@ -116,7 +116,7 @@ if [ $stage -le 10 ]; then
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
   rm -rf $lang
-  cp -r data/lang_bd $lang
+  cp -r data/lang_cs $lang
   silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
   nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
   # Use our special topology... note that later on may have to tune this
@@ -219,7 +219,7 @@ if [ $stage -le 13 ]; then
     --cleanup.remove-egs $remove_egs \
     --feat-dir data/${train_set}_hires \
     --tree-dir $treedir \
-    --lat-dir exp/tri3_lats$suffix \
+    --lat-dir exp/tri4_cs_lats$suffix \
     --dir $dir  || exit 1;
 fi
 
@@ -227,11 +227,11 @@ if [ $stage -le 14 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_tg_bd_023pruned $dir $dir/graph_tg_bd_023pruned
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_3g_cs_023pruned $dir $dir/graph_3g_cs_023pruned
 fi
 
 
-graph_dir=$dir/graph_tg_bd_023pruned
+graph_dir=$dir/graph_3g_cs_023pruned
 iter_opts=
 if [ ! -z $decode_iter ]; then
   iter_opts=" --iter $decode_iter "
@@ -251,16 +251,11 @@ if [ $stage -le 15 ]; then
           --extra-right-context-final 0 \
           --frames-per-chunk "$frames_per_chunk_primary" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
-         $graph_dir data/${decode_set}_hires_trimmed2 \
-         $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_tg_bd_023pruned || exit 1;
-      steps/lmrescore.sh --cmd "$decode_cmd" \
-          data/lang_tg_bd_023pruned data/lang_fg_bd_unpruned data/${decode_set}_hires_trimmed2 \
-          $dir/decode_${decode_set}_tg_bd_023pruned $dir/decode_${decode_set}_fg_bd_unpruned || exit 1;
-      # if $has_fisher; then
-      #     steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-      #       data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
-      #       $dir/decode_${decode_set}_sw1_{tg,fsh_fg} || exit 1;
-      # fi
+         $graph_dir data/${decode_set}_hires_trimmed \
+         $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_3g_cs_023pruned || exit 1;
+      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+          data/lang_3g_cs_023pruned data/lang_5g_cs_const data/${decode_set}_hires_trimmed \
+          $dir/decode_${decode_set}_3g_cs_023pruned $dir/decode_${decode_set}_5g_cs || exit 1;
       ) &
   done
   wait

@@ -12,7 +12,7 @@ reverse=false
 stats=true
 beam=6
 word_ins_penalty=0.0,0.5,1.0
-min_lmwt=9
+min_lmwt=8
 max_lmwt=20
 iter=final
 #end configuration section.

@@ -88,7 +88,7 @@ if [ $stage -le 11 ]; then
   # Get the alignments as lattices (gives the CTC training more freedom).
   # use the same num-jobs as the alignments
   nj=$(cat ${ali_dir}/num_jobs) || exit 1;
-  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/$train_set \
+  steps/align_fmllr_lats.sh --nj $nj --cmd "$decode_cmd --time 0-04" data/$train_set \
     data/lang_cs exp/tri4_cs exp/tri4_cs_lats$suffix
   rm exp/tri4_cs_lats$suffix/fsts.*.gz # save space
 fi

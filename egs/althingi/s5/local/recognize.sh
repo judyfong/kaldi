@@ -23,11 +23,11 @@ echo "$0 $@"  # Print the command line for logging
 
 # Dirs used
 langdir=data/lang_cs  #data/lang_bd
-graphdir=exp/tri3/graph_3g_cs_023pruned  #exp/tri3/graph_tg_bd_023pruned
+graphdir=exp/tri4_cs/graph_3g_cs_023pruned #exp/tri3/graph_3g_cs_023pruned  #exp/tri3/graph_tg_bd_023pruned
 decodedir=${datadir}_segm_hires/decode_3g_cs_023pruned  #decode_tg_bd_023pruned
 rescoredir=${datadir}_segm_hires/decode_5g_cs  #decode_fg_bd_unpruned
 oldLMdir=data/lang_3g_cs_023pruned  #data/lang_tg_bd_023pruned
-newLMdir=data/lang_5g_cs  #data/lang_fg_bd_unpruned
+newLMdir=data/lang_5g_cs_const  #data/lang_fg_bd_unpruned
 
 if [ $stage -le 0 ]; then
 
@@ -80,7 +80,7 @@ if [ $stage -le 6 ]; then
 	--online-ivector-dir ${datadir}_segm_hires/ivectors_hires \
 	$graphdir ${datadir}_segm_hires ${decodedir} || exit 1; 
 
-    steps/lmrescore.sh --cmd "$decode_cmd" --skip-scoring true \
+    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" --skip-scoring true \
           ${oldLMdir} ${newLMdir} ${datadir}_segm_hires \
           ${decodedir} ${rescoredir} || exit 1;
     
@@ -111,3 +111,13 @@ fi
 #     rm ${rescoredir}/*.tmp
 
 # fi
+
+if $score ; then
+
+    echo "Estimate the WER"
+    # NOTE! Correct for the mismatch in the beginning and end of recordings.
+    local/score_recognize.sh --cmd "$decode_cmd" $speechname ${langdir} ${rescoredir} &
+
+    #align-text ark,t:"grep $speechname data/all/text_CaseSens.txt | cut -d" " -f2- | sed 's/.*/"$speechname" &/' |" ark,t:"sed 's/.*/"$speechname" &/' ${rescoredir}/transcript_noID.txt |" ark,t:${rescoredir}/ref_aligned.txt
+    
+fi

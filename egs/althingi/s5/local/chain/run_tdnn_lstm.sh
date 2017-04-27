@@ -4,30 +4,6 @@
 # trying the change of xent_regularize from 0.025 (which was an
 # unusual value) to the more usual 0.01.
 
-# There seems to be no consistent difference in WER.  Inconclusive.
-# However I may keep 0.01 just for consistency with other setups.
-# local/chain/compare_wer_general.sh --looped tdnn_lstm_1d_sp tdnn_lstm_1e_sp
-# System                tdnn_lstm_1d_sp tdnn_lstm_1e_sp
-# WER on train_dev(tg)      12.90     12.74
-#           [looped:]       13.01     12.93
-# WER on train_dev(fg)      11.90     11.70
-#           [looped:]       12.13     12.09
-# WER on eval2000(tg)        15.7      15.7
-#           [looped:]        15.7      15.9
-# WER on eval2000(fg)        14.2      14.3
-#           [looped:]        14.4      14.6
-# Final train prob         -0.064    -0.066
-# Final valid prob         -0.088    -0.087
-# Final train prob (xent)        -0.836    -0.931
-# Final valid prob (xent)       -0.9631   -1.0279
-
-# Online decoding
-# System                tdnn_lstm_1e_sp_online tdnn_lstm_1e_sp
-# WER on train_dev(tg)      12.93     12.74
-# WER on train_dev(fg)      12.05     11.87
-# WER on eval2000(tg)        15.5      15.4
-# WER on eval2000(fg)        14.0      13.8
-
 set -e
 
 # configs for 'chain'
@@ -56,7 +32,7 @@ extra_right_context=0
 # we'll put extra-left-context-initial=0 and extra-right-context-final=0
 # directly without variables.
 
-remove_egs=false
+remove_egs=true #false
 common_egs_dir=
 
 test_online_decoding=false  # if true, it will run the last decoding stage.
@@ -86,22 +62,29 @@ if [ "$speed_perturb" == "true" ]; then
 fi
 
 dir=${dir}$suffix
-train_set=train$suffix
-ali_dir=exp/tri4_cs_ali$suffix
-treedir=exp/chain/tri5_tree$suffix # NOTE!
-lang=data/lang_chain
+train_set=train_cs$suffix
+ali_dir=exp/tri4_cs_ali_${train_set}_comb #exp/tri4_cs_ali$suffix
+treedir=exp/chain/tri4_tree$suffix # NOTE!
+lang=data/lang_chain_cs
+
+train_data_dir=data/${train_set}_hires_comb
+train_ivector_dir=exp/chain/ivectors_${train_set}_hires_comb
 
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
-# Original
-local/nnet3/run_ivector_common.sh --stage $stage \
-  --speed-perturb $speed_perturb \
-  --generate-alignments $speed_perturb || exit 1;
+# # Original
+# local/nnet3/run_ivector_common.sh --stage $stage \
+#   --speed-perturb $speed_perturb \
+#   --generate-alignments $speed_perturb || exit 1;
+# From tdnn script:
+local/chain/run_ivector_common.sh --stage $stage \
+                                  --train-set train_cs \
+                                  --gmm tri4_cs || exit 1;
 # From older script:
 #local/nnet3/run_ivector_common_noSP.sh --stage $stage || exit 1;
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 11 ]; then
   # Get the alignments as lattices (gives the CTC training more freedom).
   # use the same num-jobs as the alignments
   nj=$(cat ${ali_dir}/num_jobs) || exit 1;
@@ -111,7 +94,7 @@ if [ $stage -le 9 ]; then
 fi
 
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 12 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
@@ -124,14 +107,14 @@ if [ $stage -le 10 ]; then
   steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
 fi
 
-if [ $stage -le 11 ]; then
+if [ $stage -le 13 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
       --cmd "$train_cmd" 7000 data/$train_set $lang $ali_dir $treedir
 fi
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 14 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
@@ -182,15 +165,11 @@ EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
 
-if [ $stage -le 13 ]; then
-  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
-    utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
-  fi
+if [ $stage -le 15 ]; then
 
   steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$decode_cmd" \
-    --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
+    --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
@@ -217,13 +196,13 @@ if [ $stage -le 13 ]; then
     --egs.chunk-right-context-final 0 \
     --egs.dir "$common_egs_dir" \
     --cleanup.remove-egs $remove_egs \
-    --feat-dir data/${train_set}_hires \
+    --feat-dir $train_data_dir \
     --tree-dir $treedir \
     --lat-dir exp/tri4_cs_lats$suffix \
     --dir $dir  || exit 1;
 fi
 
-if [ $stage -le 14 ]; then
+if [ $stage -le 16 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
@@ -237,24 +216,24 @@ if [ ! -z $decode_iter ]; then
   iter_opts=" --iter $decode_iter "
 fi
 
-if [ $stage -le 15 ]; then
+if [ $stage -le 17 ]; then
   rm $dir/.error 2>/dev/null || true
-  for decode_set in dev eval; do
+  for decode_set in dev_cs eval_cs; do
       (
 	num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
         steps/nnet3/decode.sh --num-threads 4 \
           --acwt 1.0 --post-decode-acwt 10.0 \
-          --nj $num_jobs --cmd "$decode_cmd" $iter_opts \
+          --nj $num_jobs --cmd "$decode_cmd --time 0-04" $iter_opts \
           --extra-left-context $extra_left_context  \
           --extra-right-context $extra_right_context  \
           --extra-left-context-initial 0 \
           --extra-right-context-final 0 \
           --frames-per-chunk "$frames_per_chunk_primary" \
-          --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
-         $graph_dir data/${decode_set}_hires_trimmed \
+          --online-ivector-dir exp/chain/ivectors_${decode_set}_hires \
+         $graph_dir data/${decode_set}_hires \
          $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_3g_cs_023pruned || exit 1;
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-          data/lang_3g_cs_023pruned data/lang_5g_cs_const data/${decode_set}_hires_trimmed \
+          data/lang_3g_cs_023pruned data/lang_5g_cs_const data/${decode_set}_hires \
           $dir/decode_${decode_set}_3g_cs_023pruned $dir/decode_${decode_set}_5g_cs || exit 1;
       ) &
   done
@@ -265,7 +244,7 @@ if [ $stage -le 15 ]; then
   fi
 fi
 
-# if [ $stage -le 16 ]; then
+# if [ $stage -le 18 ]; then
 #   # looped decoding.  Note: this does not make sense for BLSTMs or other
 #   # backward-recurrent setups, and for TDNNs and other non-recurrent there is no
 #   # point doing it because it would give identical results to regular decoding.
@@ -293,7 +272,7 @@ fi
 # fi
 
 
-# if $test_online_decoding && [ $stage -le 17 ]; then
+# if $test_online_decoding && [ $stage -le 19 ]; then
 #   # note: if the features change (e.g. you add pitch features), you will have to
 #   # change the options of the following command line.
 #   steps/online/nnet3/prepare_online_decoding.sh \

@@ -15,7 +15,7 @@ BINFILES = fstdeterminizestar  \
            fstmakecontextsyms fstaddsubsequentialloop fstaddselfloops  \
            fstrmepslocal fstcomposecontext fsttablecompose fstrand fstfactor \
            fstdeterminizelog fstphicompose fstrhocompose fstpropfinal fstcopy \
-	   fstpushspecial fsts-to-transcripts fststringcompile fsttablefilter \
+           fstpushspecial fsts-to-transcripts fststringcompile fsttablefilter \
            expand-numbers fsts-project fsts-union fsts-scale fsts-difference
 
 # What newest Kaldi version wants instead of the last 2 lines above:

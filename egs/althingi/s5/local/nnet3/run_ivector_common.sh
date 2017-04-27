@@ -16,7 +16,7 @@ train_set=train    # you might set this to e.g. train_960
 gmm=tri3         # This specifies a GMM-dir from the features of the type you're training the system on;
                          # it should contain alignments for 'train_set'.
 num_threads_ubm=24 # Lowers from 32
-nnet3_affix=_sp     # affix for exp/nnet3 directory to put iVector stuff in, so it
+nnet3_affix=     # affix for exp/nnet3 directory to put iVector stuff in, so it
                          # becomes exp/nnet3_cleaned or whatever.
 
 . ./cmd.sh
@@ -189,7 +189,7 @@ fi
 if [ $stage -le 10 ]; then
   echo "$0: extracting iVectors for dev and test data"
   for data in dev eval; do
-    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 20 \
+    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
       data/${data}_hires exp/nnet3${nnet3_affix}/extractor \
       exp/nnet3${nnet3_affix}/ivectors_${data}_hires || exit 1;
   done

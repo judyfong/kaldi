@@ -187,10 +187,10 @@ sequitur: sequitur_compiled
 sequitur_compiled:
 	extras/install_sequitur.sh
 
-# KenLM is used for language modeling
-.PHONY: kenlm
+# # KenLM is used for language modeling
+# .PHONY: kenlm
 
-kenlm:
-	wget -O - http://kheafield.com/code/kenlm.tar.gz | tar xz && \
-	cd kenlm && ./bjam -j4
+# kenlm:
+# 	wget -O - http://kheafield.com/code/kenlm.tar.gz | tar xz && \
+# 	mkdir kenlm/build && cd kenlm/build && cmake .. && make -j2
 

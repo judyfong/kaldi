@@ -779,6 +779,9 @@ if [ $stage -le 28 ]; then
 
     echo "Run the swbd chain tdnn_lstm recipe without sp"
     local/chain/run_tdnn_lstm.sh --stage 12 --speed-perturb false >>tdnn_lstm_March31.out 2>&1 &
+
+    echo "Run the swbd chain tdnn_lstm recipe with sp"
+    local/chain/run_tdnn_lstm.sh --stage 10 >>exp/chain/tdnn_lstm_1e_sp/tdnn_lstm_April26.out 2>&1 &
 fi
 
 # steps/make_mfcc.sh \
@@ -816,5 +819,5 @@ fi
 #     data/eval  \
 #     exp/tri3/decode_bg_bd_eval_cleaned &
 
-# Case sensitive graph:
-utils/slurm.pl --mem 4G mkgraph_cs.log utils/mkgraph.sh --self-loop-scale 1.0 data/lang_3g_cs_023pruned exp/chain/tdnn_lstm_1e exp/chain/tdnn_lstm_1e/graph_3g_cs_023pruned &
+# Case sensitive graph for chain model:
+#utils/slurm.pl --mem 4G mkgraph_cs.log utils/mkgraph.sh --self-loop-scale 1.0 data/lang_3g_cs_023pruned exp/chain/tdnn_lstm_1e exp/chain/tdnn_lstm_1e/graph_3g_cs_023pruned &

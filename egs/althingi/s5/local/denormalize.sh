@@ -59,7 +59,7 @@ echo "Extract the numbers before punctuation"
 srun python ~/punctuator2/example/local/saving_numbers.py ${dir}/denorm1.tmp ${dir}/punctuator_in.tmp ${dir}/numlist.tmp
 
 echo "Punctuate"
-srun --gres gpu:1 sh -c "cat ${dir}/punctuator_in.tmp | python ~/punctuator2/punctuator.py ~/punctuator2/Model_althingi_CS_h256_lr0.02.pcl ${dir}/punctuator_out.tmp &>${dir}/punctuator.log"
+srun --gres gpu:1 sh -c "cat ${dir}/punctuator_in.tmp | THEANO_FLAGS='device=cpu' python ~/punctuator2/punctuator.py ~/punctuator2/Model_althingi_CS_h256_lr0.02.pcl ${dir}/punctuator_out.tmp &>${dir}/punctuator.log"
 wait
 
 echo "Re-insert the numbers"

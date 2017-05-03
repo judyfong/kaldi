@@ -80,8 +80,8 @@ if [ $stage -le 0 ]; then
             done
 	    idx2=$[($j-2)/3+2+1-$idx1]
 	    cut -d" " -f1-$idx2 $dir/scoring_kaldi/penalty_$wip/${lmwt}_trimmed.tmp > $dir/scoring_kaldi/penalty_$wip/${lmwt}_trimmed.txt
+	    rm $dir/scoring_kaldi/penalty_$wip/${lmwt}_trimmed.tmp
 	done
-	rm $dir/scoring_kaldi/penalty_$wip/${lmwt}_trimmed.tmp
 	
 	$cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring_kaldi/penalty_$wip/log/score.LMWT.log \
 	     cat $dir/scoring_kaldi/penalty_$wip/LMWT_trimmed.txt \| \

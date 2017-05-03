@@ -57,13 +57,34 @@ if [ $stage -le 0 ]; then
 
 	for lmwt in $(seq $min_lmwt $max_lmwt); do
             perl -pe 's/[^ ]+rad[^ ]+//g' $dir/scoring_kaldi/penalty_$wip/$lmwt.txt | tr "\n" " " \
-		| sed -e 's/[[:space:]]\+/ /g' | sed 's/.*/'$speechname' &/' \
+		| sed -e 's/[[:space:]]\+/ /g' | sed 's/.*/'$speechname'&/' \
 						     > $dir/scoring_kaldi/penalty_$wip/$lmwt.tmp \
 		&& mv $dir/scoring_kaldi/penalty_$wip/$lmwt.tmp $dir/scoring_kaldi/penalty_$wip/$lmwt.txt
-	done
 
+	    # I need to remove the text spoken by the speaker of the house if I'm to compare with the reference texts
+	    align-text --special-symbol="'***'" ark:$dir/scoring_kaldi/test_filt.txt ark:$dir/scoring_kaldi/penalty_$wip/$lmwt.txt ark,t:$dir/scoring_kaldi/penalty_$wip/${lmwt}_aligned.txt &>/dev/null
+            i=2
+            refword=$(cut -d" " -f$i $dir/scoring_kaldi/penalty_$wip/${lmwt}_aligned.txt)
+            while [ "$refword" = "'***'" ]; do
+                i=$[$i+3]
+                refword=$(cut -d" " -f$i $dir/scoring_kaldi/penalty_$wip/${lmwt}_aligned.txt)
+            done
+	    idx1=$[($i-2)/3+2]
+	    cut -d" " -f1,$idx1- $dir/scoring_kaldi/penalty_$wip/$lmwt.txt > $dir/scoring_kaldi/penalty_$wip/${lmwt}_trimmed.tmp
+
+            j=$[$(wc -w $dir/scoring_kaldi/penalty_$wip/${lmwt}_aligned.txt | cut -d" " -f1)-1]
+	    refword=$(cut -d" " -f$j $dir/scoring_kaldi/penalty_$wip/${lmwt}_aligned.txt)
+            while [ "$refword" = "'***'" ]; do
+                j=$[$j-3]
+                refword=$(cut -d" " -f$j $dir/scoring_kaldi/penalty_$wip/${lmwt}_aligned.txt)
+            done
+	    idx2=$[($j-2)/3+2+1-$idx1]
+	    cut -d" " -f1-$idx2 $dir/scoring_kaldi/penalty_$wip/${lmwt}_trimmed.tmp > $dir/scoring_kaldi/penalty_$wip/${lmwt}_trimmed.txt
+	done
+	rm $dir/scoring_kaldi/penalty_$wip/${lmwt}_trimmed.tmp
+	
 	$cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring_kaldi/penalty_$wip/log/score.LMWT.log \
-	     cat $dir/scoring_kaldi/penalty_$wip/LMWT.txt \| \
+	     cat $dir/scoring_kaldi/penalty_$wip/LMWT_trimmed.txt \| \
 	     compute-wer --text --mode=present \
 	     ark:$dir/scoring_kaldi/test_filt.txt  ark,p:- ">&" $dir/wer_LMWT_$wip || exit 1;
 
@@ -94,7 +115,7 @@ if [ $stage -le 1 ]; then
 	echo $best_wip > $dir/scoring_kaldi/wer_details/wip # record best word insertion penalty
 
 	$cmd $dir/scoring_kaldi/log/stats1.log \
-	     cat $dir/scoring_kaldi/penalty_$best_wip/$best_lmwt.txt \| \
+	     cat $dir/scoring_kaldi/penalty_$best_wip/${best_lmwt}_trimmed.txt \| \
 	     align-text --special-symbol="'***'" ark:$dir/scoring_kaldi/test_filt.txt ark:- ark,t:- \|  \
 	     utils/scoring/wer_per_utt_details.pl --special-symbol "'***'" \| tee $dir/scoring_kaldi/wer_details/per_utt || exit 1;
 
@@ -105,7 +126,7 @@ if [ $stage -le 1 ]; then
 
 	$cmd $dir/scoring_kaldi/log/wer_bootci.log \
 	     compute-wer-bootci \
-             ark:$dir/scoring_kaldi/test_filt.txt ark:$dir/scoring_kaldi/penalty_$best_wip/$best_lmwt.txt \
+             ark:$dir/scoring_kaldi/test_filt.txt ark:$dir/scoring_kaldi/penalty_$best_wip/${best_lmwt}_trimmed.txt \
              '>' $dir/scoring_kaldi/wer_details/wer_bootci || exit 1;
 
     fi

@@ -4,7 +4,7 @@
 
 # Begin configuration section.
 min_seg_length=5
-min_sil_length=1.0 # 0.5
+min_sil_length=0.8 # 0.5
 # End configuration section.
 
 echo "$0 $@"

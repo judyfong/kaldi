@@ -28,7 +28,7 @@ delspace = c.space* : "".utf8;
 insspace = "".utf8 : " ".utf8;
 
 unitnames = n.units;
-numbernames_10plus_and_0 = n.NUMBERNAMES_10plus_and_0;
+numbernames_10plus_and_0 = n.NUMBERNAMES_10_to_999999_and_0; #n.NUMBERNAMES_10plus_and_0;
 ordinalnames = o.ORDINALNAMES2; # Does not expand 1. and 2.
 ordinal = Invert[ordinalnames];
 #namesnumber = f.NAMESNUMBER2;

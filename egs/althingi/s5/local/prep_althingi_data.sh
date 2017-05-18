@@ -94,29 +94,6 @@ fout.close()
     done
     unset xmldir
 
-    ## The following cleans the text of all xml-tags. But I can't use it because
-    ## there is so often no space around the tags which leaves the words around
-    ## chrushed together
-    # python -c "
-    # import xml.etree.ElementTree as ET
-    # import glob
-    # import os 
-    # xmlpaths = glob.glob(os.path.join(os.environ['xmldir'],'*.xml'))
-    # fout = open(os.path.join(os.environ['outdir'],'text_orig.txt'),'w')
-    # for file in xmlpaths:
-    #     file_base = os.path.splitext(os.path.basename(file))[0]  
-    #     tree = ET.parse(file)
-    #     root = tree.getroot()
-    #     ntextlines = len(root[1])
-    #     textlist = [file_base]
-    #     for line in xrange(ntextlines):
-    #         textlist.append(ET.tostring(root[1][line], encoding='utf-8', method='text'))
-
-    #     text = ' '.join(textlist).strip().replace('\n', ' ')
-    #     print >>fout, text
-
-    # fout.close()
-    # "
 fi
 
 if [ $stage -le 2 ]; then
@@ -146,8 +123,6 @@ if [ $stage -le 2 ]; then
     perl -pe 's/<!--[^>]*?-->|<truflun>[^<]*?<\/truflun>|<atburður>[^<]*?<\/atburður>|<málsheiti>[^<]*?<\/málsheiti>|\([^\(\)<>]*?\)|<[^>]*?>/ /g' ${outdir}/text_orig_endanlegt.txt | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noXML_endanlegt.txt
 
 fi
-
-#perl -pe 's/<!--.*?-->|<[^>]*?>[^<]*?http[^<]*?<\/.*?[^>]>|<[^>]*?>:[^<]*?<\/.*?[^>]>|<ræðutexti>|<\/ræðutexti>|<frammíkall.*?>.*?<\/frammíkall>|<frammíkall\/>|<truflun>.*?<\/truflun>|<truflun\/>|<forseti.*?>|<\/forseti>|<línubil\/>|<mgr jöfnun=.*?>|<mgr\/>|<atburður>.*?<\/atburður>|<vísa>|<\/vísa>|<skáletrað>|<\/skáletrað>|<skáletrað\/>|<feitletrað>|<\/feitletrað>|<feitletrað\/>//g' ${outdir}/text_orig_${n}.txt | perl -pe 's/<mgr>|<\/mgr>|<lína>|<\/lína>|<brot.*?>|<\/brot>|<erindi>|<\/erindi>|<bjalla\/>/ /g' > ${outdir}/text_noXML_${n}.txt
 
 if [ $stage -le 3 ]; then
     
@@ -203,7 +178,7 @@ if [ $stage -le 4 ]; then
     # 10) Rewrite en dash (x96) and regular dash to " til ", if sandwitched between words or numbers,
     # 11) Rewrite decimals, f.ex "0,045" to "0 komma 0 45" and "0,00345" to "0 komma 0 0 3 4 5" and remove space before a "%",
     # 12 Rewrite vulgar fractions
-    # 13) Remove "," when not followed by a number, turn words containing non-Icelandic characters or punctuations that have not yet been cleared away to <unk>, change spaces to one between words
+    # 13) Remove "," when not followed by a number, remove punctuations that won't be cleared away in the following steps, change spaces to one between words
     for n in bb endanlegt; do
 	join -j 1 <(sort -k1 ${outdir}/filename_uttID.txt) <(sort -k1 ${outdir}/text_noRoman_${n}.txt) | cut -d" " -f2- \
 	    | perl -pe 's/\[Þingmenn risu úr sætum.*?]/ /g' \
@@ -211,15 +186,17 @@ if [ $stage -le 4 ]; then
 	    | perl -pe 's/([0-9]):([0-9][0-9])/$1 $2/g' | perl -pe 's/&amp;/og/g' | perl -pe 's/\?|:|;| | \./ /g' \
 	    | perl -pe 's/\b([0-9])\/([0-9]{1,2})\b/$1 $2\./g' \
 	    | perl -pe 's/\/?([0-9]+)\/([0-9]+)\/?/ $1 $2 /g' \
-	    | sed -e 's/\([a-záðéíóúýþæö0-9][\.\/%]\)\([A-ZÁÐÉÍÓÚÝÞÆÖ\/]\)/\1 \2/g' \
+	    | sed -e 's/\([^ A-ZÁÐÉÍÓÚÝÞÆÖ]\)\([A-ZÁÐÉÍÓÚÝÞÆÖ]\)/\1 \2/g' | perl -pe 's/([^0-9 ][^0-9 ,–])([0-9])/$1 $2/g' \
 	    | perl -pe 's/\.(is|net|com)(\W)/ punktur $1$2/g' | perl -pe 's/([0-9]\.)([a-záðéíóúýþæö])/$1 $2/g' | perl -pe 's/([a-záðéíóúýþæö]\.)([0-9])/$1 $2/g'\
 	    | sed -e 's/ \+\([0-9]\.\) \+\([A-ZÁÐÉÍÓÚÝÞÆÖ]\)/ \1 \L\2/g' \
 	    | perl -pe 's/([^ ])–([^ ])/$1 til $2/g' | perl -pe 's/(\d)tilstr\w*?\.?(\d)/$1 til $2/g' | perl -pe 's/([0-9\.%])-([0-9])/$1 til $2/g' \
 	    | perl -pe 's/([0-9]+),([0-46-9])/$1 komma $2/g' | perl -pe 's/([0-9]+),5([0-9])/$1 komma $2/g' | perl -pe 's/ (0(?!,5))/ $1 /g' | perl -pe 's/komma (0? ?)(\d)(\d)(\d)(\d?)/komma $1$2 $3 $4 $5/g' \
 	    | perl -pe 's/¼/ einn fjórði/g' | perl -pe 's/¾/ þrír fjórðu/g' | perl -pe 's/(\d)½/$1,5 /g' | perl -pe 's/ ½/ 0,5 /g' \
-	    | perl -pe 's/,([^0-9])/$1/g' | perl -pe 's/\b[^ ]*([^a-yáðéíóúýþæöA-YÁÉÍÓÚÝÞÆÖ0-9%‰°º\., ]|[cqw])[^ ]*\b/<unk>/g' | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noPuncts1_${n}.txt
+	    | perl -pe 's/,([^0-9])/$1/g' | sed -e 's/[^ ]*\([^a-yáðéíóúýþæöA-YÁÉÍÓÚÝÞÆÖ0-9\.,?!:; %‰°º&—–-\/]\)[^ ]*/ /g' | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noPuncts1_${n}.txt
     done
 fi
+# Older #7 (Add missing space): sed -e 's/\([a-záðéíóúýþæö0-9][\.\/%]\)\([A-ZÁÐÉÍÓÚÝÞÆÖ\/]\)/\1 \2/g' \
+# Older #13: perl -pe 's/\b[^ ]*([^a-yáðéíóúýþæöA-YÁÉÍÓÚÝÞÆÖ0-9%‰°º\., ]|[cqw])[^ ]*\b/<unk>/g'
 
 if [ $stage -le 5 ]; then
 

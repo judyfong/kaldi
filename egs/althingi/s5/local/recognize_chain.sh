@@ -13,7 +13,7 @@ mkdir -p ${datadir}
 
 stage=-1
 num_jobs=1
-score=false
+score=true
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -23,7 +23,7 @@ echo "$0 $@"  # Print the command line for logging
 
 # Dirs used
 langdir=data/lang_cs  #data/lang_bd
-graphdir=exp/chain/tdnn_lstm_1e/graph_3g_cs_023pruned  #exp/tri3/graph_tg_bd_023pruned
+graphdir=exp/chain/tdnn_lstm_1e_sp/graph_3g_cs_023pruned
 decodedir=${datadir}_segm_hires/decode_3g_cs_023pruned  #decode_tg_bd_023pruned
 rescoredir=${datadir}_segm_hires/decode_5g_cs  #decode_fg_bd_unpruned
 oldLMdir=data/lang_3g_cs_023pruned  #data/lang_tg_bd_023pruned
@@ -58,7 +58,7 @@ if [ $stage -le 5 ]; then
     mkdir -p ${datadir}_segm_hires/ivectors_hires
     steps/online/nnet2/extract_ivectors_online.sh \
 	--cmd "$train_cmd" --nj $num_jobs \
-        ${datadir}_segm_hires exp/nnet3/extractor \
+        ${datadir}_segm_hires exp/chain/extractor \
         ${datadir}_segm_hires/ivectors_hires || exit 1;
 fi
 
@@ -69,7 +69,7 @@ if [ $stage -le 6 ]; then
     frames_per_chunk_primary=$(echo $frames_per_chunk | cut -d, -f1)
     extra_left_context=50
     extra_right_context=0
-    cp exp/chain/tdnn_lstm_1e/{final.mdl,final.ie.id,cmvn_opts} ${datadir}_segm_hires
+    cp exp/chain/tdnn_lstm_1e_sp/{final.mdl,final.ie.id,cmvn_opts,frame_subsampling_factor} ${datadir}_segm_hires
 
     steps/nnet3/decode.sh \
 	--acwt 1.0 --post-decode-acwt 10.0 \
@@ -88,19 +88,15 @@ if [ $stage -le 6 ]; then
 	${decodedir} ${rescoredir} || exit 1;
     
     wait
-    if [ -f ${datadir}_segm_hires/.error ]; then
-	echo "$0: something went wrong in decoding"
-	exit 1
-    fi
 fi
 
 
 if [ $stage -le 7 ]; then
 
     echo "Extract the transcript hypothesis from the Kaldi lattice"
-    # NOTE! Is scale=12 good?
+    # NOTE! Is scale=12 good? Best lmwt = 8 for the eval_cs set, best lmwt=9 for the LC sets
     lattice-best-path \
-        --lm-scale=12 \
+        --lm-scale=10 \
         --word-symbol-table=${langdir}/words.txt \
         "ark:zcat ${rescoredir}/lat.1.gz |" ark,t:- &> ${rescoredir}/extract_transcript.log
 
@@ -117,7 +113,7 @@ if [ $stage -le 8 ]; then
     local/denormalize.sh \
         ${rescoredir}/transcript_noID.txt \
         ${rescoredir}/transcript_denormalized.txt
-    #rm ${rescoredir}/*.tmp
+    rm ${rescoredir}/*.tmp
 
 fi
 
@@ -125,8 +121,8 @@ if $score ; then
 
     echo "Estimate the WER"
     # NOTE! Correct for the mismatch in the beginning and end of recordings.
-    local/score_recognize.sh --cmd "$decode_cmd" $speechname ${langdir} ${rescoredir} &
-
-    #align-text ark,t:"grep $speechname data/all/text_CaseSens.txt | cut -d" " -f2- | sed 's/.*/"$speechname" &/' |" ark,t:"sed 's/.*/"$speechname" &/' ${rescoredir}/transcript_noID.txt |" ark,t:${rescoredir}/ref_aligned.txt
-    
+    local/score_recognize.sh --cmd "$decode_cmd" $speechname ${langdir} ${rescoredir}
+  
 fi
+
+rm -r ${datadir} ${datadir}_segm

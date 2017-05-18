@@ -40,21 +40,21 @@ if [ $stage -le 0 ]; then
     spkname=$(cut -f1 ${datadir}/spkname_filename.tmp)
     spkID=$(grep $spkname ${name_id_file} | cut -f2)
 
-    echo "a) spk2gender" # I use the abbreviation of parliament members' names as speaker IDs
-    grep "$spkname" $name_id_file | cut -f2- > ${datadir}/spk2gender
+    #echo "a) spk2gender" # I use the abbreviation of parliament members' names as speaker IDs
+    #grep "$spkname" $name_id_file | cut -f2- > ${datadir}/spk2gender
  
-    echo "b) utt2spk" # Connect each speech ID to a speaker ID.
+    echo "a) utt2spk" # Connect each speech ID to a speaker ID.
     printf "%s %s\n" ${spkID}-${filename} ${spkID} | tr -d $'\r' > ${datadir}/utt2spk
 
     # Make a helper file with mapping between the filenames and uttID
     echo -e ${filename} ${spkID}-${filename} | tr -d $'\r' | LC_ALL=C sort -n > ${datadir}/filename_uttID.txt
     
-    echo "c) wav.scp" # Connect every speech ID with an audio file location.
+    echo "b) wav.scp" # Connect every speech ID with an audio file location.
     #echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f data/local/corpus/audio/${filename}".mp3")" |" | tr -d $'\r' >> ${datadir}/wav.scp
     echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f data/local/corpus/audio/${filename}".flac")" |" | tr -d $'\r' > ${datadir}/wav.scp
     rm ${datadir}/spkname_filename.tmp
 
-    echo "d) spk2utt"
+    echo "c) spk2utt"
     utils/utt2spk_to_spk2utt.pl < ${datadir}/utt2spk > ${datadir}/spk2utt
 fi
 

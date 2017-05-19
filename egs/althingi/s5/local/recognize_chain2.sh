@@ -4,9 +4,8 @@ set -e -o pipefail
 
 # 2017 - Inga
 # Decode audio. Bla bla
-# How to run:
-# local/recognize_chain2.sh <audiofile> <metadata>
-# F.ex. if want to save the time info as well:
+# Usage: $0 <audiofile> <metadata>
+# Example (if want to save the time info as well):
 # { time local/recognize_chain2.sh data/local/corpus/audio/rad20160309T151154.flac data/local/corpus/metadata.csv; } &> recognize/chain/rad20160309T151154.log
 
 speechfile=$1
@@ -14,7 +13,7 @@ speechname=$(basename "$speechfile")
 extension="${speechname##*.}"
 speechname="${speechname%.*}"
 
-speakerfile=$2
+speakerfile=$2  # A meta file containing the name of the speaker
 
 # data dir
 datadir=recognize/chain/$speechname

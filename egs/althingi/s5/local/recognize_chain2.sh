@@ -1,24 +1,14 @@
 #!/bin/bash
 
-set -e -o pipefail
-
 # 2017 - Inga
 # Decode audio. Bla bla
 # Usage: $0 <audiofile> <metadata>
 # Example (if want to save the time info as well):
 # { time local/recognize_chain2.sh data/local/corpus/audio/rad20160309T151154.flac data/local/corpus/metadata.csv; } &> recognize/chain/rad20160309T151154.log
 
-speechfile=$1
-speechname=$(basename "$speechfile")
-extension="${speechname##*.}"
-speechname="${speechname%.*}"
+set -e
 
-speakerfile=$2  # A meta file containing the name of the speaker
-
-# data dir
-datadir=recognize/chain/$speechname
-mkdir -p ${datadir}
-
+# configs
 stage=-1
 num_jobs=1
 score=true
@@ -29,13 +19,24 @@ echo "$0 $@"  # Print the command line for logging
 . ./path.sh
 . ./utils/parse_options.sh
 
-# Dirs used
-langdir=data/lang_cs  #data/lang_bd
+speechfile=$1
+speechname=$(basename "$speechfile")
+extension="${speechname##*.}"
+speechname="${speechname%.*}"
+
+speakerfile=$2  # A meta file containing the name of the speaker
+
+# Dirs used #
+# Already existing
+langdir=data/lang_cs
 graphdir=exp/chain/tdnn_lstm_1e_sp/graph_3g_cs_023pruned
-decodedir=${datadir}_segm_hires/decode_3g_cs_023pruned  #decode_tg_bd_023pruned
-rescoredir=${datadir}_segm_hires/decode_5g_cs  #decode_fg_bd_unpruned
-oldLMdir=data/lang_3g_cs_023pruned  #data/lang_tg_bd_023pruned
-newLMdir=data/lang_5g_cs_const  #data/lang_fg_bd_unpruned
+oldLMdir=data/lang_3g_cs_023pruned
+newLMdir=data/lang_5g_cs_const
+# Created
+datadir=recognize/chain/$speechname
+mkdir -p ${datadir}
+decodedir=${datadir}_segm_hires/decode_3g_cs_023pruned
+rescoredir=${datadir}_segm_hires/decode_5g_cs
 
 if [ $stage -le 0 ]; then
 
@@ -121,15 +122,13 @@ if [ $stage -le 8 ]; then
         ${rescoredir}/transcript_noID.txt \
         ${rescoredir}/transcript_denormalized.txt
     rm ${rescoredir}/*.tmp
-
 fi
 
-if $score ; then
+if [ $score = true ] ; then
 
     echo "Estimate the WER"
     # NOTE! Correct for the mismatch in the beginning and end of recordings.
     local/score_recognize.sh --cmd "$decode_cmd" $speechname ${langdir} ${rescoredir}
-  
 fi
 
 rm -r ${datadir} ${datadir}_segm

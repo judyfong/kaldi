@@ -2,15 +2,6 @@
 
 set -e -o pipefail
 
-speechfile=$1
-speechname=$(basename "$speechfile")
-extension="${speechname##*.}"
-speechname="${speechname%.*}"
-
-# data dir
-datadir=recognize/chain/$speechname
-mkdir -p ${datadir}
-
 stage=-1
 num_jobs=1
 score=true
@@ -20,6 +11,15 @@ echo "$0 $@"  # Print the command line for logging
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
+
+speechfile=$1
+speechname=$(basename "$speechfile")
+extension="${speechname##*.}"
+speechname="${speechname%.*}"
+
+# data dir
+datadir=recognize/chain/$speechname
+mkdir -p ${datadir}
 
 # Dirs used
 langdir=data/lang_cs  #data/lang_bd
@@ -117,7 +117,7 @@ if [ $stage -le 8 ]; then
 
 fi
 
-if $score ; then
+if [ $score = true ] ; then
 
     echo "Estimate the WER"
     # NOTE! Correct for the mismatch in the beginning and end of recordings.

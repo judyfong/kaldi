@@ -1,6 +1,16 @@
-#!/bin/bash -eu
+#!/bin/bash
 
-set -o pipefail
+set -e -o pipefail
+
+stage=-1
+score=true
+num_jobs=1
+
+echo "$0 $@"  # Print the command line for logging
+
+. ./cmd.sh
+. ./path.sh
+. ./utils/parse_options.sh
 
 speechfile=$1
 speechname=$(basename "$speechfile")
@@ -11,15 +21,6 @@ speechname="${speechname%.*}"
 datadir=recognize/normal/$speechname
 mkdir -p ${datadir}
 
-stage=-1
-
-num_jobs=1
-
-echo "$0 $@"  # Print the command line for logging
-
-. ./cmd.sh
-. ./path.sh
-. ./utils/parse_options.sh
 
 # Dirs used
 langdir=data/lang_cs  #data/lang_bd
@@ -91,7 +92,7 @@ if [ $stage -le 7 ]; then
     echo "Extract the transcript hypothesis from the Kaldi lattice"
     # NOTE! Is scale=12 good?
     lattice-best-path \
-        --lm-scale=12 \
+        --lm-scale=10 \
         --word-symbol-table=${langdir}/words.txt \
         "ark:zcat ${rescoredir}/lat.1.gz |" ark,t:- &> ${rescoredir}/extract_transcript.log
 
@@ -102,23 +103,21 @@ if [ $stage -le 7 ]; then
     perl -pe 's/[^ ]+rad[^ ]+//g' ${rescoredir}/transcript.txt | tr "\n" " " | sed -e "s/[[:space:]]\+/ /g" > ${rescoredir}/transcript_noID.txt
 fi
 
-# if [ $stage -le 8 ]; then
+if [ $stage -le 8 ]; then
 
-#     echo "Denormalize the transcript"
-#     local/denormalize.sh \
-#         ${rescoredir}/transcript_noID.txt \
-#         ${rescoredir}/transcript_denormalized.txt
-#     rm ${rescoredir}/*.tmp
+    echo "Denormalize the transcript"
+    local/denormalize.sh \
+        ${rescoredir}/transcript_noID.txt \
+        ${rescoredir}/transcript_denormalized.txt
+    rm ${rescoredir}/*.tmp
 
-# fi
+fi
 
-if $score ; then
+if [ $score = true ] ; then
 
     echo "Estimate the WER"
     # NOTE! Correct for the mismatch in the beginning and end of recordings.
     local/score_recognize.sh --cmd "$decode_cmd" $speechname ${langdir} ${rescoredir} &
-
-    #align-text ark,t:"grep $speechname data/all/text_CaseSens.txt | cut -d" " -f2- | sed 's/.*/"$speechname" &/' |" ark,t:"sed 's/.*/"$speechname" &/' ${rescoredir}/transcript_noID.txt |" ark,t:${rescoredir}/ref_aligned.txt
     
 fi
 

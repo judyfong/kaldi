@@ -81,7 +81,7 @@ for line in $(cat $datadir/wav.scp); do
 
     else
         echo "No silences observed. Keep speech as whole"
-    	cp -r $datadir $outdir
+    	cp -r $datadir/* $outdir
     fi
     
     rm ${outdir}/ffmpeg_out.tmp

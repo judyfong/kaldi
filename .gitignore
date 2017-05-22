@@ -86,6 +86,7 @@ GSYMS
 /egs/*/s*/text_norm
 /egs/*/s*/recognize
 /egs/*/s*/py3env
+/egs/*/s*/q
 
 # /tools/
 /tools/ATLAS/

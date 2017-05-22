@@ -18,16 +18,16 @@ rm ${dictdir}/shuffled_prondict.tmp
 
 # 2) Train a model
 #    Train the first model, will be rather poor because it is only a unigram
-g2p.py --train ${dictdir}/g2p_train.lex --devel 5% --write-model ${modeldir}/g2p_1.mdl
+utils/slurm.pl --mem 4G ${modeldir}/g2p_1.log g2p.py --train ${dictdir}/g2p_train.lex --devel 5% --encoding="UTF-8" --write-model ${modeldir}/g2p_1.mdl
 
 #    To create higher order models you need to run g2p.py again a few times
 for i in `seq 1 $n`; do
-    g2p.py --model ${modeldir}/g2p_${i}.mdl --ramp-up --train ${dictdir}/g2p_train.lex --devel 5% --write-model ${modeldir}/g2p_${i+1}.mdl
+    utils/slurm.pl --mem 4G --time 0-06 ${modeldir}/g2p_$[$i+1].log g2p.py --model ${modeldir}/g2p_${i}.mdl --ramp-up --train ${dictdir}/g2p_train.lex --devel 5% --encoding="UTF-8" --write-model ${modeldir}/g2p_$[$i+1].mdl
 done
 
 # 3) Evaluate the model
 #    To find out how accurately your model can transcribe unseen words type:
-#g2p.py --model ${modeldir}/g2p_${n}.mdl --test ${dictdir}/g2p_test.lex
+g2p.py --model ${modeldir}/g2p_${n}.mdl --encoding="UTF-8" --test ${dictdir}/g2p_test.lex
 
 # If happy with the model I would rename it to g2p.mdl
 # mv ${modeldir}/g2p_${n}.mdl ${modeldir}/g2p.mdl

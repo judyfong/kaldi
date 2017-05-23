@@ -2,8 +2,9 @@
 
 # Prepare a directory on Kaldi format, containing audio data and some auxiliary info.
 
-speech=$1
-datadir=$2
+speechname=$1
+meta=$2
+datadir=$3
 
 stage=-1
 
@@ -11,12 +12,6 @@ stage=-1
 . ./path.sh
 . utils/parse_options.sh
 . local/utils.sh
-
-# NOTE! Maybe I will be able to get name, ID and gender info from metadata. Check!
-# Make name-id-gender file from metadata info.
-
-name_id_file="data/local/corpus/name_id_gender.tsv"
-meta="data/local/corpus/metadata.csv"
 
 encoding=$(file -i ${meta} | cut -d" " -f3)
 if [[ "$encoding" == "charset=iso-8859-1" ]]; then
@@ -34,25 +29,23 @@ IFS=$'\n' # Split on new line
 
 if [ $stage -le 0 ]; then
 
-    # Extract the speaker info
-    cut -d"," -f1,6 ${meta} | tr "," "\t" | grep "$speech" > ${datadir}/spkname_filename.tmp
-    filename=$(cut -f2 ${datadir}/spkname_filename.tmp)
-    spkname=$(cut -f1 ${datadir}/spkname_filename.tmp)
-    spkID=$(grep $spkname ${name_id_file} | cut -f2)
+    # Extract the speaker info (when using old speeches)
+    grep "$speechname" ${meta} | tr "," "\t" > ${datadir}/spkname_speechname.tmp
+    spkID=$(cut -f1 ${datadir}/spkname_speechname.tmp | perl -pe 's/[ \.]//g')
 
-    #echo "a) spk2gender" # I use the abbreviation of parliament members' names as speaker IDs
-    #grep "$spkname" $name_id_file | cut -f2- > ${datadir}/spk2gender
- 
+    # Extract the speaker info (to use with new speeches). What will be the format of the new meta files? F.ex. comma separated with speakers name in 1st col?
+    #spkID=$(cut -f1 ${meta} | perl -pe 's/[ \.]//g')
+    
     echo "a) utt2spk" # Connect each speech ID to a speaker ID.
-    printf "%s %s\n" ${spkID}-${filename} ${spkID} | tr -d $'\r' > ${datadir}/utt2spk
+    printf "%s %s\n" ${spkID}-${speechname} ${spkID} | tr -d $'\r' > ${datadir}/utt2spk
 
-    # Make a helper file with mapping between the filenames and uttID
-    echo -e ${filename} ${spkID}-${filename} | tr -d $'\r' | LC_ALL=C sort -n > ${datadir}/filename_uttID.txt
+    # Make a helper file with mapping between the speechnames and uttID
+    echo -e ${speechname} ${spkID}-${speechname} | tr -d $'\r' | LC_ALL=C sort -n > ${datadir}/speechname_uttID.tmp
     
     echo "b) wav.scp" # Connect every speech ID with an audio file location.
-    #echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f data/local/corpus/audio/${filename}".mp3")" |" | tr -d $'\r' >> ${datadir}/wav.scp
-    echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f data/local/corpus/audio/${filename}".flac")" |" | tr -d $'\r' > ${datadir}/wav.scp
-    rm ${datadir}/spkname_filename.tmp
+    #echo -e ${spkID}-${speechname} $wav_cmd" < "$(readlink -f data/local/corpus/audio/${speechname}".mp3")" |" | tr -d $'\r' >> ${datadir}/wav.scp
+    echo -e ${spkID}-${speechname} $wav_cmd" < "$(readlink -f data/local/corpus/audio/${speechname}".flac")" |" | tr -d $'\r' > ${datadir}/wav.scp
+    rm ${datadir}/spkname_speechname.tmp ${datadir}/speechname_uttID.tmp
 
     echo "c) spk2utt"
     utils/utt2spk_to_spk2utt.pl < ${datadir}/utt2spk > ${datadir}/spk2utt

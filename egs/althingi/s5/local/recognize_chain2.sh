@@ -42,6 +42,7 @@ if [ $stage -le 0 ]; then
 
     echo "Set up a directory in the right format of Kaldi and extract features"
     local/prep_audiodata_fromName2.sh $speechname $speakerfile $datadir
+    spkID=$(cut -d" " -f1 $datadir/spk2utt)
 fi
 
 if [ $stage -le 3 ]; then
@@ -120,7 +121,7 @@ if [ $stage -le 8 ]; then
     echo "Denormalize the transcript"
     local/denormalize.sh \
         ${rescoredir}/transcript_noID.txt \
-        ${rescoredir}/${speechname}_denorm_transcript.txt
+        ${rescoredir}/${spkID}_${speechname}_transcript.txt
     rm ${rescoredir}/*.tmp
 fi
 

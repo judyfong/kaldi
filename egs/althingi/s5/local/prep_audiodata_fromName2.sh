@@ -13,9 +13,6 @@ stage=-1
 . utils/parse_options.sh
 . local/utils.sh
 
-# NOTE! Maybe I will be able to get name, ID and gender info from metadata. Check!
-# Make name-id-gender file from metadata info.
-
 encoding=$(file -i ${meta} | cut -d" " -f3)
 if [[ "$encoding" == "charset=iso-8859-1" ]]; then
     iconv -f ISO-8859-1 -t UTF-8 ${meta} > tmp && mv tmp ${meta}

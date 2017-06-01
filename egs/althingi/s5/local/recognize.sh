@@ -5,15 +5,16 @@
 #
 # Usage: $0 <audiofile> [<metadata>]
 # Example (if want to save the time info as well):
-# { time local/recognize_chain2.sh data/local/corpus/audio/rad20160309T151154.flac data/local/corpus/metadata.csv; } &> recognize/chain/rad20160309T151154.log
+# { time local/recognize.sh data/local/corpus/audio/rad20160309T151154.flac data/local/corpus/metadata.csv; } &> recognize/chain/rad20160309T151154.log
 
 set -e
+set -o pipefail
 
 # configs
 stage=-1
 num_jobs=1
-lmwt=10 # Language model weight. Can have big effect. 
-score=true
+lmwt=8 # Language model weight. Can have big effect. 
+score=false
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -35,7 +36,7 @@ elif [ $# = 1 ]; then
     echo -e "unknown",$speechname > ${datadir}/${speechname}_meta.tmp
     speakerfile=${datadir}/${speechname}_meta.tmp
 else
-    echo "Usage: local/recognize_chain.sh [options] <audiofile> [<metadata>]"
+    echo "Usage: local/recognize.sh [options] <audiofile> [<metadata>]"
 fi
 
 # Dirs used #
@@ -51,9 +52,9 @@ rescoredir=${datadir}_segm_hires/decode_5g_cs
 if [ $stage -le 0 ]; then
 
     echo "Set up a directory in the right format of Kaldi and extract features"
-    local/prep_audiodata_fromName.sh $speechname $speakerfile $datadir
-    spkID=$(cut -d" " -f1 $datadir/spk2utt)
+    local/prep_audiodata.sh $speechname $extension $speakerfile $datadir
 fi
+spkID=$(cut -d" " -f1 $datadir/spk2utt)
 
 if [ $stage -le 3 ]; then
 
@@ -106,10 +107,7 @@ if [ $stage -le 6 ]; then
     steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" --skip-scoring true \
 	${oldLMdir} ${newLMdir} ${datadir}_segm_hires \
 	${decodedir} ${rescoredir} || exit 1;
-    
-    wait
 fi
-
 
 if [ $stage -le 7 ]; then
 
@@ -131,10 +129,10 @@ if [ $stage -le 8 ]; then
     echo "Denormalize the transcript"
     local/denormalize.sh \
         ${rescoredir}/transcript_noID.txt \
-        ${rescoredir}/${spkID}_${speechname}_transcript.txt
+        ${rescoredir}/${speechname}.txt
     rm ${rescoredir}/*.tmp
 fi
-
+# ${rescoredir}/${spkID}_${speechname}_transcript.txt
 if [ $score = true ] ; then
 
     echo "Estimate the WER"

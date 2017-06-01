@@ -52,7 +52,7 @@ rescoredir=${datadir}_segm_hires/decode_5g_cs
 if [ $stage -le 0 ]; then
 
     echo "Set up a directory in the right format of Kaldi and extract features"
-    local/prep_audiodata.sh $speechname $extension $speakerfile $datadir
+    local/prep_audiodata.sh $speechfile $speakerfile $datadir
 fi
 spkID=$(cut -d" " -f1 $datadir/spk2utt)
 

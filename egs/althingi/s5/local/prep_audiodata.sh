@@ -9,10 +9,12 @@ stage=-1
 . utils/parse_options.sh
 . local/utils.sh
 
-speechname=$1
-ext=$2
-meta=$3
-datadir=$4
+speechfile=$1
+speechname=$(basename "$speechfile")
+extension="${speechname##*.}"
+speechname="${speechname%.*}"
+meta=$2
+datadir=$3
 
 encoding=$(file -i ${meta} | cut -d" " -f3)
 if [[ "$encoding" == "charset=iso-8859-1" ]]; then
@@ -23,7 +25,7 @@ fi
 # Need to convert from mp3 to wav
 samplerate=16000
 # SoX converts all audio files to an internal uncompressed format before performing any audio processing
-wav_cmd="sox -t$ext - -c1 -esigned -r$samplerate -G -twav - "
+wav_cmd="sox -t$extension - -c1 -esigned -r$samplerate -G -twav - "
 #wav_cmd="sox -tflac - -c1 -esigned -twav - "
 
 IFS=$'\n' # Split on new line
@@ -44,7 +46,7 @@ if [ $stage -le 0 ]; then
     echo -e ${speechname} ${spkID}-${speechname} | tr -d $'\r' | LC_ALL=C sort -n > ${datadir}/speechname_uttID.tmp
     
     echo "b) wav.scp" # Connect every speech ID with an audio file location.
-    echo -e ${spkID}-${speechname} $wav_cmd" < "$(readlink -f recognize/${speechname}".$ext")" |" | tr -d $'\r' > ${datadir}/wav.scp
+    echo -e ${spkID}-${speechname} $wav_cmd" < "$(readlink -f ${speechfile})" |" | tr -d $'\r' > ${datadir}/wav.scp
     #echo -e ${spkID}-${speechname} $wav_cmd" < "$(readlink -f data/local/corpus/audio/${speechname}".flac")" |" | tr -d $'\r' > ${datadir}/wav.scp
     rm ${datadir}/spkname_speechname.tmp ${datadir}/speechname_uttID.tmp
 

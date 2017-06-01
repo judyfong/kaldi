@@ -10,8 +10,8 @@ stage=0
 stats=true
 beam=6
 word_ins_penalty=0.0,0.5,1.0
-min_lmwt=8
-max_lmwt=20 #20
+min_lmwt=6
+max_lmwt=16 #20
 iter=final
 #end configuration section.
 

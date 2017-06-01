@@ -55,9 +55,8 @@ for line in $(cat $datadir/wav.scp); do
     ffmpeg -nostdin -i $audio -af silencedetect=noise=-15dB:d=$min_sil_length -f null - &>${outdir}/ffmpeg_out.tmp
 
     if grep -q "silencedetect" ${outdir}/ffmpeg_out.tmp; then
-        grep "silence_start\|silence_end" ${outdir}/ffmpeg_out.tmp | awk 'ORS=NR%2?" ":"\n"' | cut -d" " -f4,5,9,10,12,13 > ${outdir}/${filename}_silence.txt
-	
-	
+        grep "silence_start\|silence_end" ${outdir}/ffmpeg_out.tmp | awk 'ORS=NR%2?" ":"\n"' | sed 's/^.*\(\[silencedetect.*silence_start\)/\1/g' | cut -d" " -f4,5,9,10,12,13 > ${outdir}/${filename}_silence.txt
+		
     	# Get total recording length, with 3 digits
     	total_dur=$(printf %.3f $(echo $(soxi -D $audio) | bc -l))
 	

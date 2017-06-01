@@ -31,18 +31,19 @@ echo "Rewrite"
 # 4) Rewrite intervals
 # 5) Rewrite, f.ex. "2005 to 2007" as "2005—2007"
 # 6) Rewrite time, f.ex. "kl 13 35" to "kl 13:35"
-# 7-8) Rewrite decimal numbers
-# 9) Rewrite f.ex. "4 and half" to "4,5"
-# 10) Remove space in front of °, % and ‰
-# 11) Rewrite website names
-# 12) Rewrite "and or" as "and/or"
+# 7-9) Rewrite decimal numbers
+# 10) Rewrite f.ex. "4 and half" to "4,5"
+# 11) Remove space in front of °, % and ‰
+# 12) Rewrite website names
+# 13) Rewrite "and or" as "and/or"
 sed -e "s/[[:space:]]\+/ /g" ${dir}/thrax_out.tmp \
     | perl -pe 's:(\d+) (frá )?(\d+) (EBE|EB|ESB):$1/$3/\U$4:g' \
     | perl -pe 's:nr (\d+) (frá )?(\d+):nr $1/$3:g' \
-    | perl -pe 's:(\d+) til (\d+):$1—$2:g' \
+    | perl -pe 's:(\d+) til (\d+):$1–$2:g' \
     | perl -pe 's/kl (\d+) (\d+)/kl $1:$2/g' \
-    | perl -pe 's/(\d+) komma (\d+) ?(\d{1,2}|[^\d]{2,})/$1,$2$3/g' \
-    | perl -pe 's/(\d+,\d+) (\d{1,2}[^,]|[^\d]{2,})/$1$2/g' \
+    | perl -pe 's/(\d+) komma (\d+) ?(\d{1,2})/$1,$2$3/g' \
+    | perl -pe 's/(\d+) komma (\d+) ([^\d]{2,})/$1,$2 $3/g' \
+    | perl -pe 's/(\d+,\d+) (\d{1,2}[^,])/$1$2/g' \
     | perl -pe 's/(\d+) og hálf\w*/$1,5/g' \
     | perl -pe 's/ ([°%‰])/$1/g' \
     | perl -pe 's/(\w+) punktur (is|net|com)/$1.$2/g' \
@@ -74,7 +75,7 @@ set -u
 cd ~/kaldi/egs/althingi/s5
 
 echo "Convert punctuation tokens back to actual punctuations"
-sed -r 's/ \.PERIOD/./g; s/ \?QUESTIONMARK/?/g; s/ !EXCLAMATIONMARK/!/g; s/ ,COMMA/,/g; s/ :COLON/:/g' ${dir}/punctuator_out_wNumbers.tmp > ${dir}/punctuator_out_wPuncts.tmp
+sed -r 's/ \.PERIOD/./g; s/ \?QUESTIONMARK/?/g; s/ !EXCLAMATIONMARK/!/g; s/ ,COMMA/,/g; s/ :COLON/:/g' ${dir}/punctuator_out_wNumbers.tmp | perl -pe 's/ ([°%‰])/$1/g' > ${dir}/punctuator_out_wPuncts.tmp
 
 # Some things I want to abbreviate if preceded or followed by a name (i.e. by an uppercase letter) f.ex. "doktor" and "þingmaður"
 sed -e 's/doktor \([A-ZÁÉÍÓÚÝÞÆÖ]\)/dr\. \1/g' ${dir}/punctuator_out_wPuncts.tmp > ${dir}/text.dr.tmp
@@ -88,8 +89,6 @@ perl -pe 's:(\d+) km á klukkustund:$1 $2/klst.:g' ${dir}/denorm_BOScap.tmp | pe
 
 echo "Insert periods into abbreviations"
 thraxrewrite-fileio --far=local/abbreviate.far --rules=INS_PERIODS --noutput=1 --input_mode=utf8 --output_mode=utf8 ${dir}/denorm_measure.tmp $ofile
-
-# Add rewriting rules for acronyms that are spelled out, e.g. o e c d -> OECD and e s b -> ESB
 
 # # þingm regex
 # sed -e 's/\([Hh]v\.\) \([0-9\. ]*\)þingm\w\+ \([A-ZÁÉÍÓÚÝÞÆÖ]\)/\1 \2þm\. \3/g' ${dir}/denorm_periods.tmp > ${dir}/$ofile

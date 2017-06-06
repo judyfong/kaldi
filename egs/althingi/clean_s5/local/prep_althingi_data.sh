@@ -1,12 +1,15 @@
-#!/bin/bash -eu
+#!/bin/bash -e
 
 set -o pipefail
 
 # 2016  Reykjavik University (Author: Inga Rún Helgadóttir)
 # Get the Althingi data on a proper format for kaldi.
 
+stage=4
+
 . ./path.sh # Needed for KALDI_ROOT
 . ./cmd.sh
+. parse_options.sh || exit 1;
 
 if [ $# -ne 2 ]; then
     echo "Usage: $0 <path-to-original-data> <output-data-dir>" >&2
@@ -14,8 +17,6 @@ if [ $# -ne 2 ]; then
     exit 1;
 fi
 
-nj=25
-stage=0
 #datadir=data/local/corpus
 #outdir=data/all
 datadir=$(readlink -f $1); shift
@@ -24,10 +25,13 @@ mkdir -p $outdir
 
 meta=${datadir}/metadata.csv
 
+audiofile=$(ls data/tempcorpus/audio/ | head -n1)
+extension="${audiofile##*.}"
+
 # Need to convert from mp3 to wav
 samplerate=16000
 # SoX converts all audio files to an internal uncompressed format before performing any audio processing
-wav_cmd="sox -tmp3 - -c1 -esigned -r$samplerate -G -twav - "
+wav_cmd="sox -t$extension - -c1 -esigned -r$samplerate -G -twav - "
 #wav_cmd="sox -tflac - -c1 -esigned -twav - " # I had also files converted to flac that were already downsampled
 
 if [ $stage -le 0 ]; then
@@ -51,7 +55,7 @@ if [ $stage -le 0 ]; then
 	echo -e ${filename} ${spkID}-${filename} | tr -d $'\r' | LC_ALL=C sort -n >> ${outdir}/filename_uttID.txt
 	
 	#Print to wav.scp
-	echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f ${datadir}/audio/${filename}".mp3")" |" | tr -d $'\r' >> ${outdir}/wav.scp
+	echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f ${datadir}/audio/${filename}".$extension")" |" | tr -d $'\r' >> ${outdir}/wav.scp
 	#echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f ${datadir}/audio/${filename}".flac")" |" | tr -d $'\r' >> ${outdir}/wav.scp
     done
 
@@ -174,13 +178,13 @@ if [ $stage -le 4 ]; then
 	    | perl -pe 's/([0-9]):([0-9][0-9])/$1 $2/g' | perl -pe 's/&amp;/og/g' | perl -pe 's/\?|:|;| | \./ /g' \
 	    | perl -pe 's/\b([0-9])\/([0-9]{1,2})\b/$1 $2\./g' \
 	    | perl -pe 's/\/?([0-9]+)\/([0-9]+)\/?/ $1 $2 /g' \
-	    | sed -e 's/\([^ A-ZÁÐÉÍÓÚÝÞÆÖ]\)\([A-ZÁÐÉÍÓÚÝÞÆÖ]\)/\1 \2/g' | perl -pe 's/([^0-9 ][^0-9 ,–])([0-9])/$1 $2/g' \
+	    | sed -e 's/ \([^ ]*[^ A-ZÁÐÉÍÓÚÝÞÆÖ]\)\([A-ZÁÐÉÍÓÚÝÞÆÖ]\)/ \1 \2/g' -e 's/ \([^0-9 ][^0-9 ,–]\)\([0-9]\)/ \1 \2/g' \
 	    | perl -pe 's/\.(is|net|com)(\W)/ punktur $1$2/g' | perl -pe 's/([0-9]\.)([a-záðéíóúýþæö])/$1 $2/g' | perl -pe 's/([a-záðéíóúýþæö]\.)([0-9])/$1 $2/g'\
 	    | sed -e 's/ \+\([0-9]\.\) \+\([A-ZÁÐÉÍÓÚÝÞÆÖ]\)/ \1 \L\2/g' \
 	    | perl -pe 's/([^ ])–([^ ])/$1 til $2/g' | perl -pe 's/(\d)tilstr\w*?\.?(\d)/$1 til $2/g' | perl -pe 's/([0-9\.%])-([0-9])/$1 til $2/g' \
 	    | perl -pe 's/([0-9]+),([0-46-9])/$1 komma $2/g' | perl -pe 's/([0-9]+),5([0-9])/$1 komma $2/g' | perl -pe 's/ (0(?!,5))/ $1 /g' | perl -pe 's/komma (0? ?)(\d)(\d)(\d)(\d?)/komma $1$2 $3 $4 $5/g' \
 	    | perl -pe 's/¼/ einn fjórði/g' | perl -pe 's/¾/ þrír fjórðu/g' | perl -pe 's/(\d)½/$1,5 /g' | perl -pe 's/ ½/ 0,5 /g' \
-	    | perl -pe 's/,([^0-9])/$1/g' | sed -e 's/[^ ]*\([^a-yáðéíóúýþæöA-YÁÉÍÓÚÝÞÆÖ0-9\.,?!:; %‰°º&—–-\/]\)[^ ]*/ /g' > ${outdir}/text_noPuncts1_${n}.txt
+	    | perl -pe 's/,([^0-9])/$1/g' | sed 's/\( [^ ]*\)[^a-yáðéíóúýþæöA-YÁÉÍÓÚÝÞÆÖ0-9 \.,?!:;\/%‰°º&—–-]\+/\1/g' > ${outdir}/text_noPuncts1_${n}.txt
     done
 fi
 
@@ -191,20 +195,22 @@ if [ $stage -le 5 ]; then
     # 3) Lowercase text (not uttID) and rewrite "/a " to "á ári" and "/s " to "á sekúndu"
     # 4) Rewrite thousands and millions, f.ex. 3.500 to 3500,
     # 5) Rewrite chapter and clause numbers and time, f.ex. "ákvæði 2.1.3" to "ákvæði 2 1 3" and "kl 15.30" to "kl 15 30",
-    # 6) Add spaces between letters and numbers in alpha-numeric words,
-    ## 7) Remove comments on what to add in text endanlegt f.ex "/í skj.: til að/" and "/dittó/",
-    # 8) Swap "-" and "/" out for a space when sandwitched between words, f.ex. "suður-kórea" and "svart/hvítt",
-    ## 9) Remove comments on what to add in text endanlegt f.ex "/þ. 278/"
-    # 10) Remove remaining punctuations, fix some leftover stuff, and change spaces to one between words and write.
+    # 6) Remove "ja" from numbers written like "22ja"
+    # 7) Rewrite [ck]?m[23] to [ck]?m[²³] and expand things like "4x4"
+    # 8) Add spaces between letters and numbers in alpha-numeric words,
+    # 9) Swap "-", "/" and more out for a space, f.ex. "suður-kórea" and "svart/hvítt" -> "suður kórea" and "svart hvítt",
+    # 10) Remove remaining punctuations, fix some leftover stuff (like getting rid of numbers inside words f.ex. "be4stu"), remove any remaining alpha-numeric words and change spaces to one between words
     for n in bb endanlegt; do
-	sed -e 's/\.\( \+[A-ZÁÐÉÍÓÚÝÞÆÖ]\|$\)/\1/g' ${outdir}/text_noPuncts1_${n}.txt \
+	sed 's/\.\( \+[A-ZÁÐÉÍÓÚÝÞÆÖ]\|$\)/\1/g' ${outdir}/text_noPuncts1_${n}.txt \
 	    | perl -pe 's/([^0-9])\./$1/g' | perl -pe 's/([0-9]{4})\.(\s+|$)/$1$2/g' \
 	    | sed 's/ .\+/\L&/g' | perl -pe 's/\/a( |$)/ á ári$1/g' | perl -pe 's/\/kg( |$)/ á kíló$1/g' | perl -pe 's/\/s( |$)/ á sekúndu$1/g' | perl -pe 's/\/klst( |$)/ á klukkustund$1/g' \
 	    | perl -pe 's/([0-9]+)\.([0-9]{3})\.?/$1$2/g' \
 	    | perl -pe 's/(\d{1,2})\.(\d{1,2})((\.(\d{1,2}|( |$)))| )\.?/$1 $2 $5$6/g' \
-	    | perl -pe 's/( [a-záðéíóúýþæö]+)-?([0-9]+)(\W)/$1 $2$3/g' | perl -pe 's/( [0-9,]+%?)-?([a-záðéíóúýþæö]+)(\W)/$1 $2$3/g' \
-	    | perl -pe 's/([a-záðéíóúýþæö])-([a-záðéíóúýþæö])/$1 $2/g' \
-	    | perl -pe 's/—|–|-|\/|&lt|&gt|tilstr\w*?\.?/ /g' | perl -pe 's/&/ og /g' | perl -pe 's/([0-9]+)\.([0-9]+%?)/$1 $2/g' | perl -pe 's/, / /g' | perl -pe 's/ %/%/g'| sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noPuncts_${n}.txt
+	    | sed 's/\([0-9]\+\)ja\([^a-záðéíóúýþæö]\|$\)/\1\2/g' \
+	    | sed -e 's/\([ck]\?m\)2/ \1²/g' -e 's/\([ck]\?m\)3/ \1³/g' -e 's/\( [0-9]\+\)\([^0-9 ,]\)\([0-9]\)/\1 \2 \3/g' \
+	    | sed -e 's/\( [a-záðéíóúýþæö]\+\)-\?\([0-9]\+[^a-záðéíóúýþæö]\)/\1 \2/g' -e 's/\(^\| \)\([0-9,]\+%\?\)-\?\([a-záðéíóúýþæö]\+\)\( \|$\)/\1\2 \3\4/g' \
+	    | perl -pe 's/—|–|\/|&lt|&gt|tilstr\w*?\.?/ /g' \
+	    | perl -pe 's/&/ og /g' | perl -pe 's/([0-9]+)\.([0-9]+%?)/$1 $2/g' | sed -e 's/ [0-9]\+\([a-záðéíóúýþæö]\)/ \1/g' -e 's/ \([a-záðéíóúýþæö]\+\)[0-9]\+/ \1/g' -e 's/, / /g' -e 's/ %/%/g' -e 's/ \([^ ]*\)[^a-záðéíóúýþæö0-9\.,?! %‰°º²³]\+/ \1/g' -e 's/ [^ ]*[a-záðéíóúýþæö]\+[0-9]\+[^ ]*/ /g' -e 's/ [^ ]*-/ /g' -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noPuncts_${n}.txt
     done
 fi
 
@@ -238,9 +244,11 @@ if [ $stage -le 7 ]; then
 	cut -d" " -f2- text_endanlegt_speech.tmp | sed -e 's/[0-9\.,%‰°º]//g' | tr " " "\n" | egrep -v "^\s*$" | sort -u > vocab_text_endanlegt_speech.tmp
 
 	# Find the closest match in vocab_text_endanlegt_speech.tmp and substitute
+	#set +u # Otherwise I will have a problem with unbound variables
 	source py3env/bin/activate
 	python local/MinEditDist.py "$speech" ${outdir}/text_bb_SpellingFixed.txt vocab_speech_only.tmp vocab_text_endanlegt_speech.tmp
 	deactivate
+	#set -u
     done
     rm *.tmp
     

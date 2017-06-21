@@ -32,7 +32,7 @@ export u8_punct = Optimize[
            "°".utf8 | "º".utf8 | "\[".utf8 | "\]".utf8 | "´".utf8 |
            "…".utf8 | "+".utf8 ];
 
-stuff = Optimize["²".utf8 | "&".utf8 | "¼".utf8 | "¾".utf8 | "½".utf8];
+stuff = Optimize[ "²".utf8 | "³".utf8 | "&".utf8 | "¼".utf8 | "¾".utf8 | "½".utf8];
 
 export Digits = Optimize[
         "1".utf8 | "2".utf8 | "3".utf8 | "4".utf8 | "5".utf8 |

@@ -87,6 +87,7 @@ GSYMS
 /egs/*/s*/recognize
 /egs/*/s*/py3env
 /egs/*/s*/q
+/egs/*/s*/Makefile
 
 # /tools/
 /tools/ATLAS/

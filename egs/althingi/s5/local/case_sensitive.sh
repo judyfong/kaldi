@@ -28,12 +28,4 @@ tr "\n" "|" < ${pronDictdir}/propernouns_althingi.txt | sed -e '$s/|$//' | sed -
 # Capitalize
 srun --mem 8G sed -e 's/\(\b'$(cat ${pronDictdir}/propernouns_althingi_pattern.tmp)'\b\)/\u\1/g' ${datadir}/text > ${datadir}/text_CaseSens.txt
 
-# Capitalize words in the scraped Althingi texts, that are capitalized in the pron dict
-comm -12 <(sed -e 's/\(.*\)/\L\1/' ${pronDictdir}/CaseSensitive_pron_dict_propernouns.txt | sort) <(tr " " "\n" < scrapedAlthingiTexts_clean.txt | grep -Ev "^\s*$" | sort -u) > ${pronDictdir}/propernouns_scraped_althingi_texts.txt
-# Make the regex pattern
-tr "\n" "|" < ${pronDictdir}/propernouns_scraped_althingi_texts.txt | sed -e '$s/|$//' | sed -e '$a\' | perl -pe "s/\|/\\\b\\\|\\\b/g" | sed -e 's/\(.*\)/\L\1/' > ${pronDictdir}/propernouns_scraped_althingi_texts_pattern.tmp
-
-# Capitalize
-srun --mem 8G sed -e 's/\(\b'$(cat ${pronDictdir}/propernouns_scraped_althingi_texts_pattern.tmp)'\b\)/\u\1/g' ${pronDictdir}/scrapedAlthingiTexts_clean.txt > ${pronDictdir}/scrapedAlthingiTexts_clean_CaseSens.txt
-
 rm ${pronDictdir}/*.tmp

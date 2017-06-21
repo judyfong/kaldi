@@ -16,6 +16,9 @@ echo "Abbreviate"
 # An implementation of thraxrewrite-tester that takes in a file and returns an output file where the option with the lowest weight is chosen
 thraxrewrite-fileio --far=local/abbreviate.far --rules=ABBREVIATE --noutput=1 --input_mode=utf8 --output_mode=utf8 $ifile ${dir}/thrax_out.tmp
 
+echo "Fix casing in Ari trausti Guðmundsson and Unnur brá Konráðsdóttir for exemple"
+sed -i "s/\b\([^ ]\+\) \([A-ZÁÉÍÓÚÝÞÆÖ][^ ]\+\(s[oy]ni\?\|dótt[iu]r\)\)\b/\u\1 \2/g" ${dir}/thrax_out.tmp
+
 echo "Collapse acronyms pronounced as letters"
 # Collapse first the longest acronyms, in case they contain smaller ones.
 IFS=$'\n'
@@ -47,7 +50,8 @@ sed -e "s/[[:space:]]\+/ /g" ${dir}/thrax_out.tmp \
     | perl -pe 's/(\d+) og hálf\w*/$1,5/g' \
     | perl -pe 's/ ([°%‰])/$1/g' \
     | perl -pe 's/(\w+) punktur (is|net|com)/$1.$2/g' \
-    | perl -pe 's/og eða/og\/eða/g' > ${dir}/denorm1.tmp
+    | perl -pe 's/og eða/og\/eða/g' \
+    | sed 's/\([^ ]\+\)\( og [^ ]\+nefnd\)/\1-\2/g' > ${dir}/denorm1.tmp
 
 # Restore punctuations
 #export PYTHONPATH="${PYTHONPATH}:~/.local/lib/python2.7/site-packages/:~/punctuator2/:~/punctuator2/example/local/" <- added to .bashrc and kaldi/tools/env.sh

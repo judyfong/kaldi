@@ -192,7 +192,7 @@ if [ $stage -le 4 ]; then
 	    | perl -pe 's/([^ ])–([^ ])/$1 til $2/g' | perl -pe 's/(\d)tilstr\w*?\.?(\d)/$1 til $2/g' | perl -pe 's/([0-9\.%])-([0-9])/$1 til $2/g' \
 	    | perl -pe 's/([0-9]+),([0-46-9])/$1 komma $2/g' | perl -pe 's/([0-9]+),5([0-9])/$1 komma $2/g' | perl -pe 's/ (0(?!,5))/ $1 /g' | perl -pe 's/komma (0? ?)(\d)(\d)(\d)(\d?)/komma $1$2 $3 $4 $5/g' \
 	    | perl -pe 's/¼/ einn fjórði/g' | perl -pe 's/¾/ þrír fjórðu/g' | perl -pe 's/(\d)½/$1,5 /g' | perl -pe 's/ ½/ 0,5 /g' \
-	    | perl -pe 's/,([^0-9])/$1/g' | sed -e 's/[^ ]*\([^a-yáðéíóúýþæöA-YÁÉÍÓÚÝÞÆÖ0-9\.,?!:; %‰°º&—–-\/]\)[^ ]*/ /g' | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noPuncts1_${n}.txt
+	    | perl -pe 's/,([^0-9])/$1/g' | sed -e 's/[^ ]*\([^a-yáðéíóúýþæöA-YÁÉÍÓÚÝÞÆÖ0-9\.,?!:; %‰°º&—–-\/]\)[^ ]*//g' | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noPuncts1_${n}.txt
     done
 fi
 # Older #7 (Add missing space): sed -e 's/\([a-záðéíóúýþæö0-9][\.\/%]\)\([A-ZÁÐÉÍÓÚÝÞÆÖ\/]\)/\1 \2/g' \

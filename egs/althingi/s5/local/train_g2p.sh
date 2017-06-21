@@ -1,6 +1,6 @@
 #!/bin/bash -eu
 
-# Train a g2p model based on the Althingi projects pron dict, excluding foreign words
+# Train a g2p model based on the Althingi projects pron dict, excluding foreign words. See: https://github.com/sequitur-g2p/sequitur-g2p
 
 . ./path.sh
 

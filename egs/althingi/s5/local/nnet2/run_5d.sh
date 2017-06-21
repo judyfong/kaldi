@@ -63,24 +63,3 @@ steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 12 \
   --transform-dir exp/tri3/decode_tg_eval \
     exp/tri3/graph_tg data/eval $dir/decode_tg_eval &
 
-# steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 12 \
-#    --transform-dir exp/tri3_ali_bd/ \
-#     exp/tri3/graph_tg_bd data/dev $dir/decode_tg_bd_dev &
-
-# steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 12 \
-#   --transform-dir exp/tri3_ali_bd/ \
-#     exp/tri3/graph_tg_bd data/eval $dir/decode_tg_bd_eval &
-
-# exp/tri3/decode_tg_bd_eval \
-
-# steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 10 \
-#    --transform-dir exp/tri4b/decode_bd_tgpr_dev93 \
-#     exp/tri4b/graph_bd_tgpr data/test_dev93 $dir/decode_bd_tgpr_dev93 &
-
-# steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 8 \
-#   --transform-dir exp/tri4b/decode_bd_tgpr_eval92 \
-#     exp/tri4b/graph_bd_tgpr data/test_eval92 $dir/decode_bd_tgpr_eval92
-
-
-wait;
-

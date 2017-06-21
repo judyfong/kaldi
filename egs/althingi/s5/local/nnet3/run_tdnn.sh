@@ -19,7 +19,7 @@ min_seg_len=1.55
 train_set=train
 gmm=tri3  # this is the source gmm-dir for the data-type of interest; it
                    # should have alignments for the specified training data.
-nnet3_affix=_sp
+nnet3_affix=
 
 # Options which are not passed through to run_ivector_common.sh
 affix=
@@ -89,8 +89,6 @@ fi
 #     --max-change-per-component 0 \
 #    $dir/configs || exit 1;
 # fi
-
-
 
 # if [ $stage -le 12 ]; then
 #   # I added the samples-per-iter and use-gpu arguments. Samples-per-iter was by default 20000 but in train_tdnn.sh it was 400000

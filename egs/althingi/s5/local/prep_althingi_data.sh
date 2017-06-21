@@ -1,15 +1,15 @@
-#!/bin/bash -eu
+#!/bin/bash -e
 
 set -o pipefail
 
 # 2016  Reykjavik University (Author: Inga Rún Helgadóttir)
 # Get the Althingi data on a proper format for kaldi.
 
+stage=-1
+
 . ./path.sh # Needed for KALDI_ROOT
 . ./cmd.sh
-
-tmp=$(mktemp -d)
-trap "rm -rf $tmp" EXIT
+. parse_options.sh || exit 1;
 
 if [ $# -ne 2 ]; then
     echo "Usage: $0 <path-to-original-data> <output-data-dir>" >&2
@@ -17,42 +17,36 @@ if [ $# -ne 2 ]; then
     exit 1;
 fi
 
-nj=25
-stage=0
 #datadir=data/local/corpus
 #outdir=data/all
 datadir=$(readlink -f $1); shift
 outdir=$1; shift
 mkdir -p $outdir
 
-#iconv -f ISO-8859-1 -t UTF-8 ${datadir}/metadata.csv > ${datadir}/metadata_u8.csv
-
-name_id_file=${datadir}/name_id_gender.tsv
 meta=${datadir}/metadata.csv
+
+audiofile=$(ls data/tempcorpus/audio/ | head -n1)
+extension="${audiofile##*.}"
 
 # Need to convert from mp3 to wav
 samplerate=16000
 # SoX converts all audio files to an internal uncompressed format before performing any audio processing
-#wav_cmd="sox -tmp3 - -c1 -esigned -r$samplerate -G -twav - "
-wav_cmd="sox -tflac - -c1 -esigned -twav - "
+wav_cmd="sox -t$extension - -c1 -esigned -r$samplerate -G -twav - "
+#wav_cmd="sox -tflac - -c1 -esigned -twav - " # I had also files converted to flac that were already downsampled
 
 if [ $stage -le 0 ]; then
     
-    echo "a) spk2gender" # I use the abbreviation of parliament members' names as speaker IDs
-    #cut -f2- ${datadir}/spk_name_gender.tsv | sed -e 's/\(.*\)/\L\1/' > spk2gender
-    cut -f2- $name_id_file > ${outdir}/spk2gender
+    echo "a) utt2spk" # Connect each utterance to a speaker.
+    echo "b) wav.scp" # Connect every utterance with an audio file
+    for s in ${outdir}/utt2spk ${outdir}/wav.scp ${outdir}/filename_uttID.txt; do
+        if [ -f ${s} ]; then rm ${s}; fi
+    done
 
-    echo "b) utt2spk" # Connect each utterance to a speaker.
-    echo "c) wav.scp" # Connect every utterance with an audio file
-    cut -d"," -f1,6 ${meta} | tr "," "\t" | LC_ALL=C sort > spkname_filename.tmp
-
-    rm ${outdir}/utt2spk ${outdir}/filename_uttID.txt ${outdir}/wav.scp
     IFS=$'\n' # Want to separate on new lines
-    for line in $(cat spkname_filename.tmp)
+    for line in $(LC_ALL=C sort ${meta})
     do
-	filename=$(echo $line | cut -f2)
-	spkname=$(echo $line | cut -f1)
-	spkID=$(grep $spkname ${name_id_file} | cut -f2)
+	filename=$(echo $line | cut -d"," -f6)
+	spkID=$(echo $line | cut -d"," -f1 | perl -pe 's/[ \.]//g')
 
 	# Print to utt2spk
 	printf "%s %s\n" ${spkID}-${filename} ${spkID} | tr -d $'\r' >> ${outdir}/utt2spk
@@ -61,19 +55,19 @@ if [ $stage -le 0 ]; then
 	echo -e ${filename} ${spkID}-${filename} | tr -d $'\r' | LC_ALL=C sort -n >> ${outdir}/filename_uttID.txt
 	
 	#Print to wav.scp
-	#echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f ${datadir}/audio/${filename}".mp3")" |" | tr -d $'\r' >> ${outdir}/wav.scp
-	echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f ${datadir}/audio/${filename}".flac")" |" | tr -d $'\r' >> ${outdir}/wav.scp
+	echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f ${datadir}/audio/${filename}".$extension")" |" | tr -d $'\r' >> ${outdir}/wav.scp
+	#echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f ${datadir}/audio/${filename}".flac")" |" | tr -d $'\r' >> ${outdir}/wav.scp
     done
-    rm spkname_filename.tmp
 
-    echo "d) spk2utt"
+    echo "c) spk2utt"
     utils/utt2spk_to_spk2utt.pl < ${outdir}/utt2spk > ${outdir}/spk2utt
 fi
 
 if [ $stage -le 1 ]; then
 
-    echo "e) text" # Each line is utterance ID and the utterance itself
+    echo "d) text" # Each line is utterance ID and the utterance itself
 
+    # Extract the text in an xml file.
     for n in bb endanlegt; do
         export xmldir=${datadir}/text_${n} #text_bb
         python3 -c "
@@ -100,8 +94,6 @@ if [ $stage -le 2 ]; then
 
     echo "Remove xml-tags and comments"
 
-    # As a first analysis I remove <frammíkall>, <truflun> and <atburður>. Switch out for a silence/noise model later!! NOTE!
-    # I remove also the "forseti"-tag. Should I keep that in some way to note that it is a different speaker?
     # In the following I separate the numbers on "|":
     # 1) removes comments on the form "<mgr>//....//</mgr>"
     # 2) removes comments on the form "<!--...-->"
@@ -113,11 +105,13 @@ if [ $stage -le 2 ]; then
     # 12) (in a new line) Rewrite fractions
     # 13-15) Rewrite law numbers
     # 16-19) Remove comments in a) parentheses, b) left: "(", right "/" or "//", c) left: "/", right one or more ")" and maybe a "/", d) left and right one or more "/"
-    # 20-21) Remove the remaining tags and reduce the spacing to one between words
+    # 20) Remove comments on the form "xxxx", used when they don't hear what the speaker said
+    # 21-22) Remove the remaining tags and reduce the spacing to one between words
     perl -pe 's/<mgr>\/\/[^\/<]*?\/\/<\/mgr>|<!--[^>]*?-->|<[^>]*?>[^<]*?http[^<]*?<\/[^>]*?>|<[^>]*?>:[^<]*?ritun[^<]*?<\/[^>]*?>|<mgr>[^\/]*?\/\/<\/mgr>|<ræðutexti> +<mgr>[^\/]*?\/<\/mgr>|<ræðutexti> +<mgr>til [0-9]+\.[0-9]+<\/mgr>|<truflun>[^<]*?<\/truflun>|<atburður>[^<]*?<\/atburður>|<málsheiti>[^<]*?<\/málsheiti>/ /g' ${outdir}/text_orig_bb.txt \
 	    | perl -pe 's/\b([0-9])\/([0-9]{1,2})\b/$1 $2\./g' \
 	    | perl -pe 's/\/?([0-9]+)\/([0-9]+)/ $1 $2/g' | perl -pe 's/([0-9]+)\/([A-Z]{2,})/$1 $2/g' | perl -pe 's/([0-9])\/ ([0-9])/$1 $2/g' \
 	    | perl -pe 's/\([^\/\(<>]*?\)/ /g' | perl -pe 's/\([^\/<>\)]*?\/+/ /g' | perl -pe 's/\/[^\/<>\)]*?\)+\/?/ /g' | perl -pe 's/\/+[^\/<>\)]*?\/+/ /g'\
+	    | sed 's/xx\+//g' \
 	    | perl -pe 's/<[^<>]*?>/ /g' | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noXML_bb.txt	
 
     perl -pe 's/<!--[^>]*?-->|<truflun>[^<]*?<\/truflun>|<atburður>[^<]*?<\/atburður>|<málsheiti>[^<]*?<\/málsheiti>|\([^\(\)<>]*?\)|<[^>]*?>/ /g' ${outdir}/text_orig_endanlegt.txt | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noXML_endanlegt.txt
@@ -127,7 +121,7 @@ fi
 if [ $stage -le 3 ]; then
     
     echo "Rewrite roman numerals before lowercasing" # Enough to rewrite X,V and I based numbers. L=50 is used once and C, D and M never.
-    # Luckily noones middlename is written I. or V.
+    # Might clash with someones middle name. # The module roman comes from Dive into Python
     for n in bb endanlegt; do
 	perl -pe 's/([A-Z]\.?)–([A-Z])/$1 til $2/g' ${outdir}/text_noXML_${n}.txt > tmp && mv tmp ${outdir}/text_noXML_${n}.txt
 	python3 -c "
@@ -168,203 +162,116 @@ if [ $stage -le 4 ]; then
     echo "Rewrite and remove punctuations"
     # 1) Change from utterance filename to uttID,
     # 2) Remove comments that appear at the end of certain speeches (still here because contained <skáletrað> in original text)
-    # 3) Remove punctuations which is safe to remove
-    # 4) Rewrite time and remove ":" before space because need to do that before I remove periods,
+    # 3) Rewrite time and remove ":" before space because need to do that before I remove periods,
+    # 4) Remove punctuations which is safe to remove
     # 5) Rewrite fractions
     # 6) Rewrite law numbers, f.ex. "2011/77/ESB" to "2011 77 ESB" and "lög nr 77/2011" to "lög nr 77 2011"
-    # 7) Add missing space between sentences and after comments,
-    # 8) Rewrite ".is" to " punktur is "
-    # 9) In an itemized list, lowercase what comes after the numbering.
-    # 10) Rewrite en dash (x96) and regular dash to " til ", if sandwitched between words or numbers,
-    # 11) Rewrite decimals, f.ex "0,045" to "0 komma 0 45" and "0,00345" to "0 komma 0 0 3 4 5" and remove space before a "%",
-    # 12 Rewrite vulgar fractions
-    # 13) Remove "," when not followed by a number, remove punctuations that won't be cleared away in the following steps, change spaces to one between words
+    # 7) Add missing space between sentences and fix spelling errors like "be4stu" and "o0g",
+    # 8) Rewrite website names,
+    # 9) Add space between cases like: "1.bekk" and "bla.35 bla"
+    # 10) In an itemized list, lowercase what comes after the numbering.
+    # 11) Rewrite en dash (x96) and regular dash to " til ", if sandwitched between words or numbers,
+    # 12) Rewrite decimals, f.ex "0,045" to "0 komma 0 45" and "0,00345" to "0 komma 0 0 3 4 5" and remove space before a "%",
+    # 13 Rewrite vulgar fractions
+    # 14) Remove "," when not followed by a number, remove punctuations that won't be cleared away in the following steps
     for n in bb endanlegt; do
 	join -j 1 <(sort -k1 ${outdir}/filename_uttID.txt) <(sort -k1 ${outdir}/text_noRoman_${n}.txt) | cut -d" " -f2- \
-	    | perl -pe 's/\[Þingmenn risu úr sætum.*?]/ /g' \
-	    | perl -pe 's/!|\+|\*|×|…|\(|\)|\]|\[|\.\.\.|\.\.|,,|”|“|„|\"|´|__+|\x27|<U+0090>|­||«|»|¬|<U+2015>//g' \
-	    | perl -pe 's/([0-9]):([0-9][0-9])/$1 $2/g' | perl -pe 's/&amp;/og/g' | perl -pe 's/\?|:|;| | \./ /g' \
+	    | sed -e 's/\[Þingmenn risu úr sætum.*\?\]/ /g' \
+	    | perl -pe 's/([0-9]):([0-9][0-9])/$1 $2/g' | perl -pe 's/&amp;/og/g' \
+	    | sed 's/[^a-záðéíóúýþæöA-ZÁÉÍÓÚÝÞÆÖ0-9 \.,?!:;\/%‰°º&—–\-²³¼¾½ _]\+//g'
+	    | sed 's/\?\|:\|;\| \|__\+\| \./ /g' \
 	    | perl -pe 's/\b([0-9])\/([0-9]{1,2})\b/$1 $2\./g' \
 	    | perl -pe 's/\/?([0-9]+)\/([0-9]+)\/?/ $1 $2 /g' \
-	    | sed -e 's/\([^ A-ZÁÐÉÍÓÚÝÞÆÖ]\)\([A-ZÁÐÉÍÓÚÝÞÆÖ]\)/\1 \2/g' | perl -pe 's/([^0-9 ][^0-9 ,–])([0-9])/$1 $2/g' \
-	    | perl -pe 's/\.(is|net|com)(\W)/ punktur $1$2/g' | perl -pe 's/([0-9]\.)([a-záðéíóúýþæö])/$1 $2/g' | perl -pe 's/([a-záðéíóúýþæö]\.)([0-9])/$1 $2/g'\
+	    | sed -e 's/ \([^ ]*[^ A-ZÁÐÉÍÓÚÝÞÆÖ]\)\([A-ZÁÐÉÍÓÚÝÞÆÖ]\)/ \1 \2/g' -e 's/ \([a-záðéíóúýþæö]\+\)[0-9]\([a-záðéíóúýþæö]\+\)/ \1\2/g' \
+	    | sed -e 's/www\./w w w /g' -e 's/\.\(is\|net\|com\|int\)\b/ punktur \1/g' \
+	    | perl -pe 's/([0-9]\.)([a-záðéíóúýþæö])/$1 $2/g' | perl -pe 's/([a-záðéíóúýþæö]\.)([0-9])/$1 $2/g'\
 	    | sed -e 's/ \+\([0-9]\.\) \+\([A-ZÁÐÉÍÓÚÝÞÆÖ]\)/ \1 \L\2/g' \
 	    | perl -pe 's/([^ ])–([^ ])/$1 til $2/g' | perl -pe 's/(\d)tilstr\w*?\.?(\d)/$1 til $2/g' | perl -pe 's/([0-9\.%])-([0-9])/$1 til $2/g' \
 	    | perl -pe 's/([0-9]+),([0-46-9])/$1 komma $2/g' | perl -pe 's/([0-9]+),5([0-9])/$1 komma $2/g' | perl -pe 's/ (0(?!,5))/ $1 /g' | perl -pe 's/komma (0? ?)(\d)(\d)(\d)(\d?)/komma $1$2 $3 $4 $5/g' \
 	    | perl -pe 's/¼/ einn fjórði/g' | perl -pe 's/¾/ þrír fjórðu/g' | perl -pe 's/(\d)½/$1,5 /g' | perl -pe 's/ ½/ 0,5 /g' \
-	    | perl -pe 's/,([^0-9])/$1/g' | sed -e 's/[^ ]*\([^a-yáðéíóúýþæöA-YÁÉÍÓÚÝÞÆÖ0-9\.,?!:; %‰°º&—–-\/]\)[^ ]*//g' | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noPuncts1_${n}.txt
+	    | perl -pe 's/,([^0-9])/$1/g' > ${outdir}/text_noPuncts1_${n}.txt
     done
 fi
-# Older #7 (Add missing space): sed -e 's/\([a-záðéíóúýþæö0-9][\.\/%]\)\([A-ZÁÐÉÍÓÚÝÞÆÖ\/]\)/\1 \2/g' \
-# Older #13: perl -pe 's/\b[^ ]*([^a-yáðéíóúýþæöA-YÁÉÍÓÚÝÞÆÖ0-9%‰°º\., ]|[cqw])[^ ]*\b/<unk>/g'
 
 if [ $stage -le 5 ]; then
 
     echo "Lowercase, rewrite and remove punctuations"
-    # The following are a bit changed because of the effect of tagging and untagging the text
     # 1-2) Remove final period (mostly to distinguish between numbers and ordinals) and period after letters,
     # 3) Lowercase text (not uttID) and rewrite "/a " to "á ári" and "/s " to "á sekúndu"
     # 4) Rewrite thousands and millions, f.ex. 3.500 to 3500,
     # 5) Rewrite chapter and clause numbers and time, f.ex. "ákvæði 2.1.3" to "ákvæði 2 1 3" and "kl 15.30" to "kl 15 30",
-    # 6) Add spaces between letters and numbers in alpha-numeric words,
-    ## 7) Remove comments on what to add in text endanlegt f.ex "/í skj.: til að/" and "/dittó/",
-    # 8) Swap "-" and "/" out for a space when sandwitched between words, f.ex. "suður-kórea" and "svart/hvítt",
-    ## 9) Remove comments on what to add in text endanlegt f.ex "/þ. 278/"
-    # 10) Remove remaining punctuations, fix some leftover stuff, and change spaces to one between words and write.
+    # 6) Remove "ja" from numbers written like "22ja"
+    # 7) Rewrite [ck]?m[23] to [ck]?m[²³] and expand things like "4x4"
+    # 8) Add spaces between letters and numbers in alpha-numeric words,
+    # 9) Swap "-", "/" and more out for a space, f.ex. "suður-kórea" and "svart/hvítt" -> "suður kórea" and "svart hvítt",
+    # 10) Remove remaining punctuations, remove any remaining alpha-numeric words and change spaces to one between words
     for n in bb endanlegt; do
-	sed -e 's/\.\( \+[A-ZÁÐÉÍÓÚÝÞÆÖ]\|$\)/\1/g' ${outdir}/text_noPuncts1_${n}.txt \
+	sed 's/\.\( \+[A-ZÁÐÉÍÓÚÝÞÆÖ]\|$\)/\1/g' ${outdir}/text_noPuncts1_${n}.txt \
 	    | perl -pe 's/([^0-9])\./$1/g' | perl -pe 's/([0-9]{4})\.(\s+|$)/$1$2/g' \
-	    | sed 's/ .\+/\L&/g' | perl -pe 's/\/a( |$)/ á ári$1/g' | perl -pe 's/\/kg( |$)/ á kíló$1/g' | perl -pe 's/\/s( |$)/ á sekúndu$1/g' \
-	    | perl -pe 's/([0-9]+)\.([0-9]{3})\.?/$1$2/g' \
+	    | sed 's/ .\+/\L&/g' | perl -pe 's/\/a( |$)/ á ári$1/g' | perl -pe 's/\/kg( |$)/ á kíló$1/g' | perl -pe 's/\/s( |$)/ á sekúndu$1/g' | perl -pe 's/\/klst( |$)/ á klukkustund$1/g' \
+	    | sed 's/\([0-9]\+\)\.\([0-9]\{3\}\)\b\.\?/\1\2/g' \
 	    | perl -pe 's/(\d{1,2})\.(\d{1,2})((\.(\d{1,2}|( |$)))| )\.?/$1 $2 $5$6/g' \
-	    | perl -pe 's/( [a-záðéíóúýþæö]+)-?([0-9]+)(\W)/$1 $2$3/g' | perl -pe 's/( [0-9,]+%?)-?([a-záðéíóúýþæö]+)(\W)/$1 $2$3/g' \
-	    | perl -pe 's/([a-záðéíóúýþæö])-([a-záðéíóúýþæö])/$1 $2/g' \
-	    | perl -pe 's/—|–|-|\/|&lt|&gt|tilstr\w*?\.?/ /g' | perl -pe 's/&/ og /g' | perl -pe 's/([0-9]+)\.([0-9]+%?)/$1 $2/g' | perl -pe 's/, / /g' | perl -pe 's/ %/%/g'| sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noPuncts_${n}.txt
+	    | sed 's/\([0-9]\+\)ja\([^a-záðéíóúýþæö]\|$\)/\1\2/g' \
+	    | sed -e 's/\([ck]\?m\)2/ \1²/g' -e 's/\([ck]\?m\)3/ \1³/g' -e 's/\( [0-9]\+\)\([^0-9 ,]\)\([0-9]\)/\1 \2 \3/g' \
+	    | sed -e 's/\( [a-záðéíóúýþæö]\+\)-\?\([0-9]\+[^a-záðéíóúýþæö]\)/\1 \2/g' -e 's/\(^\| \)\([0-9,]\+%\?\)-\?\([a-záðéíóúýþæö]\+\)\( \|$\)/\1\2 \3\4/g' \
+	    | perl -pe 's/—|–|\/|&lt|&gt|tilstr\w*?\.?/ /g' \
+	    | perl -pe 's/&/ og /g' | perl -pe 's/([0-9]+)\.([0-9]+%?)/$1 $2/g' | sed -e 's/ [0-9]\+\([a-záðéíóúýþæö]\)/ \1/g' -e 's/ \([a-záðéíóúýþæö]\+\)[0-9]\+/ \1/g' -e 's/, / /g' -e 's/ %/%/g' -e 's/ \([^ ]*\)[^a-záðéíóúýþæö0-9\.,?! %‰°º²³]\+/ \1/g' -e 's/ [^ ]*[a-záðéíóúýþæö]\+[0-9]\+[^ ]*/ /g' -e 's/ [^ ]*-/ /g' -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noPuncts_${n}.txt
     done
 fi
 
-# Line 7: | perl -pe 's/\/í s.*?\// /g' | perl -pe 's/\/[a-záðéíóúýþæö]*? ?[a-záðéíóúýþæö]+\// /g' \
-# Line 9: | perl -pe 's/\/[0-9\. ]+\// /g' | perl -pe 's/\/[ a-záðéíóúýþæö0-9\.&-]+?\/\/?/ /g' \
-
-# I have the problem that tagging and untagging the text changes it with regard to punctuations. Hence I need to split up the
-# punctuation removal. Tagging the text works way worse after periods have been removed.
-if [ $stage -le 5 ]; then
-    echo "Expand some abbreviations, incl. 'hv.' and 'þm.'" # Should I expand the acronyms after the spelling check. OR What? NOTE!
+if [ $stage -le 6 ]; then
+    echo "Expand some abbreviations, incl. 'hv.' and 'þm.'"
     for n in bb endanlegt; do
-	python3 local/replace_abbr_acro2.py ${outdir}/text_noPuncts_${n}.txt ${outdir}/text_exp1_${n}.txt # Switch out for a nicer solution
-	# Use IceNLP and Anna's code
-	python3 local/althingi_replace_plain_text2.py ${outdir}/text_exp1_${n}.txt ${outdir}/text_exp2_${n}.txt
-	#cat ${outdir}/text_exp2_${n}.txt | local/iceNLPtagger.sh > ${outdir}/text_exp2_${n}_tagged.txt
-	#python3 local/althingi_replace_tagged_text.py ${outdir}/text_exp2_${n}_tagged.txt ${outdir}/text_exp3_${n}.txt
+	python3 local/replace_abbr_acro.py ${outdir}/text_noPuncts_${n}.txt ${outdir}/text_exp1_${n}.txt # Switch out for a nicer solution
+	# Use Anna's code
+	python3 local/althingi_replace_plain_text.py ${outdir}/text_exp1_${n}.txt ${outdir}/text_exp2_${n}.txt
     done
 fi
-
-# if [ $stage -le 6 ]; then
-
-#     echo "Rewrite and remove punctuations"
-#     # The following are a bit changed because of the effect of tagging and untagging the text
-#     # 1) Remove final period (mostly to distinguish between numbers and ordinals) and period after letters,
-#     # 2) Reverse some of the changes made when tagging and untagging.
-#     # 3) Lowercase text (not uttID) and rewrite "/a " to "á ári" and "/s " to "á sekúndu"
-#     # 4) Rewrite thousands and millions, f.ex. 3.500 to 3500,
-#     # 5) Rewrite chapter and clause numbers, f.ex. "ákvæði 2.1.3" to "ákvæði 2 1 3",
-#     # 6) Add spaces between letters and numbers in alpha-numeric words,
-#     # 7) Remove comments on what to add in text endanlegt f.ex "/í skj.: til að/" and "/dittó/",
-#     # 8) Swap "-" and "/" out for a space when sandwitched between words, f.ex. "suður-kórea" and "svart/hvítt",
-#     # 9) Remove comments on what to add in text endanlegt f.ex "/þ. 278/"
-#     # 10) Remove remaining punctuations, fix some leftover stuff, and change spaces to one between words and write.
-#     for n in bb endanlegt; do
-# 	sed -e 's/\.\( \+[A-ZÁÐÉÍÓÚÝÞÆÖ]\|$\)/\1/g' ${outdir}/text_exp3_${n}.txt \
-# 	    | perl -pe 's/\x27//g' | perl -pe 's/< bjalla \/ >/<bjalla\/>/g' \
-# 	    | perl -pe 's/([^0-9])\./$1/g' | perl -pe 's/([0-9]{4})\.(\s+|$)/$1$2/g' \
-# 	    | sed 's/ .\+/\L&/g' | perl -pe 's/ \/ a( |$)/ á ári$1/g' | perl -pe 's/ \/ s( |$)/ á sekúndu$1/g' \
-# 	    | perl -pe 's/([0-9]+)\.([0-9]{3})\.?/$1$2/g' \
-# 	    | perl -pe 's/(\d{1,2})\.(\d{1,2})((\.(\d{1,2}| ))| )\.?/$1 $2 $5/g' \
-# 	    | perl -pe 's/( [a-záðéíóúýþæö]+)-?([0-9]+)(\W)/$1 $2$3/g' | perl -pe 's/( [0-9]+%?)-?([a-záðéíóúýþæö]+)(\W)/$1 $2$3/g' \
-# 	    | perl -pe 's/\/ ?í s.*? ?\// /g' | perl -pe 's/\/ ?[a-záðéíóúýþæö]*? ?[a-záðéíóúýþæö]+ ?\// /g' \
-# 	    | perl -pe 's/([a-záðéíóúýþæö])-([a-záðéíóúýþæö])/$1 $2/g' \
-# 	    | perl -pe 's/\/[0-9\. ]+\// /g' | perl -pe 's/\/[ a-záðéíóúýþæö0-9\.&-]+?\/ \/?/ /g' \
-# 	    | perl -pe 's/—|–|-|­|\/|&lt|&gt//g' | perl -pe 's/ ²/²/g' | perl -pe 's/&/ og /g' | perl -pe 's/[0-9]+\.[0-9]+%?/<unk>/g' | perl -pe 's/, / /g' | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noPuncts_${n}.txt
-#     done
-# fi
 
 if [ $stage -le 7 ]; then
     
     echo "Fix spelling errors"
-    cut -d" " -f2- ${outdir}/text_exp2_endanlegt.txt | perl -pe 's/\.|,|[0-9]|%|°c|ºc//g' | tr " " "\n" | egrep -v "^\s*$" | sort -u > ${outdir}/words_text_endanlegt.txt
+    cut -d" " -f2- ${outdir}/text_exp2_endanlegt.txt | sed -e 's/[0-9\.,%‰°º]//g' | tr " " "\n" | egrep -v "^\s*$" | sort -u > ${outdir}/words_text_endanlegt.txt
     if [ -f ${outdir}/text_bb_SpellingFixed.txt ]; then
 	rm ${outdir}/text_bb_SpellingFixed.txt
     fi
 
-    #for speech in $(grep "ÓÞ_rad20151116T174412" ${outdir}/text_noPuncts_bb.txt)
-    IFS=$'\n' # IMPORTANT
+    IFS=$'\n' # Important
     for speech in $(cat ${outdir}/text_exp2_bb.txt)
     do
         uttID=$(echo $speech | cut -d" " -f1)
-	echo $speech | cut -d" " -f2- | perl -pe 's/\.|,|[0-9]|%|°c|ºc//g' | tr " " "\n" | egrep -v "^\s*$" | sort -u > vocab_speech.tmp
+	echo $speech | cut -d" " -f2- | sed -e 's/[0-9\.,%‰°º]//g' | tr " " "\n" | egrep -v "^\s*$" | sort -u > vocab_speech.tmp
 	
 	# Find words that are not in any text_endanlegt speech 
 	comm -23 <(cat vocab_speech.tmp) <(cat  ${outdir}/words_text_endanlegt.txt) > vocab_speech_only.tmp
 	
 	grep $uttID ${outdir}/text_exp2_endanlegt.txt > text_endanlegt_speech.tmp
-	cut -d" " -f2- text_endanlegt_speech.tmp | perl -pe 's/\.|,|[0-9]|%|°c|ºc//g' | tr " " "\n" | egrep -v "^\s*$" | sort -u > vocab_text_endanlegt_speech.tmp
+	cut -d" " -f2- text_endanlegt_speech.tmp | sed -e 's/[0-9\.,%‰°º]//g' | tr " " "\n" | egrep -v "^\s*$" | sort -u > vocab_text_endanlegt_speech.tmp
 
-	# Find an approximate match in the vocab_text_endanlegt_speech
-	# Substitute $word and the match in $speech
-	python3 local/MinEditDist.py "$speech" ${outdir}/text_bb_SpellingFixed.txt vocab_speech_only.tmp vocab_text_endanlegt_speech.tmp
+	# Find the closest match in vocab_text_endanlegt_speech.tmp and substitute
+	#set +u # Otherwise I will have a problem with unbound variables
+	source py3env/bin/activate
+	python local/MinEditDist.py "$speech" ${outdir}/text_bb_SpellingFixed.txt vocab_speech_only.tmp vocab_text_endanlegt_speech.tmp
+	deactivate
+	#set -u
     done
     rm *.tmp
     
 fi
 
 if [ $stage -le 8 ]; then
-    
-    echo "Expand abbreviations and numbers in text"
-    # # ./local/train_LM.sh
-    # Nothing should be mapped to <unk> in the following
-    cat ${outdir}/text_bb_SpellingFixed.txt \
-        | utils/sym2int.pl --map-oov "<unk>" -f 2- text_norm/text/words30.txt \
-        | utils/int2sym.pl -f 2- text_norm/text/words30.txt > ${outdir}/text_bb_SpellingFixed_noOOV.txt
-    # We want to process it in parallel.
-    nj=60
-    mkdir -p ${outdir}/split$nj/
-    IFS=$' \t\n'
-    split_text=$(for j in `seq 1 $nj`; do printf "${outdir}/split%s/text_bb_SpellingFixed_noOOV.%s.txt " $nj $j; done)
-    utils/split_scp.pl ${outdir}/text_bb_SpellingFixed_noOOV.txt $split_text # problem with using $split_text if the field separator is not correct
-    # Expand
-    utils/slurm.pl JOB=1:$nj ${outdir}/log/expand-numbers.JOB.log expand-numbers --word-symbol-table=text_norm/text/words30.txt ark,t:${outdir}/split${nj}/text_bb_SpellingFixed_noOOV.JOB.txt text_norm/expand_to_words30.fst text_norm/text/numbertext_2g.fst ark,t:${outdir}/split${nj}/text_expanded.JOB.txt &
 
-    #utils/slurm.pl JOB=1:$nj ${outdir}/log/expand-numbers.JOB.log expand-numbers --word-symbol-table=text_norm/text/words30.txt ark,t:${outdir}/split${nj}/text_bb_SpellingFixed_noOOV.JOB.txt text_norm/expand_to_words30.fst text_norm/text/numbertext_3g.fst ark,t:${outdir}/split${nj}/text_expanded.JOB.txt &
-
-    # # Put all expanded text into one file
-    if [ -f ${outdir}/text_bb_expanded.txt ]; then
-        mv ${outdir}/{,.backup/}text_bb_expanded.txt
+    if [ -e ${outdir}/text ] ; then
+	# we don't want to overwrite old stuff, ask the user to delete it.
+	echo "$0: ${outdir}/text already exists: "
+	echo "Are you sure you want to proceed?"
+	echo "It will overwrite the file"
+	echo ""
+        echo "  If so, please delete and then rerun"
+	exit 1;
     fi
-    cat ${outdir}/split${nj}/text_expanded.*.txt > ${outdir}/text_bb_expanded.txt
 
-    cp ${outdir}/text_bb_expanded.txt ${outdir}/text
-
-    # ################################
-    # # #### Just a temporary fix ####
-    # grep -o "[^0-9 ]*_rad20[0-9]*T[0-9]*" ${outdir}/log/expand-numbers.*.log | cut -d":" -f2 | sort -u > ${outdir}/speeches_notExpanded.txt # Find speeches not expanded
-
-    # # Obtain the text NOT expanded
-    # if [ -f ${outdir}/text_bb_NOT_expanded.txt ]; then
-    #    rm ${outdir}/text_bb_NOT_expanded.txt
-    # fi
-
-    # for uttID in $(cat ${outdir}/speeches_notExpanded.txt)
-    # do
-    #     grep $uttID ${outdir}/text_bb_SpellingFixed.txt >> ${outdir}/text_bb_NOT_expanded.txt 
-    # done
-    # cat ${outdir}/text_bb_NOT_expanded.txt \
-    #         | utils/sym2int.pl --map-oov "<unk>" -f 2- text_norm/text/words30.txt \
-    #         | utils/int2sym.pl -f 2- text_norm/text/words30.txt > ${outdir}/text_bb_NOT_expanded_no_OOV.txt
-    # mv ${outdir}/text_bb_NOT_expanded_no_OOV.txt ${outdir}/text_bb_NOT_expanded.txt
-
-    # # Put all expanded text into one file
-    # #cat ${outdir}/text_expanded.*.txt > ${outdir}/text_bb_expanded.txt
-    # # Remove uttID of speeches not expanded. (Directly modify the file and create a backup)
-    # for uttID in $(cat ${outdir}/speeches_notExpanded.txt)
-    # do
-    #     sed -i.bak "/$uttID/d" ${outdir}/text_bb_expanded.txt
-    # done
-
-    # # Expand the not expanded again. I fixed the problem
-    # nj=2
-    # mkdir -p ${outdir}/split${nj}/
-    # split_text=$(for j in `seq 1 $nj`; do printf "${outdir}/split%s/text_bb_NOT_expanded.%s.txt " $nj $j; done)
-    # utils/split_scp.pl ${outdir}/text_bb_NOT_expanded.txt $split_text # problem with using $split_text
-    # # Expand
-    # utils/slurm.pl JOB=1:$nj ${outdir}/log/expand-numbers_temp.JOB.log expand-numbers --word-symbol-table=text_norm/text/words30.txt ark,t:${outdir}/split${nj}/text_bb_NOT_expanded.JOB.txt text_norm/expand_to_words30.fst text_norm/text/numbertext_2g.fst ark,t:${outdir}/split${nj}/text_expanded_try3.JOB.txt &
-
-    ####################################
-fi
-
-# echo "f) corpus.txt" # Contains only the utterances
-#cut -d" " -f2- ${outdir}/text > ${outdir}/../local/corpus.txt
-
-if [ $stage -le 8 ]; then
+    cp ${outdir}/text_bb_SpellingFixed.txt ${outdir}/text
     
     echo "Make sure all files are created and that everything is sorted"
     utils/validate_data_dir.sh --no-feats ${outdir} || utils/fix_data_dir.sh ${outdir}

@@ -89,6 +89,10 @@ GSYMS
 /egs/*/s*/py3env
 /egs/*/s*/q
 /egs/*/s*/Makefile
+/egs/althingi/clean_s5/data
+/egs/althingi/clean_s5/steps
+/egs/althingi/clean_s5/text_norm
+/egs/althingi/clean_s5/utils
 
 # /tools/
 /tools/ATLAS/

@@ -255,27 +255,16 @@ if [ $stage -le 29 ]; then
     done
 fi
 
-if [ $stage -le 34 ]; then
+if [ $stage -le 30 ]; then
     echo "Clean and resegment the training data"
     local/run_cleanup_segmentation.sh
 fi
 
 # NNET Now by default running on un-cleaned data
 # Input data dirs need to be changed
-if [ $stage -le 28 ]; then
-    echo "Run the main nnet2 recipe on top of fMLLR features"
-    local/nnet2/run_5d.sh
-
-    echo "Run the main tdnn recipe on top of fMLLR features with speed perturbations"
-    local/nnet3/run_tdnn.sh &>tdnn.log &
-
-    echo "Run the swbd lstm recipe without sp"
-    local/nnet3/run_lstm.sh --speed-perturb false >>lstm_Feb24.log 2>&1 &
-
-    echo "Run the swbd chain tdnn_lstm recipe without sp"
-    local/chain/run_tdnn_lstm.sh --speed-perturb false >>tdnn_lstm_March31.log 2>&1 &
+if [ $stage -le 31 ]; then
 
     echo "Run the swbd chain tdnn_lstm recipe with sp"
-    local/chain/run_tdnn_lstm.sh >>tdnn_lstm_April26.log 2>&1 &
+    local/chain/run_tdnn_lstm.sh >>tdnn_lstm.log 2>&1 &
 fi
 

@@ -85,7 +85,7 @@ GSYMS
 /egs/*/s*/exp100
 /egs/*/s*/text_norm
 /egs/*/s*/recognize
-!/egs/*/s*/recognize/*/*.sh
+!/egs/*/s*/recognize/local
 /egs/*/s*/py3env
 /egs/*/s*/q
 /egs/*/s*/Makefile

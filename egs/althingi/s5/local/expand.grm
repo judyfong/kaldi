@@ -4,11 +4,11 @@
 #
 # This grammar can be interactively tested by doing:
 #
-# thraxrewrite-tester --far=expand.far --rules=EXPAND_UTT --noutput=10 --input_mode=utf8 --output_mode=utf8
+# thraxrewrite-tester --far=local/expand.far --rules=EXPAND_UTT --noutput=10 --input_mode=utf8 --output_mode=utf8
 
-import 'common.grm' as c;
-import 'numbers.grm' as n;
-import 'ordinals.grm' as o;
+import 'local/common.grm' as c;
+import 'local/numbers.grm' as n;
+import 'local/ordinals.grm' as o;
 
 # This transducer inserts a space
 insspace = "".utf8 : " ".utf8;
@@ -24,48 +24,43 @@ anyword = c.NotSpace+;
 
 ##############
 #
-# First phase: Initial cleaning of the text and expansion
-#              of percentages and ",5" according to info
-#              from Alþingi. I assume that the text has been
-#              changed to lowercase already.
-#              NOTE! I removed most of the first phase away
-#              and into prep_althingi_data.sh!
+# First phase: Expansion of percentages, permilles, degrees and
+#              ",5" according to info from Alþingi. I assume that
+#              the text has been changed to lowercase already.
 #
 ##############
 
 #perc = "%".utf8 : (("%".utf8 <15>) | " prósent".utf8 | " prósenti".utf8 |
 #" prósents".utf8 | " prósentum".utf8 | " prósenta".utf8 );
-perc = Optimize[StringFile['lex/perc.txt', 'utf8', 'utf8']];
-
+perc = Optimize[StringFile['text_norm/lex/perc.txt', 'utf8', 'utf8']];
+permille = Optimize[StringFile['text_norm/lex/permille.txt', 'utf8', 'utf8']];
+per = perc | permille;
 # Expand according to context dependent rules. Default is an
 # obligatory rewrite
-expandperc = CDRewrite[
-  perc,
-  (c.Digits+ | " ".utf8),
-  (" ".utf8 |
-  ((c.u8_punct | c.space)* "[EOS]".utf8)),
+expandper = CDRewrite[
+  per,
+  "".utf8,
+  "".utf8,
   c.whole_alphabet*];
 
 # In the althingi data they write nb,5 when people say "nb and half"
-half05 = Optimize[StringFile['lex/half05.txt', 'utf8', 'utf8']];
-half1 = Optimize[StringFile['lex/half.txt', 'utf8', 'utf8']];
+half05 = Optimize[StringFile['text_norm/lex/half05.txt', 'utf8', 'utf8']];
+half1 = Optimize[StringFile['text_norm/lex/half.txt', 'utf8', 'utf8']];
 
 rewrite_half05 = CDRewrite[
   half05,
-  (" ".utf8 | "[BOS]".utf8),
-  ((c.u8_punct | c.space) | "[EOS]".utf8),
+  "".utf8,
+  (c.u8_punct | c.space | "[EOS]".utf8),
   c.whole_alphabet*];
 
 rewrite_half1 = CDRewrite[
   (half1 | (",5".utf8 : (" komma fimm".utf8 <-1.0>))),
-  c.posDigits+,
-  ((c.u8_punct | c.space) | "[EOS]".utf8),
+  c.Digits+,
+  (c.u8_punct | c.space | "[EOS]".utf8),
   c.whole_alphabet*];
 
-# I can't include this in half05.txt because it could say 1½ and
-# then it wouldn't be expanded.
-# Actually I will change ½ to 0,5 in prep_althingi_data.sh
-#half2 = Optimize["½".utf8 : ("hálfur".utf8 | "hálf".utf8 | "hálft".utf8)];
+# I change ½ to 0,5 in prep_althingi_data.sh so I don't have to worry
+#about that
 
 half = Optimize[rewrite_half05 @ rewrite_half1];
 #export half = rewrite_half05 | rewrite_half1 | half2;
@@ -84,7 +79,7 @@ deg = ("º".utf8 | "°".utf8) : (" gráða ".utf8 | " gráðu ".utf8 |
 expanddeg = CDRewrite[
   deg,
   c.Digits+,
-  c.alphabet+,
+  (c.space | c.alphabet+),
   c.whole_alphabet*];
 
 # The following rule composes 4 transducers, and optimizes the
@@ -95,7 +90,8 @@ expanddeg = CDRewrite[
 # grammars, it is a good idea to optimize at least some of
 # the intermediate transducers. This can significantly speed
 # up compilation.
-rewrite = Optimize[expandperc @ half @ expanddegc @ expanddeg];
+rewrite = Optimize[expandper @ half @ expanddegc @ expanddeg];
+
 
 ################
 #
@@ -109,8 +105,8 @@ numbernames = n.NUMBERNAMES;
 ordinalnames = o.ORDINALNAMES;
 
 # Abbreviations used in Alþingi paired with their expansions
-#abbr_expansion = Optimize[StringFile['lex/abbr_lexicon.txt','utf8','utf8']];
-abbr_lex = Optimize[StringFile['lex/abbr_lexicon.txt','utf8','utf8']];
+#abbr_expansion = Optimize[StringFile['text_norm/lex/abbr_lexicon.txt','utf8','utf8']];
+abbr_lex = Optimize[StringFile['text_norm/lex/abbr_lexicon.txt','utf8','utf8']];
 
 # Optional expansion
 nal = "nál".utf8 : "nefndarálit".utf8;
@@ -142,9 +138,7 @@ expandform = CDRewrite[
 
 optional_exp = Optimize[expandnal @ expanddags @ expandform];
 
-
-# I want to skip anyword to force expansion, but I can't get it right
-# hence I put a negative weight on the expansions to favor them.
+# words that are expanded
 word = abbr_lex | numbernames | ordinalnames;
 
 export EXPAND_WORD = Optimize[
@@ -190,7 +184,7 @@ abbr_word = Invert[word];
 # This fst only rewrites sentences which include at least
 # one rewritable words. But it abbreviates word parts that
 # shouldn't be abbreviated
-export ABBREVIATE = ArcSort[Optimize[
+export ABBREVIATE_forExpansion = ArcSort[Optimize[
                       delspace
                       (anyword reduce_spaces)*
                       (abbr_word half_rev? perc_rev?
@@ -200,8 +194,17 @@ export ABBREVIATE = ArcSort[Optimize[
                       delspace],
                       'input'];
 
-# This abbreviates at least one rewritable word or number, per
-# senctence. But doesn't take in senctences containing numerals
-# and/or abbreviations (written as f.ex. 2, 4, t.d., hv.)
-# So we would loose utterances
-export ABBR_OBL = ArcSort[Optimize[Invert[EXPAND_WORD]], 'input'];
+# # This abbreviates at least one rewritable word or number, per
+# # senctence. But doesn't take in senctences containing numerals
+# # and/or abbreviations (written as f.ex. 2, 4, t.d., hv.)
+# # So we would loose utterances
+# #export exp_tmp = Optimize[rewrite @ optional_exp @ EXPAND_WORD ];
+# #export tmp = Invert[rewrite @ optional_exp @ word];
+# export ABBR_OPT = Optimize[
+#                      CDRewrite[abbr_word delspace,
+#                      ("[BOS]".utf8 | " ".utf8),
+#                      ("[EOS]".utf8 | " ".utf8),
+#                      c.whole_alphabet*,
+#                      'ltr',
+#                      'opt']]; # If have 'obl' instead, all "annars
+#                      # vegar" and "dag einn..." will be abbreviated

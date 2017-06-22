@@ -53,12 +53,12 @@ def replace(text, matched_text, tag):
         return text
 
 
-HV_ABBR = "hv\."
+HV_ABBR = "hv"
 ICE_WORDCHARS = '[\wáéíóúýöæþð]'
 
-regex_1 = '(hv\.)\s+(' + ICE_WORDCHARS + '+(maður|mann|manni|manns|menn|mönnum|manna))[\s.,:?]'
-regex_2 = '(' + ICE_WORDCHARS + '+(menn|maðurinn|manninn|manninum|mannsins|mennirnir|mönnunum|mannanna))\s+(hv\.)'
-regex_3 = '(hv\.)\s+(' + ICE_WORDCHARS + '+-\s+og\s+' + ICE_WORDCHARS + '+nefndar)[\s.,:?]'
+regex_1 = '(hv)\s+(' + ICE_WORDCHARS + '+(maður|mann|manni|manns|menn|mönnum|manna))[\W]'
+regex_2 = '(' + ICE_WORDCHARS + '+(menn|maðurinn|manninn|manninum|mannsins|mennirnir|mönnunum|mannanna))\s+(hv)[\W]'
+regex_3 = '(hv)\s+(' + ICE_WORDCHARS + '+-\s+og\s+' + ICE_WORDCHARS + '+nefndar)[\W]'
 
 pattern_1 = re.compile(regex_1, re.IGNORECASE)
 pattern_2 = re.compile(regex_2, re.IGNORECASE)

@@ -8,6 +8,7 @@ set -e
 # For the actual results see the comments at the bottom of this script.
 
 # Copyright: Someone working on LibriSpeech, no author or date mentioned
+# I used it for the first althingi data I got.
 # 2016 Inga Rún
 
 stage=2
@@ -20,7 +21,7 @@ echo "$0 $@"  # Print the command line for logging
 . ./cmd.sh || exit 1;
 . utils/parse_options.sh || exit 1;
 
-# ifif [ $# != 5 ]; then
+# if [ $# != 5 ]; then
 #    echo "Wrong #arguments ($#, expected 5)"
 #    echo "Usage: local/run_data_cleaning.sh [options] <train-dir> <dev-dir> <lang-dir> <LM-dir> <model-dir>"
 #    echo " e.g.: local/run_data_cleaning.sh data/train data/dev data/lang data/lang_tg exp/tri3"

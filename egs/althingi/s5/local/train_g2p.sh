@@ -4,14 +4,16 @@
 
 . ./path.sh
 
-dictdir=~/data/althingi/pronDict_LM
+dict=~/data/althingi/pronDict_LM/g2p_pron_dict.txt
+dictdir=`dirname $dict`;
+#dictdir=~/data/althingi/pronDict_LM
 modeldir=data/local/g2p
 
 n=5 # Number of training iterations
 
 # 1) Make a train and a test lex
 #    Randomly select 50 words for a test set
-sort -R ${dictdir}/g2p_pron_dict.txt > ${dictdir}/shuffled_prondict.tmp
+sort -R $dict > ${dictdir}/shuffled_prondict.tmp
 head -n 50 ${dictdir}/shuffled_prondict.tmp | sort > ${dictdir}/g2p_test.lex
 head -n -50 ${dictdir}/shuffled_prondict.tmp | sort > ${dictdir}/g2p_train.lex
 rm ${dictdir}/shuffled_prondict.tmp

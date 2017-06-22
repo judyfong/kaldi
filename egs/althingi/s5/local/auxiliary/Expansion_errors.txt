@@ -1,8 +1,33 @@
+
+# Just a trash file to store info on how I checked expansion error rates for the interspeech paper.
+
+The following are the expansions I manually corrected in the 100 randomly chosen speeches
+önnur\|öðru\|þriðj\|fjórð\|fimmt\|sjött\|sjöund\|áttund\|níund\|tíund\|elleft\|tólft\| tveir \| tvær \| tveggja \| tvo \| tveim\| þrír \| þrjá\| þrem\| þriggja\| þrjú\| fjór\| fjög\| hundrað \| hundruð \|prósent\| krón\|millj\| gráða\| gráðu\|hæstvirt\|háttv\|þingm\|þingskj\| grein\|málsgrein\|sentí\|kíló\|gíga\|mega\|tera\|síðastlið\|tölulið\|tugast\|tánd\|tjánd
+
+I used wdiff to get info on what was different between the cleaned up expansion and the new expansions.
+wdiff -3 -s text_bb_expanded2.txt text2.txt > text_diff2.out <- shows the differences + statistics about them
+
+LM: 2g
+errorcount 117
+How often expanded before 589    <-- How often the above words were already expanded in the text before using thrax
+How often expanded after 1706
+Percentage of these words that were incorrectly expanded: 10.400
+LM: 3g
+errorcount 109
+How often expanded before 589
+How often expanded after 1698
+Percentage of these words that were incorrectly expanded: 9.800
+LM: 5g
+errorcount 107
+How often expanded before 589
+How often expanded after 1702
+Percentage of these words that were incorrectly expanded: 9.600
+
+I havent checked the stuff below. It is a check I did a long time ago when first expanding
+
 #!/bin/bash -eu
 
 set -o pipefail
-
-# Just a trash file to store a bunch of commands I used when checkeing expansion error rates. In case I need them again. More info in the work log
 
 outdir=data/all
 

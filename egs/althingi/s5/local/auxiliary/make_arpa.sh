@@ -4,6 +4,8 @@ set -o pipefail
 
 # 2016 Inga Run
 
+# OLD! Now I use kenLM! See run.sh
+
 echo "$0 $@"  # Print the command line for logging
 
 . ./path.sh || exit 1;
@@ -25,16 +27,11 @@ data=$1;
 destdir=$2;
 
 # Get the lm suffix
-# if [ "$order" -eq "3" ]; then
-#     lm_suffix=tg
-# else
-#     lm_suffix=$(echo "$destdir" | awk -F'[_.]' '{print $2}')
-# fi
 lm_suffix=$(echo "$destdir" | awk -F'[_.]' '{print $2}')
 
 # # Copy everything from data/lang into dest-dir
 # mkdir -p $destdir
-# cp -r data/lang_bd/* $destdir || exit 1;
+# cp -r data/lang/* $destdir || exit 1;
 
 loc=`which estimate-ngram`;
 if [ -z $loc ]; then

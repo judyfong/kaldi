@@ -36,11 +36,6 @@ fi
 . utils/parse_options.sh
 
 if [ ! -f $dir/final.mdl ]; then
-  # if [ "$USER" == dpovey ]; then
-  #    # spread the egs over various machines.  will help reduce overload of any
-  #    # one machine.
-  #    utils/create_split_dir.pl /export/b0{1,2,3,4}/dpovey/kaldi-pure/egs/wsj/s5/$dir/egs $dir/egs/storage
-  # fi
 
   steps/nnet2/train_pnorm_fast.sh --stage $train_stage \
    --samples-per-iter 400000 \
@@ -52,14 +47,23 @@ if [ ! -f $dir/final.mdl ]; then
    --num-hidden-layers 4 \
    --pnorm-input-dim 2000 --pnorm-output-dim 400 \
    --cmd "$decode_cmd" \
-    data/train data/lang_bd exp/tri3_ali_bd $dir || exit 1
+    data/train data/lang exp/tri3_ali $dir || exit 1
 fi
 
-steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 12 \
-   --transform-dir exp/tri3/decode_tg_dev \
-    exp/tri3/graph_tg data/dev $dir/decode_tg_dev &
-
-steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 12 \
-  --transform-dir exp/tri3/decode_tg_eval \
-    exp/tri3/graph_tg data/eval $dir/decode_tg_eval &
-
+(
+    for test in dev eval; do
+        steps/nnet2/decode.sh \
+	    --nj 24 --cmd "$decode_cmd" \
+	    --transform-dir exp/tri3/decode_${test}_3gsmall \
+	    exp/tri3/graph_3gsmall data/$test \
+	    ${dir}/decode_${test}_3gsmall
+	steps/lmrescore_const_arpa.sh \
+	    --cmd "$decode_cmd" \
+	    data/lang_{3gsmall,3glarge} data/$test \
+	    ${dir}/decode_{$test}_{3gsmall,3glarge}
+	steps/lmrescore_const_arpa.sh \
+	    --cmd "$decode_cmd" \
+	    data/lang_{3gsmall,5glarge} data/$test \
+	    ${dir}/decode_{$test}_{3gsmall,5glarge}
+    done
+)&

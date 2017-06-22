@@ -11,7 +11,7 @@ with open(sys.argv[1],'r',encoding='utf-8') as in_file:
     text = in_file.read().strip()
 out_file = open(sys.argv[2], 'w',encoding='utf-8')
 
-text = re.sub(" amk"," að minnsta kosti ",text)
+text = re.sub(" amk "," að minnsta kosti ",text)
 text = re.sub(" dr "," doktor ",text)
 text = re.sub(" etv "," ef til vill ",text)
 text = re.sub(" frh "," framhald ",text)

@@ -2,6 +2,9 @@
 
 set -o pipefail
 
+# Outdated. Compare with recognize.sh before using
+# Comparing recognition results from two different types of recognizers.
+
 speechfile=$1
 speechname=$(basename "$speechfile")
 extension="${speechname##*.}"
@@ -18,20 +21,6 @@ echo "$0 $@"  # Print the command line for logging
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
-
-# Dirs used
-# datadir=recognize/compare/$speechname
-# langdir=data/lang_bd
-# graphdir_normal=exp/tri3/graph_tg_bd_023pruned
-# graphdir_chain=exp/chain/tdnn_lstm_1e/graph_tg_bd_023pruned
-# normal=${datadir}_segm_hires/normal
-# chain=${datadir}_segm_hires/chain
-# decodedir_normal=${normal}/decode_tg_bd_023pruned
-# decodedir_chain=${chain}/decode_tg_bd_023pruned
-# rescoredir_normal=${normal}/decode_fg_bd_unpruned
-# rescoredir_chain=${chain}/decode_fg_bd_unpruned
-# oldLMdir=data/lang_tg_bd_023pruned
-# newLMdir=data/lang_fg_bd_unpruned
 
 datadir=recognize/compare/$speechname
 langdir=data/lang_cs
@@ -53,7 +42,7 @@ mkdir -p ${chain}
 if [ $stage -le 0 ]; then
 
     echo "Set up a directory in the right format of Kaldi and extract features"
-    local/prep_audiodata_fromName.sh $speechname $datadir
+    local/prep_audiodata.sh $speechname $datadir
 fi
 
 if [ $stage -le 3 ]; then
@@ -112,7 +101,7 @@ if [ $stage -le 6 ]; then
     frames_per_chunk_primary=140
     extra_left_context=50
     extra_right_context=0
-    cp exp/chain/tdnn_lstm_1e/{final.mdl,final.ie.id,cmvn_opts} ${chain}
+    cp exp/chain/tdnn_lstm_1e/{final.mdl,final.ie.id,cmvn_opts,frame_subsampling_factor} ${chain}
 
     steps/nnet3/decode.sh \
 	--acwt 1.0 --post-decode-acwt 10.0 \
@@ -142,11 +131,10 @@ fi
 if [ $stage -le 7 ]; then
 
     echo "Extract the transcript hypothesis from the Kaldi lattice"
-    # NOTE! Is scale=12 good?
     for d in ${rescoredir_normal} ${rescoredir_chain}; do
 	
     lattice-best-path \
-        --lm-scale=12 \
+        --lm-scale=9 \
         --word-symbol-table=${langdir}/words.txt \
         "ark:zcat ${d}/lat.1.gz |" ark,t:- &> ${d}/extract_transcript.log
 
@@ -167,7 +155,6 @@ fi
 if $score ; then
 
     echo "Estimate the WER"
-    # NOTE! Correct for the mismatch in the beginning and end of recordings.
     local/score_recognize.sh --cmd "$decode_cmd" $speechname ${langdir} ${rescoredir_normal} &
     local/score_recognize.sh --cmd "$decode_cmd" $speechname ${langdir} ${rescoredir_chain} &
 

@@ -18,7 +18,19 @@ Language modeling training data
     2011, scraped from the Althingi website, approx. 30 million word tokens, as well as the
     parliament training data, up to and including 2015.
 
-    
-The subdirectory of this directory contains the scripts for a sequence of experiments.
 
-  s5: This is the current recipe.
+Tools needed
+
+    OpenGrm Thrax: For number and abbreviation expansion. As well as for the postprocessing of the ASR output.
+    KenLM: For language modelling, fast and allows pruning.
+    FFmpeg: Used for silence detection when using the ASR to recognize long speeches.
+    Punctuator2:  For punctuation restoration
+        Requires: Theano
+
+The subdirectory of this directory, s5, contains scripts for the following three steps:
+    1) Data normalization, alignment and segmentation.
+    2) Training of an ASR
+    3) Postprocessing of the ASR output, including punctuation restoration, capitalization
+       and denormalization of numbers and common abbreviations
+
+Repo owner: Inga Rún Helgadóttir, ingarunh@gmail.com

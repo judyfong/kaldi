@@ -87,7 +87,7 @@ sed -e 's/doktor \([A-ZÁÉÍÓÚÝÞÆÖ]\)/dr\. \1/g' ${dir}/punctuator_out_wP
 echo "Capitalize sentence beginnings and add periods to abbreviations."
 # Implement! Regex for capitalization and thrax for the periods.
 #sed -e 's/\([^0-9][\.:?!]\) \([a-záðéíóúýþæö]\)/\1 \u\2/g' ${dir}/text_wCap.tmp | sed -e 's/\([0-9]\{4\}[\.:?!]\) \([a-záðéíóúýþæö]\)/\1 \u\2/g' > ${dir}/denorm_BOScap.tmp
-sed -e 's/\([^0-9]\.\|\?\|:\|!\) \([a-záðéíóúýþæö]\)/\1 \u\2/g' ${dir}/text.dr.tmp | sed -e 's/\([0-9]\{4\}[\.:?!]\) \([a-záðéíóúýþæö]\)/\1 \u\2/g' > ${dir}/denorm_BOScap.tmp
+sed -re 's/([^0-9]\.|\?|:|!) ([a-záðéíóúýþæö])/\1 \u\2/g' -e 's/([0-9]{4}[\.:?!]) ([a-záðéíóúýþæö])/\1 \u\2/g' ${dir}/text.dr.tmp > ${dir}/denorm_BOScap.tmp
 
 perl -pe 's:(\d+) km á klukkustund:$1 $2/klst.:g' ${dir}/denorm_BOScap.tmp | perl -pe 's:(\d+) kr á kíló[^m ]* ?:$1 $2\./kg :g' > ${dir}/denorm_measure.tmp
 

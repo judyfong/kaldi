@@ -102,28 +102,32 @@ if [ $stage -le 2 ]; then
     # 5) removes comments on the form "<mgr>....//</mgr>"
     # 6-7) removes comments before the beginning of speeches
     # 8-11) removes comments like "<truflun>Kliður í salnum.</truflun>"
-    # 12) (in a new line) Rewrite fractions
-    # 13-15) Rewrite law numbers
-    # 16-19) Remove comments in a) parentheses, b) left: "(", right "/" or "//", c) left: "/", right one or more ")" and maybe a "/", d) left and right one or more "/"
+    # 12) removes comments in parentheses
+    # 13) (in a new line) Rewrite fractions
+    # 14-16) Rewrite law numbers
+    # 17-19) Remove comments in a) parentheses, b) left: "(", right "/" or "//", c) left: "/", right one or more ")" and maybe a "/", d) left and right one or more "/"
     # 20) Remove comments on the form "xxxx", used when they don't hear what the speaker said
     # 21-22) Remove the remaining tags and reduce the spacing to one between words
-    perl -pe 's/<mgr>\/\/[^\/<]*?\/\/<\/mgr>|<!--[^>]*?-->|<[^>]*?>[^<]*?http[^<]*?<\/[^>]*?>|<[^>]*?>:[^<]*?ritun[^<]*?<\/[^>]*?>|<mgr>[^\/]*?\/\/<\/mgr>|<ræðutexti> +<mgr>[^\/]*?\/<\/mgr>|<ræðutexti> +<mgr>til [0-9]+\.[0-9]+<\/mgr>|<truflun>[^<]*?<\/truflun>|<atburður>[^<]*?<\/atburður>|<málsheiti>[^<]*?<\/málsheiti>/ /g' ${outdir}/text_orig_bb.txt \
-	    | perl -pe 's/\b([0-9])\/([0-9]{1,2})\b/$1 $2\./g' \
-	    | perl -pe 's/\/?([0-9]+)\/([0-9]+)/ $1 $2/g' | perl -pe 's/([0-9]+)\/([A-Z]{2,})/$1 $2/g' | perl -pe 's/([0-9])\/ ([0-9])/$1 $2/g' \
-	    | perl -pe 's/\([^\/\(<>]*?\)/ /g' | perl -pe 's/\([^\/<>\)]*?\/+/ /g' | perl -pe 's/\/[^\/<>\)]*?\)+\/?/ /g' | perl -pe 's/\/+[^\/<>\)]*?\/+/ /g'\
-	    | sed 's/xx\+//g' \
-	    | perl -pe 's/<[^<>]*?>/ /g' | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noXML_bb.txt	
+    sed -re 's:<mgr>//[^/<]*?//</mgr>|<!--[^>]*?-->|<[^>]*?>[^<]*?http[^<]*?</[^>]*?>|<[^>]*?>\:[^<]*?ritun[^<]*?</[^>]*?>|<mgr>[^/]*?//</mgr>|<ræðutexti> +<mgr>[^/]*?/</mgr>|<ræðutexti> +<mgr>til [0-9]+\.[0-9]+</mgr>|<truflun>[^<]*?</truflun>|<atburður>[^<]*?</atburður>|<málsheiti>[^<]*?</málsheiti>|\([^/(<>]*?\): :g' \
+        -e 's:([0-9]) 1/2\b:\1,5:g' -e 's:\b([0-9])/([0-9]{1,2})\b:\1 \2\.:g' \
+	-e 's:/?([0-9]+)/([0-9]+)/?: \1 \2 :g' -e 's:([0-9]+)/([A-Z]{2,}):\1 \2:g' -e 's:([0-9])/ ([0-9]):\1 \2:g' \
+        -e 's:\([^/<>)]*?/+: :g' -e 's:/[^/<>)]*?\)+/?: :g' -e 's:/+[^/<>)]*?/+: :g' \
+	-e 's:xx+::g' \
+	-e 's:<[^<>]*?>: :g' -e 's:[[:space:]]+: :g' <${outdir}/text_orig_bb.txt > ${outdir}/text_noXML_bb.txt	
 
-    perl -pe 's/<!--[^>]*?-->|<truflun>[^<]*?<\/truflun>|<atburður>[^<]*?<\/atburður>|<málsheiti>[^<]*?<\/málsheiti>|\([^\(\)<>]*?\)|<[^>]*?>/ /g' ${outdir}/text_orig_endanlegt.txt | sed -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noXML_endanlegt.txt
-
+    sed -re 's:<!--[^>]*?-->|<truflun>[^<]*?</truflun>|<atburður>[^<]*?</atburður>|<málsheiti>[^<]*?</málsheiti>|\([^()<>]*?\)|<[^>]*?>: :g' \
+	-e 's:([0-9]) 1/2\b:\1,5:g' -e 's:\b([0-9])/([0-9]{1,2})\b:\1 \2\.:g' \
+	-e 's:/?([0-9]+)/([0-9]+): \1 \2:g' -e 's:([0-9]+)/([A-Z]{2,}):\1 \2:g' -e 's:([0-9])/ ([0-9]):\1 \2:g' \
+    -e 's:[[:space:]]+: :g' ${outdir}/text_orig_endanlegt.txt > ${outdir}/text_noXML_endanlegt.txt
 fi
+
 
 if [ $stage -le 3 ]; then
     
     echo "Rewrite roman numerals before lowercasing" # Enough to rewrite X,V and I based numbers. L=50 is used once and C, D and M never.
     # Might clash with someones middle name. # The module roman comes from Dive into Python
     for n in bb endanlegt; do
-	perl -pe 's/([A-Z]\.?)–([A-Z])/$1 til $2/g' ${outdir}/text_noXML_${n}.txt > tmp && mv tmp ${outdir}/text_noXML_${n}.txt
+	sed -i -r 's/([A-Z]\.?)–([A-Z])/\1 til \2/g' ${outdir}/text_noXML_${n}.txt
 	python3 -c "
 import re
 import sys
@@ -162,7 +166,7 @@ if [ $stage -le 4 ]; then
     echo "Rewrite and remove punctuations"
     # 1) Change from utterance filename to uttID,
     # 2) Remove comments that appear at the end of certain speeches (still here because contained <skáletrað> in original text)
-    # 3) Rewrite time and remove ":" before space because need to do that before I remove periods,
+    # 3) Rewrite time,
     # 4) Remove punctuations which is safe to remove
     # 5) Rewrite fractions
     # 6) Rewrite law numbers, f.ex. "2011/77/ESB" to "2011 77 ESB" and "lög nr 77/2011" to "lög nr 77 2011"
@@ -176,22 +180,31 @@ if [ $stage -le 4 ]; then
     # 14) Remove "," when not followed by a number, remove punctuations that won't be cleared away in the following steps
     for n in bb endanlegt; do
 	join -j 1 <(sort -k1 ${outdir}/filename_uttID.txt) <(sort -k1 ${outdir}/text_noRoman_${n}.txt) | cut -d" " -f2- \
-	    | sed -e 's/\[Þingmenn risu úr sætum.*\?\]/ /g' \
-	    | perl -pe 's/([0-9]):([0-9][0-9])/$1 $2/g' | perl -pe 's/&amp;/og/g' \
-	    | sed 's/[^a-záðéíóúýþæöA-ZÁÉÍÓÚÝÞÆÖ0-9 \.,?!:;\/%‰°º&—–\-²³¼¾½ _]\+//g'
-	    | sed 's/\?\|:\|;\| \|__\+\| \./ /g' \
-	    | perl -pe 's/\b([0-9])\/([0-9]{1,2})\b/$1 $2\./g' \
-	    | perl -pe 's/\/?([0-9]+)\/([0-9]+)\/?/ $1 $2 /g' \
-	    | sed -e 's/ \([^ ]*[^ A-ZÁÐÉÍÓÚÝÞÆÖ]\)\([A-ZÁÐÉÍÓÚÝÞÆÖ]\)/ \1 \2/g' -e 's/ \([a-záðéíóúýþæö]\+\)[0-9]\([a-záðéíóúýþæö]\+\)/ \1\2/g' \
-	    | sed -e 's/www\./w w w /g' -e 's/\.\(is\|net\|com\|int\)\b/ punktur \1/g' \
+	    | sed -re 's:\[Þingmenn risu úr sætum.*?\]: :g' \
+		  -e 's/([0-9]):([0-9][0-9])/\1 \2/g' \
+		  -e 's/&amp;/og/g' \
+		  -e 's:\?|!|\:|;|, | ,+| \.+|,\.| |__+: :g' \
+	          -e 's:[^a-záðéíóúýþæöA-ZÁÉÍÓÚÝÞÆÖ0-9 \.,/%‰°º—–²³¼¾½ _-]+::g' \
+	    
+	    -e 's: ([^ ]*[^ A-ZÁÐÉÍÓÚÝÞÆÖ])([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \2:g' -e 's: ([a-záðéíóúýþæö]+)[0-9]([a-záðéíóúýþæö]+): \1\2:g' \
+            -e 's:www\.:w w w :g' -e 's:\.(is|net|com|int)\b: punktur \1:g' \
+
 	    | perl -pe 's/([0-9]\.)([a-záðéíóúýþæö])/$1 $2/g' | perl -pe 's/([a-záðéíóúýþæö]\.)([0-9])/$1 $2/g'\
 	    | sed -e 's/ \+\([0-9]\.\) \+\([A-ZÁÐÉÍÓÚÝÞÆÖ]\)/ \1 \L\2/g' \
-	    | perl -pe 's/([^ ])–([^ ])/$1 til $2/g' | perl -pe 's/(\d)tilstr\w*?\.?(\d)/$1 til $2/g' | perl -pe 's/([0-9\.%])-([0-9])/$1 til $2/g' \
-	    | perl -pe 's/([0-9]+),([0-46-9])/$1 komma $2/g' | perl -pe 's/([0-9]+),5([0-9])/$1 komma $2/g' | perl -pe 's/ (0(?!,5))/ $1 /g' | perl -pe 's/komma (0? ?)(\d)(\d)(\d)(\d?)/komma $1$2 $3 $4 $5/g' \
-	    | perl -pe 's/¼/ einn fjórði/g' | perl -pe 's/¾/ þrír fjórðu/g' | perl -pe 's/(\d)½/$1,5 /g' | perl -pe 's/ ½/ 0,5 /g' \
+	    -e 's:([^ ])–([^ ]):\1 til \2:g' -e 's:([0-9])tilstr[^ 0-9]*?\.?([0-9]):\1 til \2:g' -e 's:([0-9\.%])-([0-9]):\1 til \2:g' -e 's:tilstr[^ 0-9]*?\.?::g' \
+            -e 's:([0-9]+),([0-46-9]):\1 komma \2:g' -e 's:([0-9]+),5([0-9]):\1 komma \2:g' | perl -pe 's/ (0(?!,5))/ $1 /g' | perl -pe 's/komma (0? ?)(\d)(\d)(\d)(\d?)/komma $1$2 $3 $4 $5/g' \
+
+	    | sed -re 's:¼: einn 4. :g' -e 's:¾: 3 fjórðu:g' -e 's:([0-9])½:\1,5 :g' -e 's: ½: 0,5 :g' \
 	    | perl -pe 's/,([^0-9])/$1/g' > ${outdir}/text_noPuncts1_${n}.txt
     done
 fi
+
+	-e 's:,([^0-9]):\1:g' \
+	-e 's:%:% :g' \
+
+	-e 's:([a-záðéíóúýþæö])-([a-záðéíóúýþæö]):\1 \2:g' \
+	
+	-e 's:/: :g' -e 's:[^a-záðéíóúýþæö0-9\., %‰°º²³]+::g' -e "s:[[:space:]]+: :g" > ${outdir}/scraped_noPuncts.tmp
 
 if [ $stage -le 5 ]; then
 
@@ -206,16 +219,17 @@ if [ $stage -le 5 ]; then
     # 9) Swap "-", "/" and more out for a space, f.ex. "suður-kórea" and "svart/hvítt" -> "suður kórea" and "svart hvítt",
     # 10) Remove remaining punctuations, remove any remaining alpha-numeric words and change spaces to one between words
     for n in bb endanlegt; do
-	sed 's/\.\( \+[A-ZÁÐÉÍÓÚÝÞÆÖ]\|$\)/\1/g' ${outdir}/text_noPuncts1_${n}.txt \
-	    | perl -pe 's/([^0-9])\./$1/g' | perl -pe 's/([0-9]{4})\.(\s+|$)/$1$2/g' \
-	    | sed 's/ .\+/\L&/g' | perl -pe 's/\/a( |$)/ á ári$1/g' | perl -pe 's/\/kg( |$)/ á kíló$1/g' | perl -pe 's/\/s( |$)/ á sekúndu$1/g' | perl -pe 's/\/klst( |$)/ á klukkustund$1/g' \
-	    | sed 's/\([0-9]\+\)\.\([0-9]\{3\}\)\b\.\?/\1\2/g' \
-	    | perl -pe 's/(\d{1,2})\.(\d{1,2})((\.(\d{1,2}|( |$)))| )\.?/$1 $2 $5$6/g' \
-	    | sed 's/\([0-9]\+\)ja\([^a-záðéíóúýþæö]\|$\)/\1\2/g' \
-	    | sed -e 's/\([ck]\?m\)2/ \1²/g' -e 's/\([ck]\?m\)3/ \1³/g' -e 's/\( [0-9]\+\)\([^0-9 ,]\)\([0-9]\)/\1 \2 \3/g' \
-	    | sed -e 's/\( [a-záðéíóúýþæö]\+\)-\?\([0-9]\+[^a-záðéíóúýþæö]\)/\1 \2/g' -e 's/\(^\| \)\([0-9,]\+%\?\)-\?\([a-záðéíóúýþæö]\+\)\( \|$\)/\1\2 \3\4/g' \
+	sed -re 's/\.( +[A-ZÁÐÉÍÓÚÝÞÆÖ]|$)/\1/g' ${outdir}/text_noPuncts1_${n}.txt \
+	    -e 's:([^0-9])\.+:\1:g' -e 's:([0-9]{4})\.\b:\1:g' \
+	    -e 's: .+:\L&:g' \
+	    -e 's:/a\b: á ári:g' -e 's:/s\b: á sekúndu:g' -e 's:/kg\b: á kíló:g' -e 's:/klst\b: á klukkustund:g' \
+	    -e 's:([0-9]+)\.([0-9]{3})\b\.?:\1\2:g' \
+	    -e 's:([0-9]{1,2})\.([0-9]{1,2}):\1 \2:g' -e 's:([0-9]{1,2})\.([0-9]{1,2})\.?:\1 \2 :g' \
+            -e 's:([0-9]+)ja\b:\1:g' \
+       	    -e 's:([ck]?m)2: \1²:g' -e 's:([ck]?m)3: \1³:g' -e 's:( [0-9]+)([^0-9 ,])([0-9]):\1 \2 \3:g' \
+            -e 's:( [a-záðéíóúýþæö]+)\.?-?([0-9]+)\b:\1 \2:g' -e 's:(^| )([0-9,]+%?)\.?-?([a-záðéíóúýþæö]+)\b:\1\2 \3:g' \
 	    | perl -pe 's/—|–|\/|&lt|&gt|tilstr\w*?\.?/ /g' \
-	    | perl -pe 's/&/ og /g' | perl -pe 's/([0-9]+)\.([0-9]+%?)/$1 $2/g' | sed -e 's/ [0-9]\+\([a-záðéíóúýþæö]\)/ \1/g' -e 's/ \([a-záðéíóúýþæö]\+\)[0-9]\+/ \1/g' -e 's/, / /g' -e 's/ %/%/g' -e 's/ \([^ ]*\)[^a-záðéíóúýþæö0-9\.,?! %‰°º²³]\+/ \1/g' -e 's/ [^ ]*[a-záðéíóúýþæö]\+[0-9]\+[^ ]*/ /g' -e 's/ [^ ]*-/ /g' -e "s/[[:space:]]\+/ /g" > ${outdir}/text_noPuncts_${n}.txt
+	    | perl -pe 's/&/ og /g' | perl -pe 's/([0-9]+)\.([0-9]+%?)/$1 $2/g' | sed -re 's/ [0-9]+([a-záðéíóúýþæö])/ \1/g' -e 's/ ([a-záðéíóúýþæö]+)[0-9]+/ \1/g' -e 's/, / /g' -e 's/ %/%/g' -e 's/ ([^ ]*)[^a-záðéíóúýþæö0-9\., %‰°º²³]+/ \1/g' -e 's/ [^ ]*[a-záðéíóúýþæö]+[0-9]+[^ ]*/ /g' -e 's/ [^ ]*-/ /g' -e "s/[[:space:]]+/ /g" > ${outdir}/text_noPuncts_${n}.txt
     done
 fi
 

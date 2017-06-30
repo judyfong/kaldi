@@ -108,17 +108,19 @@ if [ $stage -le 2 ]; then
     # 17-19) Remove comments in a) parentheses, b) left: "(", right "/" or "//", c) left: "/", right one or more ")" and maybe a "/", d) left and right one or more "/"
     # 20) Remove comments on the form "xxxx", used when they don't hear what the speaker said
     # 21-22) Remove the remaining tags and reduce the spacing to one between words
-    sed -re 's:<mgr>//[^/<]*?//</mgr>|<!--[^>]*?-->|<[^>]*?>[^<]*?http[^<]*?</[^>]*?>|<[^>]*?>\:[^<]*?ritun[^<]*?</[^>]*?>|<mgr>[^/]*?//</mgr>|<ræðutexti> +<mgr>[^/]*?/</mgr>|<ræðutexti> +<mgr>til [0-9]+\.[0-9]+</mgr>|<truflun>[^<]*?</truflun>|<atburður>[^<]*?</atburður>|<málsheiti>[^<]*?</málsheiti>|\([^/(<>]*?\): :g' \
+    sed -re 's:<mgr>//[^/<]*?//</mgr>|<!--[^>]*?-->|http[^<> )]*?|<[^>]*?>\:[^<]*?ritun[^<]*?</[^>]*?>|<mgr>[^/]*?//</mgr>|<ræðutexti> +<mgr>[^/]*?/</mgr>|<ræðutexti> +<mgr>til [0-9]+\.[0-9]+</mgr>|<truflun>[^<]*?</truflun>|<atburður>[^<]*?</atburður>|<málsheiti>[^<]*?</málsheiti>: :g' \
+        -e 's:\(+[^/()<>]*?\)+: :g' \
         -e 's:([0-9]) 1/2\b:\1,5:g' -e 's:\b([0-9])/([0-9]{1,2})\b:\1 \2\.:g' \
-	-e 's:/?([0-9]+)/([0-9]+)/?: \1 \2 :g' -e 's:([0-9]+)/([A-Z]{2,}):\1 \2:g' -e 's:([0-9])/ ([0-9]):\1 \2:g' \
-        -e 's:\([^/<>)]*?/+: :g' -e 's:/[^/<>)]*?\)+/?: :g' -e 's:/+[^/<>)]*?/+: :g' \
+	-e 's:/?([0-9]+)/([0-9]+): \1 \2:g' -e 's:([0-9]+)/([A-Z]{2,}):\1 \2:g' -e 's:([0-9])/ ([0-9]):\1 \2:g' \
+        -e 's:\(+[^/()<>]*?\)+: :g' -e 's:\([^/<>)]*?/+: :g' -e 's:/[^/<>)]*?\)+/?: :g' -e 's:/+[^/<>)]*?/+: :g' \
 	-e 's:xx+::g' \
-	-e 's:<[^<>]*?>: :g' -e 's:[[:space:]]+: :g' <${outdir}/text_orig_bb.txt > ${outdir}/text_noXML_bb.txt	
+	-e 's:\(+[^/()<>]*?\)+: :g' -e 's:<[^<>]*?>: :g' -e 's:[[:space:]]+: :g' <${outdir}/text_orig_bb.txt > ${outdir}/text_noXML_bb.txt	
 
-    sed -re 's:<!--[^>]*?-->|<truflun>[^<]*?</truflun>|<atburður>[^<]*?</atburður>|<málsheiti>[^<]*?</málsheiti>|\([^()<>]*?\)|<[^>]*?>: :g' \
+    sed -re 's:<!--[^>]*?-->|<truflun>[^<]*?</truflun>|<atburður>[^<]*?</atburður>|<málsheiti>[^<]*?</málsheiti>|<[^>]*?>: :g' \
+        -e 's:\([^/()<>]*?\)+: :g' \
 	-e 's:([0-9]) 1/2\b:\1,5:g' -e 's:\b([0-9])/([0-9]{1,2})\b:\1 \2\.:g' \
 	-e 's:/?([0-9]+)/([0-9]+): \1 \2:g' -e 's:([0-9]+)/([A-Z]{2,}):\1 \2:g' -e 's:([0-9])/ ([0-9]):\1 \2:g' \
-    -e 's:[[:space:]]+: :g' ${outdir}/text_orig_endanlegt.txt > ${outdir}/text_noXML_endanlegt.txt
+        -e 's:[[:space:]]+: :g' ${outdir}/text_orig_endanlegt.txt > ${outdir}/text_noXML_endanlegt.txt
 fi
 
 
@@ -164,76 +166,59 @@ fi
 if [ $stage -le 4 ]; then
 
     echo "Rewrite and remove punctuations"
-    # 1) Change from utterance filename to uttID,
-    # 2) Remove comments that appear at the end of certain speeches (still here because contained <skáletrað> in original text)
-    # 3) Rewrite time,
-    # 4) Remove punctuations which is safe to remove
-    # 5) Rewrite fractions
-    # 6) Rewrite law numbers, f.ex. "2011/77/ESB" to "2011 77 ESB" and "lög nr 77/2011" to "lög nr 77 2011"
-    # 7) Add missing space between sentences and fix spelling errors like "be4stu" and "o0g",
-    # 8) Rewrite website names,
-    # 9) Add space between cases like: "1.bekk" and "bla.35 bla"
+    # 1) Remove comments that appear at the end of certain speeches (still here because contained <skáletrað> in original text)
+    # 2) Rewrite time,
+    # 3) Change "&amp;" to "og"
+    # 4-5) Remove punctuations which is safe to remove
+    # 6) Remove "ja" from numbers written like "22ja"
+    # 7) Rewrite [ck]?m[23] to [ck]?m[²³] and "kV" to "kw"
+    # 8) Add missing space between sentences and fix spelling errors like "be4stu" and "o0g",
+    # 9) Rewrite website names,
     # 10) In an itemized list, lowercase what comes after the numbering.
-    # 11) Rewrite en dash (x96) and regular dash to " til ", if sandwitched between words or numbers,
+    # 11) Rewrite en dash (x96), regular dash and "tilstr(ik)" to " til ", if sandwitched between words or numbers,
     # 12) Rewrite decimals, f.ex "0,045" to "0 komma 0 45" and "0,00345" to "0 komma 0 0 3 4 5" and remove space before a "%",
     # 13 Rewrite vulgar fractions
-    # 14) Remove "," when not followed by a number, remove punctuations that won't be cleared away in the following steps
+    # 14) Remove "," when not followed by a number
+    # 15) Remove final period (mostly to distinguish between numbers and ordinals) and period after letters,
+    # 16) Lowercase text (not uttID) and rewrite "/a " to "á ári" and "/s " to "á sekúndu"
+    # 17) Rewrite "/a " to "á ári", "/s " to "á sekúndu" and so on.
+    # 18) Change dashes (exept in utt filenames) and remaining slashes out for space
+    # 19) Rewrite thousands and millions, f.ex. 3.500 to 3500,
+    # 20) Rewrite chapter and clause numbers and time and remove remaining periods between numbers, f.ex. "ákvæði 2.1.3" to "ákvæði 2 1 3" and "kl 15.30" to "kl 15 30",
+    # 21) Add spaces between letters and numbers in alpha-numeric words (Example:1st: "4x4", 2nd: f.ex. "bla.3. júlí", 3rd: "1.-bekk."
+    # 22) Fix spacing around % and degrees celsius and add space in a number starting with a zero
+    # 23) Remove remaining punctuations (leaving the utt filenames intact) and weird words and fix spacing
     for n in bb endanlegt; do
-	join -j 1 <(sort -k1 ${outdir}/filename_uttID.txt) <(sort -k1 ${outdir}/text_noRoman_${n}.txt) | cut -d" " -f2- \
-	    | sed -re 's:\[Þingmenn risu úr sætum.*?\]: :g' \
-		  -e 's/([0-9]):([0-9][0-9])/\1 \2/g' \
-		  -e 's/&amp;/og/g' \
-		  -e 's:\?|!|\:|;|, | ,+| \.+|,\.| |__+: :g' \
-	          -e 's:[^a-záðéíóúýþæöA-ZÁÉÍÓÚÝÞÆÖ0-9 \.,/%‰°º—–²³¼¾½ _-]+::g' \
-	    
-	    -e 's: ([^ ]*[^ A-ZÁÐÉÍÓÚÝÞÆÖ])([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \2:g' -e 's: ([a-záðéíóúýþæö]+)[0-9]([a-záðéíóúýþæö]+): \1\2:g' \
+        sed -re 's:\[(Þingmenn risu úr sætum[^]]*?)|(Strengjakvartett flutti lagið[^]]*?)\]: :g' \
+            -e 's/([0-9]):([0-9][0-9])/\1 \2/g' \
+            -e 's/&amp;/og/g' \
+            -e 's:[^a-záðéíóúýþæöA-ZÁÉÍÓÚÝÞÆÖ0-9 \.,?!:;/%‰°º—–²³¼¾½ _-]+::g' \
+            -e 's:\?|!|\:|;|,+ | ,+| \.+|,\.| |__+: :g' \
+            -e 's:([0-9]+)ja\b:\1:g' \
+            -e 's:([ck]?m)2: \1²:g' -e 's:([ck]?m)3: \1³:g' -e 's: kV : kw :g' -e 's:Wst:\L&:g' \
+            -e 's: ([^ ]*[^ A-ZÁÐÉÍÓÚÝÞÆÖ])([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \2:g' -e 's: ([a-záðéíóúýþæö]+)[0-9]([a-záðéíóúýþæö]+): \1\2:g' \
             -e 's:www\.:w w w :g' -e 's:\.(is|net|com|int)\b: punktur \1:g' \
-
-	    | perl -pe 's/([0-9]\.)([a-záðéíóúýþæö])/$1 $2/g' | perl -pe 's/([a-záðéíóúýþæö]\.)([0-9])/$1 $2/g'\
-	    | sed -e 's/ \+\([0-9]\.\) \+\([A-ZÁÐÉÍÓÚÝÞÆÖ]\)/ \1 \L\2/g' \
-	    -e 's:([^ ])–([^ ]):\1 til \2:g' -e 's:([0-9])tilstr[^ 0-9]*?\.?([0-9]):\1 til \2:g' -e 's:([0-9\.%])-([0-9]):\1 til \2:g' -e 's:tilstr[^ 0-9]*?\.?::g' \
-            -e 's:([0-9]+),([0-46-9]):\1 komma \2:g' -e 's:([0-9]+),5([0-9]):\1 komma \2:g' | perl -pe 's/ (0(?!,5))/ $1 /g' | perl -pe 's/komma (0? ?)(\d)(\d)(\d)(\d?)/komma $1$2 $3 $4 $5/g' \
-
-	    | sed -re 's:¼: einn 4. :g' -e 's:¾: 3 fjórðu:g' -e 's:([0-9])½:\1,5 :g' -e 's: ½: 0,5 :g' \
-	    | perl -pe 's/,([^0-9])/$1/g' > ${outdir}/text_noPuncts1_${n}.txt
+            -e 's: +([0-9]\.) +([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \L\2:g' \
+            -e 's:([^ ])–([^ ]):\1 til \2:g' -e 's:([0-9]\.?)tilstr[^ 0-9]*?\.?([0-9]):\1 til \2:g' -e 's:([0-9\.%])-+([0-9]):\1 til \2:g' \
+            -e 's:([0-9]+),([0-46-9]):\1 komma \2:g' -e 's:([0-9]+),5([0-9]):\1 komma 5\2:g' \
+	    < ${outdir}/text_noRoman_${n}_sed.txt \
+	    | perl -pe 's/ (0(?!,5))/ $1 /g' | perl -pe 's/komma (0? ?)(\d)(\d)(\d)(\d?)/komma $1$2 $3 $4 $5/g' \
+            | sed -re 's:¼: einn 4. :g' -e 's:¾: 3 fjórðu:g' -e 's:([0-9])½:\1,5 :g' -e 's: ½: 0,5 :g' \
+                  -e 's:,([^0-9]):\1:g' \
+                  -e 's:\.+( +[A-ZÁÐÉÍÓÚÝÞÆÖ]|$):\1:g' -e 's:([^0-9])\.+:\1:g' -e 's:([0-9]{4})\.+:\1 :g' \
+                  -e 's: .+:\L&:g' \
+                  -e 's:/a\b: á ári:g' -e 's:/s\b: á sekúndu:g' -e 's:/kg\b: á kíló:g' -e 's:/klst\b: á klukkustund:g' \
+                  -e 's:—|–|/|tilstr[^ 0-9]*?\.?: :g' -e 's:([a-záðéíóúýþæö])-+([a-záðéíóúýþæö]):\1 \2:g' \
+                  -e 's:([0-9]+)\.([0-9]{3})\b\.?:\1\2:g' \
+                  -e 's:([0-9]{1,2})\.([0-9]{1,2})\b:\1 \2:g' -e 's:([0-9]{1,2})\.([0-9]{1,2})\b\.?:\1 \2 :g' -e 's:([0-9]+)\.([0-9]+%?)\.?:\1 \2 :g' \
+                  -e 's:( [0-9]+)([^0-9 ,.])([0-9]):\1 \2 \3:g' -e 's:( [a-záðéíóúýþæö]+)\.?-?([0-9]+)\b:\1 \2:g' -e 's:(^| )([0-9,]+%?\.?)-?([a-záðéíóúýþæö]+)\b:\1\2 \3:g' \
+                  -e 's: *%:% :g' -e 's:([°º]) c :\1c :g' -e 's: 0([0-9]): 0 \1:g' \
+                  -e 's/[^a-záðéíóúýþæö0-9\., %‰°º²³T]+//g' -e 's/ [^ ]*[a-záðéíóúýþæö]+[0-9]+[^ ]*/ /g' -e 's/[[:space:]]+/ /g' \
+                  > ${outdir}/text_noPuncts1_${n}_sed.txt
     done
 fi
-
-	-e 's:,([^0-9]):\1:g' \
-	-e 's:%:% :g' \
-
-	-e 's:([a-záðéíóúýþæö])-([a-záðéíóúýþæö]):\1 \2:g' \
-	
-	-e 's:/: :g' -e 's:[^a-záðéíóúýþæö0-9\., %‰°º²³]+::g' -e "s:[[:space:]]+: :g" > ${outdir}/scraped_noPuncts.tmp
 
 if [ $stage -le 5 ]; then
-
-    echo "Lowercase, rewrite and remove punctuations"
-    # 1-2) Remove final period (mostly to distinguish between numbers and ordinals) and period after letters,
-    # 3) Lowercase text (not uttID) and rewrite "/a " to "á ári" and "/s " to "á sekúndu"
-    # 4) Rewrite thousands and millions, f.ex. 3.500 to 3500,
-    # 5) Rewrite chapter and clause numbers and time, f.ex. "ákvæði 2.1.3" to "ákvæði 2 1 3" and "kl 15.30" to "kl 15 30",
-    # 6) Remove "ja" from numbers written like "22ja"
-    # 7) Rewrite [ck]?m[23] to [ck]?m[²³] and expand things like "4x4"
-    # 8) Add spaces between letters and numbers in alpha-numeric words,
-    # 9) Swap "-", "/" and more out for a space, f.ex. "suður-kórea" and "svart/hvítt" -> "suður kórea" and "svart hvítt",
-    # 10) Remove remaining punctuations, remove any remaining alpha-numeric words and change spaces to one between words
-    for n in bb endanlegt; do
-	sed -re 's/\.( +[A-ZÁÐÉÍÓÚÝÞÆÖ]|$)/\1/g' ${outdir}/text_noPuncts1_${n}.txt \
-	    -e 's:([^0-9])\.+:\1:g' -e 's:([0-9]{4})\.\b:\1:g' \
-	    -e 's: .+:\L&:g' \
-	    -e 's:/a\b: á ári:g' -e 's:/s\b: á sekúndu:g' -e 's:/kg\b: á kíló:g' -e 's:/klst\b: á klukkustund:g' \
-	    -e 's:([0-9]+)\.([0-9]{3})\b\.?:\1\2:g' \
-	    -e 's:([0-9]{1,2})\.([0-9]{1,2}):\1 \2:g' -e 's:([0-9]{1,2})\.([0-9]{1,2})\.?:\1 \2 :g' \
-            -e 's:([0-9]+)ja\b:\1:g' \
-       	    -e 's:([ck]?m)2: \1²:g' -e 's:([ck]?m)3: \1³:g' -e 's:( [0-9]+)([^0-9 ,])([0-9]):\1 \2 \3:g' \
-            -e 's:( [a-záðéíóúýþæö]+)\.?-?([0-9]+)\b:\1 \2:g' -e 's:(^| )([0-9,]+%?)\.?-?([a-záðéíóúýþæö]+)\b:\1\2 \3:g' \
-	    | perl -pe 's/—|–|\/|&lt|&gt|tilstr\w*?\.?/ /g' \
-	    | perl -pe 's/&/ og /g' | perl -pe 's/([0-9]+)\.([0-9]+%?)/$1 $2/g' | sed -re 's/ [0-9]+([a-záðéíóúýþæö])/ \1/g' -e 's/ ([a-záðéíóúýþæö]+)[0-9]+/ \1/g' -e 's/, / /g' -e 's/ %/%/g' -e 's/ ([^ ]*)[^a-záðéíóúýþæö0-9\., %‰°º²³]+/ \1/g' -e 's/ [^ ]*[a-záðéíóúýþæö]+[0-9]+[^ ]*/ /g' -e 's/ [^ ]*-/ /g' -e "s/[[:space:]]+/ /g" > ${outdir}/text_noPuncts_${n}.txt
-    done
-fi
-
-if [ $stage -le 6 ]; then
     echo "Expand some abbreviations, incl. 'hv.' and 'þm.'"
     for n in bb endanlegt; do
 	python3 local/replace_abbr_acro.py ${outdir}/text_noPuncts_${n}.txt ${outdir}/text_exp1_${n}.txt # Switch out for a nicer solution
@@ -242,7 +227,7 @@ if [ $stage -le 6 ]; then
     done
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 6 ]; then
     
     echo "Fix spelling errors"
     cut -d" " -f2- ${outdir}/text_exp2_endanlegt.txt | sed -e 's/[0-9\.,%‰°º]//g' | tr " " "\n" | egrep -v "^\s*$" | sort -u > ${outdir}/words_text_endanlegt.txt
@@ -273,8 +258,11 @@ if [ $stage -le 7 ]; then
     
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 7 ]; then
 
+    # Join the utterance names with the spkID to make the uttIDs
+    join -j 1 <(sort -k1,1 ${outdir}/filename_uttID.txt) <(sort -k1,1 ${outdir}/text_bb_SpellingFixed.txt) | cut -d" " -f2- > ${outdir}/text_bb_SpellingFixed_uttID.txt
+    
     if [ -e ${outdir}/text ] ; then
 	# we don't want to overwrite old stuff, ask the user to delete it.
 	echo "$0: ${outdir}/text already exists: "
@@ -285,7 +273,7 @@ if [ $stage -le 8 ]; then
 	exit 1;
     fi
 
-    cp ${outdir}/text_bb_SpellingFixed.txt ${outdir}/text
+    cp ${outdir}/text_bb_SpellingFixed_uttID.txt ${outdir}/text
     
     echo "Make sure all files are created and that everything is sorted"
     utils/validate_data_dir.sh --no-feats ${outdir} || utils/fix_data_dir.sh ${outdir}

@@ -65,21 +65,13 @@ rewrite_half1 = CDRewrite[
 half = Optimize[rewrite_half05 @ rewrite_half1];
 #export half = rewrite_half05 | rewrite_half1 | half2;
 
-# Rewrite 2°c to 2 degrees. They usually don't say celsíus in Althingi
-degc = ("ºc".utf8 | "°c".utf8) : (" gráða".utf8 | " gráðu".utf8 |
+# Rewrite 2° and 2°c to 2 degrees. They usually don't say celsíus in Althingi
+deg = ("º".utf8"c".utf8? | "°".utf8"c".utf8?) : (" gráða".utf8 | " gráðu".utf8 |
 (" gráður".utf8 <-1.0>) | " gráðum".utf8);
-expanddegc = CDRewrite[
-  degc,
-  c.Digits+,
-  (c.u8_punct | c.space | "[EOS]".utf8),
-  c.whole_alphabet*];
-
-deg = ("º".utf8 | "°".utf8) : (" gráða ".utf8 | " gráðu ".utf8 |
-(" gráður ".utf8 <-1.0>) | " gráðum ".utf8);
 expanddeg = CDRewrite[
-  deg,
-  c.Digits+,
-  (c.space | c.alphabet+),
+  degc,
+  "".utf8,
+  (c.u8_punct | c.space | "[EOS]".utf8),
   c.whole_alphabet*];
 
 # The following rule composes 4 transducers, and optimizes the
@@ -90,7 +82,7 @@ expanddeg = CDRewrite[
 # grammars, it is a good idea to optimize at least some of
 # the intermediate transducers. This can significantly speed
 # up compilation.
-rewrite = Optimize[expandper @ half @ expanddegc @ expanddeg];
+rewrite = Optimize[expandper @ half @ expanddeg];
 
 
 ################

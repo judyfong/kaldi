@@ -92,9 +92,7 @@ numbers_100000_to_999999 = Optimize[
   tail_1000_to_9999]
 ;
 
-numbers_1M_to_9M = Optimize[
-  ((units <-1>) | delone)
-  insspace
+tail_1M_to_9M = Optimize[
   ("".utf8 : ("milljón".utf8 | "milljónar".utf8 |
   "milljónir".utf8 | "milljónum".utf8 | "milljóna".utf8 ))
   (delzero delzero delzero delzero delzero delzero |
@@ -106,6 +104,24 @@ numbers_1M_to_9M = Optimize[
   ((insspace | insand) numbers_100000_to_999999 <-150>))]
 ;
 
+numbers_1M_to_9M = Optimize[
+  ((units <-1>) | delone)
+  insspace
+  tail_1M_to_9M]
+;
+
+numbers_10M_to_99M = Optimize[
+  (teensplus | numbers_20_to_99)
+  insspace
+  tail_1M_to_9M]
+;
+
+numbers_100M_to_999M = Optimize[
+  numbers_100_to_999
+  insspace
+  tail_1M_to_9M]
+;
+
 export NUMBERNAMES = Optimize[
   numbers_to_99 |
   (numbers_100_to_999 <-3>) |
@@ -113,6 +129,8 @@ export NUMBERNAMES = Optimize[
   (numbers_10000_to_99999 <-32>) |
   (numbers_100000_to_999999 <-64>) |
   (numbers_1M_to_9M  <-150>) |
+  (numbers_10M_to_99M <-300>) |
+  (numbers_100M_to_999M <-600>) |
   (year <-30.0>) ]
 ;
 

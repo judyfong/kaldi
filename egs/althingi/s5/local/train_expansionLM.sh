@@ -5,7 +5,7 @@ set -o pipefail
 # Usage: local/train_LM_forExpansion.sh [options]
 
 nj=60
-stage=9
+stage=-1
 corpus=/data/leipzig/isl_sentences_10M.txt
 utf8syms=/data/althingi/utf8.syms
 dir=text_norm
@@ -28,14 +28,14 @@ mkdir -p $dir
 # Convert text file to a Kaldi table (ark).
 # The archive format is:
 # <key1> <object1> <newline> <key2> <object2> <newline> ...
-if [ $stage -le 9 ]; then
+if [ $stage -le 0 ]; then
     # Each text lowercased and given an text_id,
     # which is just the 10-zero padded line number
     awk '{printf("%010d %s\n", NR, tolower($0))}' $corpus \
     > ${dir}/texts.txt
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 1 ]; then
     
     echo "Clean the text a little bit"
 
@@ -62,7 +62,7 @@ if [ $stage -le 10 ]; then
     
 fi
 
-if [ $stage -le 11 ]; then
+if [ $stage -le 2 ]; then
     # We select a subset of the vocabulary, every token occurring 30
     # times or more. This removes a lot of non-sense tokens.
     # But there is still a bunch of crap in there
@@ -70,10 +70,10 @@ if [ $stage -le 11 ]; then
         ${dir}/words.cnt | LC_ALL=C sort -u > ${dir}/wordlist30.txt
 
     # Get the althingi vocabulary
-    cut -d" " -f2- ${althdir}/text_bb_SpellingFixed.txt | tr " " "\n" | sed -e 's/\b[0-9]\+[^ ]*/<num>/g' | grep -v "^\s*$" | sort -u > ${dir}/words_althingi.tmp
+    cut -d" " -f2- ${althdir}/text_bb_SpellingFixed.txt | tr " " "\n" | sed -e 's/\b[0-9]\+[^ ]*/<num>/g' | grep -v "^\s*$" | sort -u > ${dir}/words_althingi.txt
     # I manually fixed most of the erraneous expansions in the first 100 hours of data I got.
     # Add if there are any words there that are not in the other dataset.
-    comm -23 <(cut -d" " -f2- ${althdir}100/text | tr " " "\n" | egrep -v "^\s*$" | sort -u) <(sort ${dir}/words_althingi.tmp) > ${dir}/words_althingi.txt
+    comm -23 <(cut -d" " -f2- ${althdir}100/text | tr " " "\n" | egrep -v "^\s*$" | sort -u) <(sort ${dir}/words_althingi.txt) >> ${dir}/words_althingi.txt
     
     # Get a list of words solely in the althingi data and add it to wordlist30.txt
     comm -23 <(sort ${dir}/words_althingi.txt) <(sort ${dir}/wordlist30.txt) > ${dir}/vocab_alth_only.txt
@@ -124,13 +124,13 @@ if [ $stage -le 11 ]; then
     
 fi
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 3 ]; then
     # Compile the lines to linear FSTs with utf8 as the token type
     utils/slurm.pl --mem 2G JOB=1:$nj ${dir}/log/compile_strings.JOB.log fststringcompile ark:${dir}/split$nj/texts_no_oovs.JOB.txt ark:"| gzip -c > ${dir}/texts_fsts.JOB.ark.gz" &
     
 fi
 
-if [ $stage -le 13 ]; then
+if [ $stage -le 4 ]; then
     # We need a FST to map from utf8 tokens to words in the words symbol table.
     # f1=word, f2-=utf8_tokens (0x0020 always ends a utf8_token seq)
     utils/slurm.pl \
@@ -162,7 +162,7 @@ if [ $stage -le 13 ]; then
 
 fi
 
-if [ $stage -le 14 ]; then	    
+if [ $stage -le 5 ]; then	    
     # we need to wait for the texts_fsts from stage 3 to be ready
     wait
     # Find out which lines can be rewritten. All other lines are filtered out.
@@ -170,11 +170,10 @@ if [ $stage -le 14 ]; then
     utils/slurm.pl JOB=1:$nj ${dir}/log/abbreviated.JOB.log fsttablecompose --match-side=left ark,s,cs:"gunzip -c ${dir}/texts_fsts.JOB.ark.gz |" ${dir}/ABBREVIATE_forExpansion.fst ark:- \| fsttablefilter --empty=true ark,s,cs:- ark,scp:${dir}/abbreviated_fsts/abbreviated.JOB.ark,${dir}/abbreviated_fsts/abbreviated.JOB.scp
 fi
 
-
-if [ $stage -le 15 ]; then
-    if [ -f ${dir}/numbertexts.txt.gz ]; then
+if [ $stage -le 6 ]; then
+    if [ -f ${dir}/numbertexts_althingi100.txt.gz ]; then
         mkdir -p ${dir}/.backup
-        mv ${dir}/{,.backup/}numbertexts.txt.gz
+        mv ${dir}/{,.backup/}numbertexts_althingi100.txt.gz
     fi
 
     # Here the lines in text that are rewriteable are selected, based on key.
@@ -201,12 +200,12 @@ if [ $stage -le 15 ]; then
     rm ${dir}/numbertexts.txt
 fi
 
-if [ $stage -le 16 ]; then
+if [ $stage -le 7 ]; then
     for n in 3 5; do
         echo "Building ${n}-gram"
-        if [ -f ${dir}/numbertexts_${n}g.arpa.gz ]; then
+        if [ -f ${dir}/numbertexts_althingi100_${n}g.arpa.gz ]; then
             mkdir -p ${dir}/.backup
-            mv ${dir}/{,.backup/}numbertexts_${n}g.arpa.gz
+            mv ${dir}/{,.backup/}numbertexts_althingi100_${n}g.arpa.gz
         fi
 
         # KenLM is superior to every other LM toolkit (https://github.com/kpu/kenlm/).
@@ -220,7 +219,7 @@ if [ $stage -le 16 ]; then
     done  
 fi
 
-if [ $stage -le 17 ]; then
+if [ $stage -le 8 ]; then
     # Get the fst language model. Obtained using the rewritable sentences.
     for n in 3 5; do
         if [ -f ${dir}/numbertexts_althingi100_${n}g.fst ]; then
@@ -237,22 +236,25 @@ if [ $stage -le 17 ]; then
     done
 fi
 
-if [ $stage -le 18 ] && $run_tests; then
+if [ $stage -le 9 ] && $run_tests; then
     # Let's test the training set, or a subset.
 
     # Combine, shuffle and subset
     sub_nnrewrites=$(for j in `seq 1 $nj`; do printf "${dir}/abbreviated_fsts/abbreviated.%s.scp " $j; done)
     all_cnt=$(cat $sub_nnrewrites | wc -l)
     test_cnt=$[all_cnt * 5 / 1000]
-    cat $sub_nnrewrites | shuf -n $test_cnt | LC_ALL=C sort -k1b,1 > ${dir}/abbreviated_test.scp
+    mkdir -p ${dir}/test
+    cat $sub_nnrewrites | shuf -n $test_cnt | LC_ALL=C sort -k1b,1 > ${dir}/test/abbreviated_test.scp
 
-    utils/split_scp.pl ${dir}/abbreviated_test.scp ${dir}/abbreviated_test.{1..8}.scp
+    utils/split_scp.pl ${dir}/test/abbreviated_test.scp ${dir}/test/abbreviated_test.{1..8}.scp
 
     for n in 3 5; do
         # these narrowed lines should've had all OOVs mapped to <unk>
         # (so we can do the utf8->words30 mapping, without completely
         # skipping lines with OOVs)
-        utils/slurm.pl JOB=1:8 ${dir}/log/expand_test${n}g.JOB.log fsttablecompose --match-side=left scp:${dir}/abbreviated_test.JOB.scp ${dir}/expand_to_words30.fst ark:- \| fsttablecompose --match-side=left ark:- ${dir}/numbertexts_${n}g.fst ark:- \| fsts-to-transcripts ark:- ark,t:"| utils/int2sym.pl -f 2- ${dir}/words30.txt > ${dir}/expand_texts_test_${n}g.JOB.txt"
+	# Neither of the following is working
+        #utils/slurm.pl JOB=1:8 ${dir}/log/expand_test${n}g.JOB.log fsttablecompose --match-side=left scp:${dir}/abbreviated_test.JOB.scp ${dir}/expand_to_words30.fst ark:- \| fsttablecompose --match-side=left ark:- ${dir}/numbertexts_althingi100_${n}g.fst ark:- \| fsts-to-transcripts ark:- ark,t:"| utils/int2sym.pl -f 2- ${dir}/words30.txt > ${dir}/expand_texts_test_${n}g.JOB.txt"
+	utils/slurm.pl JOB=1:8 ${dir}/log/expand_test${n}g.JOB.log expand-numbers --word-symbol-table=${dir}/words30.txt scp:${dir}/test/abbreviated_test.JOB.scp ${dir}/expand_to_words30.fst ${dir}/numbertexts_althingi100_${n}g.fst ark,t:${dir}/test/expand_texts_test_${n}g.JOB.txt
     done
 
     wait

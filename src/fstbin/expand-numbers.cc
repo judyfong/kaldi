@@ -24,7 +24,6 @@
 #include "fstext/fstext-utils.h"
 #include "fstext/kaldi-fst-io.h"
 #include "lm/kaldi-lm.h"
-//#include <iostream>
 
 std::string StringFromTokenVector(std::vector<std::string> const& tokens) {
   std::stringstream ss;
@@ -56,7 +55,7 @@ int main(int argc, char *argv[])
         "Usage: expand-numbers [options] <input-transcripts-rspecifier> "
         "<expand-to-words-fst> <language-model> <output-transcripts-wspecifier>"
         "For example:"
-        "utils/slurm.pl text_norm/log/expand-numbers.log expand-numbers --word-symbol-table=text_norm/text/words30.txt ark,t:text_norm/text/text50.txt text_norm/expand_to_words30.fst text_norm/text/numbertext_2g.fst ark,t:text_norm/text/text_expanded.txt" 
+        "utils/slurm.pl JOB=1:$nj ${datadir}/log/expand-numbers.JOB.log expand-numbers --word-symbol-table=text_norm/words30.txt ark,t:${datadir}/split${nj}/text.JOB.txt text_norm/expand_to_words30.fst text_norm/numbertexts_3g.fst ark,t:${datadir}/split${nj}/text_expanded.JOB.txt"
         "\n"
         "<language-model> has to be in FST format\n";
 
@@ -114,25 +113,14 @@ int main(int argc, char *argv[])
     int32 n_empty = 0;
     for (; !transcript_reader.Done(); transcript_reader.Next(), n_done++) {
       std::string key = transcript_reader.Key();
-
-      // if ( n_done % 500 == 0 ) {
-      //   std::cout << n_done << " transcripts are expanded.\n";
-      // } 
-      // // How does the transcript_reader.Value() look like?
-      // std::string value = StringFromTokenVector(transcript_reader.Value());
-      // std::cout << value << "\n";
-      
+     
       // A linear acceptor FST with utf8 labels
       Fst transcript_fst;
       TokenVectorToUtf8Fst(transcript_reader.Value(), &transcript_fst);
       
-      // Save transcript_fst to get some more information about it (fstinfo)
-      //fst::WriteFstKaldi(transcript_fst, "text_norm/text/transcript.fst");
-
       // All possible expansions
       Fst all_expansions_fst;
       fst::Compose(transcript_fst, *expand_fst, &all_expansions_fst);
-      // fst::WriteFstKaldi(all_expansions_fst, "text_norm/text/all_expansions.fst");
       
       if (word_symbol_table) {
         all_expansions_fst.SetOutputSymbols(lm_fst.GetFst()->OutputSymbols());
@@ -158,13 +146,7 @@ int main(int argc, char *argv[])
       std::vector<int32> out_transcript_int;
       fst::GetLinearSymbolSequence<fst::StdArc, int32>(shortest_fst,
                                                        NULL, &out_transcript_int, NULL);
-
-      // // How does the out_transcript_int look like?
-      // for (std::vector<int32>::const_iterator it = out_transcript_int.begin() ; it != out_transcript_int.end(); ++it) {
-      // 	std::cout << *it << " ";
-      // }
-      // std::cout << "\n";
-      
+    
       std::vector<std::string> out_transcript;
       for (const int32 &i : out_transcript_int) {
         std::string token = word_symbol_table->Find(i);
@@ -174,8 +156,11 @@ int main(int argc, char *argv[])
       transcript_writer.Write(key, out_transcript);
 
     }
-    KALDI_WARN << n_empty << " FSTs were empty after shortest path\n";
-
+    
+    if ( n_empty > 0 ){
+      KALDI_WARN << n_empty << " FSTs were empty after shortest path\n";
+    }
+    
     delete word_symbol_table;
     delete expand_fst;
     return 0;

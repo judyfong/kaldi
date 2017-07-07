@@ -56,21 +56,21 @@ if [ $stage -le 0 ]; then
     local/prep_althingi_data.sh ${datadir} data/all
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 1 ]; then
     echo "Text normalization: Expansion of abbreviations and numbers"
     # train a language model for expansion
-    ./local/train_LM_forExpansion.sh
+    ./local/train_expansionLM.sh
 fi
 
-if [ $stage -le 19 ]; then
+if [ $stage -le 2 ]; then
     echo "Expand numbers and abbreviations"
-    ./local/expand.sh data/all text_norm
+    ./local/expand.sh text_norm data/all/text_bb_SpellingFixed.txt data/all/text
 
     echo "Validate the data dir"
     utils/validate_data_dir.sh --no-feats data/all || utils/fix_data_dir.sh data/all
 fi
 
-if [ $stage -le 24 ]; then
+if [ $stage -le 3 ]; then
     
     info "Make the texts case sensitive (althingi and LM training text)"
     local/case_sensitive.sh ~/data/althingi/pronDict_LM data/all
@@ -80,13 +80,14 @@ if [ $stage -le 24 ]; then
     mv data/all/text_CaseSens.txt data/all/text
 fi
 
-if [ $stage -le 25 ]; then
+if [ $stage -le 4 ]; then
     # I can't train without segmenting the audio and text first.
     # I use the LF-MMI tdnn-lstm recognizer, trained on 514 hrs of
     # data to transcribe the audio so that I can align the new data	
     echo "Segment the data using and in-domain recognizer"
     local/run_segmentation.sh data/all ${existingModeldir}/lang_cs ${existingModeldir}/tdnn_lstm_1e_sp
 
+    # NOTE! Should I skip the next three steps and just run run_cleanup_segmentation.sh instead???
     echo "Analyze the segments and filter based on a words/sec ratio"
     local/words-per-second.sh data/all_reseg
     #local/wps_perSegment_hist.py wps.txt
@@ -111,11 +112,9 @@ if [ $stage -le 25 ]; then
 
 fi
     
-if [ $stage -le 15 ]; then
+if [ $stage -le 5 ]; then
 
-    # Before redoing this part I want to ask Jón about the rule of thumb regarding dev/test set
-    # size. Had to do with the quality of the recognizer.
-    # I also want to put an upper limit on the quantity of data from one speaker
+    # NOTE! I want to do this differently. And put an upper limit on the quantity of data from one speaker
     
     echo "Splitting into a train, dev and eval set"
     # Ideal would have been to hold back a little of the training data, called f.ex. train-dev
@@ -138,7 +137,7 @@ if [ $stage -le 15 ]; then
     utils/subset_data_dir.sh --utt-list out2 data/dev_eval data/eval
 fi
 
-if [ $stage -le 27 ]; then
+if [ $stage -le 6 ]; then
 
     echo "Lang preparation"
 
@@ -208,7 +207,7 @@ if [ $stage -le 27 ]; then
 
 fi
 
-if [ $stage -le 28 ]; then
+if [ $stage -le 7 ]; then
     echo "Make subsets of the training data to use for the first mono and triphone trainings"
 
     utils/subset_data_dir.sh data/train 40000 data/train_40k
@@ -223,7 +222,7 @@ if [ $stage -le 28 ]; then
     utils/subset_data_dir.sh --per-spk data/eval 30 data/eval_30
 fi
 
-if [ $stage -le 29 ]; then
+if [ $stage -le 8 ]; then
     # NOTE! Should I rather start with SI alignment and then training LDA+MLLT?
     
     echo "Align and train on the segmented data"
@@ -255,14 +254,14 @@ if [ $stage -le 29 ]; then
     done
 fi
 
-if [ $stage -le 30 ]; then
+if [ $stage -le 9 ]; then
     echo "Clean and resegment the training data"
     local/run_cleanup_segmentation.sh
 fi
 
 # NNET Now by default running on un-cleaned data
 # Input data dirs need to be changed
-if [ $stage -le 31 ]; then
+if [ $stage -le 10 ]; then
 
     echo "Run the swbd chain tdnn_lstm recipe with sp"
     local/chain/run_tdnn_lstm.sh >>tdnn_lstm.log 2>&1 &

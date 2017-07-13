@@ -82,7 +82,7 @@ echo "Convert punctuation tokens back to actual punctuations"
 sed -r 's/ \.PERIOD/./g; s/ \?QUESTIONMARK/?/g; s/ !EXCLAMATIONMARK/!/g; s/ ,COMMA/,/g; s/ :COLON/:/g' ${dir}/punctuator_out_wNumbers.tmp | perl -pe 's/ ([°%‰])/$1/g' > ${dir}/punctuator_out_wPuncts.tmp
 
 # Some things I want to abbreviate if preceded or followed by a name (i.e. by an uppercase letter) f.ex. "doktor" and "þingmaður"
-sed -e 's/doktor \([A-ZÁÉÍÓÚÝÞÆÖ]\)/dr\. \1/g' ${dir}/punctuator_out_wPuncts.tmp > ${dir}/text.dr.tmp
+sed -r 's:doktor ([A-ZÁÉÍÓÚÝÞÆÖ]):dr\. \1:g' ${dir}/punctuator_out_wPuncts.tmp > ${dir}/text.dr.tmp
 
 echo "Capitalize sentence beginnings and add periods to abbreviations."
 # Implement! Regex for capitalization and thrax for the periods.

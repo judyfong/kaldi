@@ -4,7 +4,7 @@
 #
 # This grammar can be interactively tested by doing:
 #
-# thraxrewrite-tester --far=local/expand.far --rules=EXPAND_UTT --noutput=10 --input_mode=utf8 --output_mode=utf8
+# thraxrewrite-tester --far=local/expand.far --rules=EXPAND_UTT --noutput=3 --input_mode=utf8 --output_mode=utf8
 
 import 'local/common.grm' as c;
 import 'local/numbers.grm' as n;

@@ -165,7 +165,7 @@ fi
 
 if [ $stage -le 4 ]; then
 
-    echo "Rewrite and remove punctuations"
+    echo "Lowercase, rewrite and remove punctuations"
     # 1) Remove comments that appear at the end of certain speeches (still here because contained <skáletrað> in original text)
     # 2) Rewrite time,
     # 3) Change "&amp;" to "og"
@@ -204,8 +204,8 @@ if [ $stage -le 4 ]; then
 	    < ${outdir}/text_noRoman_${n}_sed.txt \
 	    | perl -pe 's/ (0(?!,5))/ $1 /g' | perl -pe 's/komma (0? ?)(\d)(\d)(\d)(\d?)/komma $1$2 $3 $4 $5/g' \
             | sed -re 's:¼: einn 4. :g' -e 's:¾: 3 fjórðu:g' -e 's:([0-9])½:\1,5 :g' -e 's: ½: 0,5 :g' \
-                  -e 's:,([^0-9]):\1:g' \
-                  -e 's:\.+( +[A-ZÁÐÉÍÓÚÝÞÆÖ]|$):\1:g' -e 's:([^0-9])\.+:\1:g' -e 's:([0-9]{4})\.+:\1 :g' \
+                  -e 's:,([^0-9]|$):\1:g' -e 's:([^0-9]),:\1 :g' \
+                  -e 's:\.+( +[A-ZÁÐÉÍÓÚÝÞÆÖ]|$):\1:g' -e 's:([^0-9])\.+([0-9]):\1 \2:g' -e 's:([^0-9])\.+:\1:g' -e 's:([0-9]{4,})\.+:\1 :g' \
                   -e 's: .+:\L&:g' \
                   -e 's:/a\b: á ári:g' -e 's:/s\b: á sekúndu:g' -e 's:/kg\b: á kíló:g' -e 's:/klst\b: á klukkustund:g' \
                   -e 's:—|–|/|tilstr[^ 0-9]*?\.?: :g' -e 's:([a-záðéíóúýþæö])-+([a-záðéíóúýþæö]):\1 \2:g' \

@@ -1,6 +1,5 @@
 # coding: utf-8
 
-from __future__ import division
 from nltk.tokenize import word_tokenize
 
 import codecs
@@ -14,7 +13,7 @@ def process_line(line,oovlist):
 
     tokens = word_tokenize(line)
     output_tokens = []
-    word_list = []
+    word_list = [tokens[0]]
     
     for token in tokens:
         if token in oovlist:
@@ -23,7 +22,7 @@ def process_line(line,oovlist):
         else:
             output_tokens.append(token)
 
-    return [" ".join(output_tokens) + " ", '\n'.join(word_list)]
+    return [" ".join(output_tokens) + " ", word_list]
 
 
 with codecs.open(sys.argv[4], 'w', 'utf-8') as OOVlist_out:
@@ -36,6 +35,6 @@ with codecs.open(sys.argv[4], 'w', 'utf-8') as OOVlist_out:
                     line, mapped_words = process_line(line,oovlist)
 
                     out_txt.write(line + '\n')
-                    if len(mapped_words) > 0:
-                         OOVlist_out.write(mapped_words + '\n')
+                    if len(mapped_words) > 1:
+                         OOVlist_out.write(" ".join(mapped_words) + '\n')
 

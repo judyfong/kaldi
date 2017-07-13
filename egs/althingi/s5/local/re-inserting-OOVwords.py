@@ -21,5 +21,5 @@ with codecs.open(sys.argv[3], 'w', 'utf-8') as out_txt:
             for index in indices:
                 textlist[index] = oovlist[oov_ind]
                 oov_ind+=1
-    print "Last index used in the oov list: ", oov_ind-1            
+    print("Last index used in the oov list: ", oov_ind-1)            
     out_txt.write(' '.join(textlist) + '\n')

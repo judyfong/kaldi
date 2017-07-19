@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey, Yenda Trmal)
+# Copyright 2017 Reykjavik University (Author: Inga Rún Helgadóttir)
 # Apache 2.0
 
 [ -f ./path.sh ] && . ./path.sh
@@ -56,10 +57,10 @@ if [ $stage -le 0 ]; then
              utils/int2sym.pl -f 2- $symtab \| cat '>' $dir/scoring_kaldi/penalty_$wip/LMWT.txt || exit 1;
 
 	for lmwt in $(seq $min_lmwt $max_lmwt); do
-            perl -pe 's/[^ ]+rad[^ ]+//g' $dir/scoring_kaldi/penalty_$wip/$lmwt.txt | tr "\n" " " \
-		| sed -e 's/[[:space:]]\+/ /g' | sed 's/.*/'$speechname'&/' \
-						     > $dir/scoring_kaldi/penalty_$wip/$lmwt.tmp \
-		&& mv $dir/scoring_kaldi/penalty_$wip/$lmwt.tmp $dir/scoring_kaldi/penalty_$wip/$lmwt.txt
+            sed -r 's/[^ ]+rad[^ ]+//g' $dir/scoring_kaldi/penalty_$wip/$lmwt.txt | tr "\n" " " \
+                | sed -re 's/[[:space:]]+/ /g' -e 's/.*/'$speechname'&/' \
+                > $dir/scoring_kaldi/penalty_$wip/$lmwt.tmp \
+            && mv $dir/scoring_kaldi/penalty_$wip/$lmwt.tmp $dir/scoring_kaldi/penalty_$wip/$lmwt.txt
 
 	    # I need to remove the text spoken by the speaker of the house if I'm to compare with the reference texts
 	    align-text --special-symbol="'***'" ark:$dir/scoring_kaldi/test_filt.txt ark:$dir/scoring_kaldi/penalty_$wip/$lmwt.txt ark,t:$dir/scoring_kaldi/penalty_$wip/${lmwt}_aligned.txt &>/dev/null

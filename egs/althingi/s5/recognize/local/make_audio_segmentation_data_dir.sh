@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # This script is based on steps/cleanup/make_segmentation_data_dir.sh
-# Copyright 2017  Inga Rún Helgadóttir
+# Copyright 2017  Reykjavik University (Author: Inga Rún Helgadóttir)
+# Apache 2.0
+
 
 # Begin configuration section.
 min_seg_length=2
@@ -46,7 +48,7 @@ cp -f $old_data_dir/wav.scp $new_data_dir
 [ -f old_data_dir/spk2gender ] &&  cp -f $old_data_dir/spk2gender $new_data_dir
 
 echo "Create the segmentation."
-local/create_segments_from_silence.pl \
+recognize/local/create_segments_from_silence.pl \
   --min-seg-length $min_seg_length \
   --min-sil-length $min_sil_length \
   $silence_file $new_data_dir/segments

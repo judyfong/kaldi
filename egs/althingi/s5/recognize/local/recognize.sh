@@ -1,6 +1,8 @@
 #!/bin/bash
 
-# 2017 - Inga
+# Copyright 2017  Reykjavik University (Author: Inga Rún Helgadóttir)
+# Apache 2.0
+
 # Decode audio using a LF-MMI tdnn-lstm model. Takes in audio + an optional meta file connecting the audiofile name and the speaker. The final transcript is capitalized and contains punctuation. 
 #
 # Usage: $0 <audiofile> [<metadata>]
@@ -41,13 +43,13 @@ fi
 
 # Dirs used #
 # Already existing
-langdir=data/lang_cs
-graphdir=exp/chain/tdnn_lstm_1e_sp/graph_3g_cs_023pruned
-oldLMdir=data/lang_3g_cs_023pruned
-newLMdir=data/lang_5g_cs_const
+langdir=data/lang
+graphdir=exp/chain/tdnn_lstm_1e_sp/graph_3gsmall
+oldLMdir=data/lang_3gsmall
+newLMdir=data/lang_5g
 # Created
-decodedir=${datadir}_segm_hires/decode_3g_cs_023pruned
-rescoredir=${datadir}_segm_hires/decode_5g_cs
+decodedir=${datadir}_segm_hires/decode_3gsmall
+rescoredir=${datadir}_segm_hires/decode_5g
 
 if [ $stage -le 0 ]; then
 
@@ -120,15 +122,13 @@ if [ $stage -le 7 ]; then
     # Extract the best path text (tac - concatenate and print files in reverse)
     tac ${rescoredir}/extract_transcript.log | grep -e '^[^ ]\+rad' | sort -u -t" " -k1,1 > ${rescoredir}/transcript.txt
 
-    # Remove utterance IDs
-    perl -pe 's/[^ ]+rad[^ ]+//g' ${rescoredir}/transcript.txt | tr "\n" " " | sed -e "s/[[:space:]]\+/ /g" > ${rescoredir}/transcript_noID.txt
 fi
 
 if [ $stage -le 8 ]; then
 
     echo "Denormalize the transcript"
     recognize/local/denormalize.sh \
-        ${rescoredir}/transcript_noID.txt \
+        ${rescoredir}/transcript.txt \
         ${rescoredir}/${speechname}.txt
     rm ${rescoredir}/*.tmp
 fi
@@ -137,7 +137,7 @@ if [ $score = true ] ; then
 
     echo "Estimate the WER"
     # NOTE! Correct for the mismatch in the beginning and end of recordings.
-    recognize/local/score_recognize.sh --cmd "$decode_cmd" $speechname ${langdir} ${rescoredir}
+    recognize/local/score_recognize.sh --cmd "$train_cmd" $speechname ${langdir} ${rescoredir}
 fi
 
 rm -r ${datadir} ${datadir}_segm

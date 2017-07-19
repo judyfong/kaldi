@@ -1,18 +1,21 @@
 #!/bin/bash -eu
 
-# The script contains the steps taken to train an
-# Icelandic LVCSR built for the Icelandic parliament using
-# text and audio data from the parliament. The text data
-# provided consists of two sets of files, the intermediate text
+# The script contains the steps taken to train an Icelandic LVCSR
+# built for the Icelandic parliament using text and audio data
+# from the parliament. It is assumed that the text data provided
+# consists of two sets of files, the intermediate text
 # and the final text. The text needs to be normalized and
 # and audio and text has to be aligned and segmented before
 # training.
 #
-# Those that got already segmented data need to create kaldi files
-# done in the first part of prep_althingi_data.sh and can just go to
-# stage 15
+# If you have already segmented data, you just need to create the kaldi files
+# (done in the first part of prep_althingi_data.sh) and can then go to
+# stage 5.
 #
-# 2016 Reykjavík University (Inga Rún Helgadóttir)
+# This script is thought as a template. Changes might have to be made.
+#
+# Copyright 2017 Reykjavik University (Author: Inga Rún Helgadóttir)
+# Apache 2.0
 #
 
 set -o pipefail
@@ -98,7 +101,9 @@ if [ $stage -le 4 ]; then
     # and outside 5 and 95 percentiles for that particular speaker.
     # NOTE! OK? Should I change the percentile cut over all segments? Or over speakers?
     local/filter_segments.sh data/all_reseg data/all_reseg_filtered
-    
+fi
+
+if [ $stage -le 5 ]; then
     echo "Extracting features"
     steps/make_mfcc.sh \
         --nj $nj       \
@@ -112,7 +117,7 @@ if [ $stage -le 4 ]; then
 
 fi
     
-if [ $stage -le 5 ]; then
+if [ $stage -le 6 ]; then
 
     # NOTE! I want to do this differently. And put an upper limit on the quantity of data from one speaker
     
@@ -137,7 +142,7 @@ if [ $stage -le 5 ]; then
     utils/subset_data_dir.sh --utt-list out2 data/dev_eval data/eval
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 7 ]; then
 
     echo "Lang preparation"
 
@@ -146,12 +151,12 @@ if [ $stage -le 6 ]; then
     pronDictdir=~/data/althingi/pronDict_LM
     frob=${pronDictdir}/CaseSensitive_pron_dict_Fix6.txt
     local/prep_lang.sh \
-	$frob            \
-	data/local/dict   \
-	data/lang
+        $frob            \
+        data/local/dict   \
+        data/lang
 
     # Make the LM training sample, assuming the 2016 data is used for testing
-    cat ${pronDictdir}/scrapedAlthingiTexts_clean_CaseSens.txt <(grep -v rad2016 data/all/texts_CaseSens.txt | cut -d" " -f2-) > ${pronDictdir}/LMtexts_CaseSens.txt
+    cat ${pronDictdir}/scrapedAlthingiTexts_expanded_CS.txt <(grep -v rad2016 data/all/text | cut -d" " -f2-) > ${pronDictdir}/LMtexts_expanded_CS.txt
     
     echo "Preparing a pruned trigram language model"
     mkdir -p data/lang_3gsmall
@@ -160,10 +165,10 @@ if [ $stage -le 6 ]; then
 	[ ! -e data/lang_3gsmall/$s ] && cp -r data/lang/$s data/lang_3gsmall/$s
     done
 
-    nohup /opt/kenlm/build/bin/lmplz \
+    /opt/kenlm/build/bin/lmplz \
 	--skip_symbols \
 	-o 3 -S 70% --prune 0 2 3 \
-	--text ${pronDictdir}/LMtexts_CaseSens.txt \
+	--text ${pronDictdir}/LMtexts_expanded_CS.txt \
 	--limit_vocab_file <(cat data/lang_3gsmall/words.txt | egrep -v "<eps>|<unk>" | cut -d' ' -f1) \
 	| gzip -c > data/lang_3gsmall/kenlm_3g_023pruned.arpa.gz
 
@@ -176,10 +181,10 @@ if [ $stage -le 6 ]; then
 	[ ! -e data/lang_3glarge/$s ] && cp -r data/lang/$s data/lang_3glarge/$s
     done
 
-    nohup /opt/kenlm/build/bin/lmplz \
+    /opt/kenlm/build/bin/lmplz \
 	--skip_symbols \
 	-o 3 -S 70% --prune 0 \
-	--text ${pronDictdir}/LMtexts_CaseSens.txt \
+	--text ${pronDictdir}/LMtexts_expanded_CS.txt \
 	--limit_vocab_file <(cat data/lang_3glarge/words.txt | egrep -v "<eps>|<unk>" | cut -d' ' -f1) \
 	| gzip -c > data/lang_3glarge/kenlm_3g.arpa.gz
 
@@ -197,17 +202,17 @@ if [ $stage -le 6 ]; then
     /opt/kenlm/build/bin/lmplz \
 	--skip_symbols \
 	-o 5 -S 70% --prune 0 \
-	--text ${pronDictdir}/LMtexts_CaseSens.txt \
+	--text ${pronDictdir}/LMtexts_expanded_CS.txt \
 	--limit_vocab_file <(cat data/lang_5g/words.txt | egrep -v "<eps>|<unk>" | cut -d' ' -f1) \
 	| gzip -c > data/lang_5g/kenlm_5g.arpa.gz
 
     # Build ConstArpaLm for the unpruned 5g language model.
     utils/build_const_arpa_lm.sh data/lang_5g/kenlm_5g.arpa.gz \
-        data/lang data/lang_5gconst
+        data/lang data/lang_5g
 
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 8 ]; then
     echo "Make subsets of the training data to use for the first mono and triphone trainings"
 
     utils/subset_data_dir.sh data/train 40000 data/train_40k
@@ -222,7 +227,7 @@ if [ $stage -le 7 ]; then
     utils/subset_data_dir.sh --per-spk data/eval 30 data/eval_30
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 9 ]; then
     # NOTE! Should I rather start with SI alignment and then training LDA+MLLT?
     
     echo "Align and train on the segmented data"
@@ -254,16 +259,15 @@ if [ $stage -le 8 ]; then
     done
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 10 ]; then
     echo "Clean and resegment the training data"
     local/run_cleanup_segmentation.sh
 fi
 
 # NNET Now by default running on un-cleaned data
 # Input data dirs need to be changed
-if [ $stage -le 10 ]; then
+if [ $stage -le 11 ]; then
 
     echo "Run the swbd chain tdnn_lstm recipe with sp"
     local/chain/run_tdnn_lstm.sh >>tdnn_lstm.log 2>&1 &
 fi
-

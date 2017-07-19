@@ -13,8 +13,7 @@ fi
 
 corpus=$1
 out=$2
-#outdir=$(readlink -f $2);
-#mkdir -p $outdir
+prondir=$(readlink -f $1);
 
 tmp=$(mktemp -d)
 cleanup () {
@@ -77,7 +76,7 @@ sed -re 's:\([^/(]*?\): :g' -e 's:&: og :g' \
     -e 's: \.([^\.]):. \1:g' \
     -e 's: ,+| \.+|,\.| |__+: :g' \
     -e 's:([0-9]+)ja\b:\1:g' -e 's:([ck]?m)2: \1²:g' -e 's:([ck]?m)3: \1³:g' \
-    -e 's:\b([^ ]*[^ A-ZÁÐÉÍÓÚÝÞÆÖ-])([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \2:g' \
+    -e 's:\b([^ ]*[^ A-ZÁÐÉÍÓÚÝÞÆÖ-/])([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \2:g' \
     -e 's:(\.[a-záðéíóúýþæö]+)\. :\1 :g' -e 's:\.([a-záðéíóúýþæö]):\1:g' \
     -e 's:\b(hv|hæstv|þm|dr|frh|nk|nr|sbr|skv|[^ ]+?rh|þús)\.:\1:g' \
     -e 's: ([A-ZÁÐÉÍÓÚÝÞÆÖ])\. : \1 :g' \
@@ -88,13 +87,14 @@ sed -re 's:\([^/(]*?\): :g' -e 's:&: og :g' \
     -e 's: *%:% :g' -e 's:([°º]) c :\1c :g' \
     -e 's:—|­| |-: :g' -e 's:^\. *::g' \
     -e 's/[[:space:]]+/ /g' ${tmp}/noRoman.tmp \
-    | grep -v "^\s*$"  > ${tmp}/noRoman.punct1.tmp
+    | egrep -v "\(|\)" | egrep -v "^\s*$"  > ${tmp}/noPunct.tmp
 
-echo "Rearrange text and lowercase"
-# # The last command groups together five lines at a time, i.e. if the line number mod 5 = 0 then the line break is kept otherwise it is changed to a space. I do this so the model can sometimes see context on both sides of a EOS punctuation. NOTE!
-# tr "\n" " " < noRoman.punct2.tmp | perl -pe 's/([A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö])([\.?!]) /$1$2\n/g' | sed -e 's/\(.*\)/\L\1/g' | sed -e "s/[[:space:]]\+/ /g" | awk 'ORS=NR%5?" ":"\n"' > ${out}
+echo "Capitalize words in the scraped Althingi texts, that are capitalized in the pron dict"
+    comm -12 <(sed -r 's:.*:\L&:' ${prondir}/CaseSensitive_pron_dict_propernouns.txt | sort) <(tr " " "\n" < ${tmp}/noPunct.tmp | sed -re 's/[^a-záðéíóúýþæö]+//g'| egrep -v "^\s*$" | sort -u) > ${tmp}/propernouns_scraped_althingi_texts.txt
+    # Make the regex pattern
+    tr "\n" "|" < ${tmp}/propernouns_scraped_althingi_texts.txt | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > ${tmp}/propernouns_scraped_althingi_texts_pattern.tmp
 
-#tr "\n" " " < noRoman.punct2.tmp | perl -pe 's/([A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö])([\.?!]) /$1$2\n/g' | sed -e 's/\(.*\)/\L\1/g' > noRoman.punct3.tmp
-egrep -v "^\s*$" noRoman.punct2.tmp | tr "\n" " " > ${out}
-
+    # Capitalize
+    srun sed -r "s:(\b$(cat ${tmp}/propernouns_scraped_althingi_texts_pattern.tmp)\b):\u\1:g" ${tmp}/noPunct.tmp > $out
+    
 exit 0

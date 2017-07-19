@@ -12,8 +12,6 @@
 # done in the first part of prep_althingi_data.sh and can just go to
 # stage 15
 #
-# 2016 Reykjavík University (Inga Rún Helgadóttir)
-#
 
 nj=20
 nj_decode=32 

@@ -1,5 +1,8 @@
 #!/bin/bash -eu
 
+# Copyright 2017  Reykjavik University (Author: Inga Rún Helgadóttir)
+# Apache 2.0
+
 # Prepare a directory on Kaldi format, containing audio data and some auxiliary info.
 
 stage=-1

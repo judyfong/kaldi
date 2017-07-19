@@ -1,7 +1,8 @@
 #!/usr/bin/env perl
 
-# Built on steps/cleanup/create_segments_from_ctm.pl 
-# 2017  Inga Rún Helgadóttir
+# Built on steps/cleanup/create_segments_from_ctm.pl
+# Copyright 2017  Reykjavik University (Author: Inga Rún Helgadóttir)
+# Apache 2.0
 
 use strict;
 use warnings;

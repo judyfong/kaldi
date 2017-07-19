@@ -1,6 +1,8 @@
 #!/bin/bash -eu
 
-# 2017 Inga Rún
+# Copyright 2017  Reykjavik University (Author: Inga Rún Helgadóttir)
+# Apache 2.0
+
 
 # Begin configuration section.
 min_seg_length=5
@@ -55,7 +57,7 @@ for line in $(cat $datadir/wav.scp); do
     ffmpeg -nostdin -i $audio -af silencedetect=noise=-15dB:d=$min_sil_length -f null - &>${outdir}/ffmpeg_out.tmp
 
     if grep -q "silencedetect" ${outdir}/ffmpeg_out.tmp; then
-        grep "silence_start\|silence_end" ${outdir}/ffmpeg_out.tmp | awk 'ORS=NR%2?" ":"\n"' | sed 's/^.*\(\[silencedetect.*silence_start\)/\1/g' | cut -d" " -f4,5,9,10,12,13 > ${outdir}/${filename}_silence.txt
+        grep "silence_start\|silence_end" ${outdir}/ffmpeg_out.tmp | awk 'ORS=NR%2?" ":"\n"' | sed -r 's:^.*(\[silencedetect.*silence_start):\1:g' | cut -d" " -f4,5,9,10,12,13 > ${outdir}/${filename}_silence.txt
 		
     	# Get total recording length, with 3 digits
     	total_dur=$(printf %.3f $(echo $(soxi -D $audio) | bc -l))
@@ -68,12 +70,12 @@ for line in $(cat $datadir/wav.scp); do
     	if [ $num_col_last == 4 ]; then
     	    sil_start=$(awk 'END { print $NF }' ${outdir}/${filename}_silence.txt) 
     	    sil_dur=$(echo "$total_dur - $sil_start" | bc)
-    	    sed -i -e "\$s/\(.*\)/\1 silence_end: $total_dur silence_duration: $sil_dur/" ${outdir}/${filename}_silence.txt
+    	    sed -i -r "\$s/.*/& silence_end: $total_dur silence_duration: $sil_dur/" ${outdir}/${filename}_silence.txt
     	fi
 	
     	# Used make_segmentation_data_dir.sh and create_segments_from_ctm.pl as bases for the segmentation step
     	echo "Make data dir with segmented audio"
-    	local/make_audio_segmentation_data_dir.sh \
+    	recognize/local/make_audio_segmentation_data_dir.sh \
     	    --min-seg-length $min_seg_length \
     	    --min-sil-length $min_sil_length \
     	    ${outdir}/${filename}_silence.txt $datadir $outdir

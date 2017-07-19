@@ -23,7 +23,6 @@
 #include "fstext/table-matcher.h"
 #include "fstext/fstext-utils.h"
 #include "fstext/kaldi-fst-io.h"
-#include "lm/kaldi-lm.h"
 
 std::string StringFromTokenVector(std::vector<std::string> const& tokens) {
   std::stringstream ss;
@@ -90,13 +89,9 @@ int main(int argc, char *argv[])
       word_symbol_table = fst::SymbolTable::ReadText(
 	  word_symbol_table_filename);
   
-    kaldi::GrammarType grammar_type;
-    grammar_type = kaldi::GrammarType::kFst;
-
-    kaldi::LangModelFst lm_fst;
-    lm_fst.Read(language_model_rxfilename, grammar_type, word_symbol_table, true);
-    lm_fst.GetFst()->SetOutputSymbols(word_symbol_table);
-    lm_fst.GetFst()->SetInputSymbols(word_symbol_table);
+    Fst* lm_fst = fst::ReadFstKaldi(language_model_rxfilename);
+    lm_fst->SetOutputSymbols(word_symbol_table);
+    lm_fst->SetInputSymbols(word_symbol_table);
 
     // The FST used to generate all possible expansions
     Fst* expand_fst = fst::ReadFstKaldi(expand_fst_rxfilename);
@@ -123,14 +118,14 @@ int main(int argc, char *argv[])
       fst::Compose(transcript_fst, *expand_fst, &all_expansions_fst);
       
       if (word_symbol_table) {
-        all_expansions_fst.SetOutputSymbols(lm_fst.GetFst()->OutputSymbols());
+        all_expansions_fst.SetOutputSymbols(lm_fst->OutputSymbols());
       }
       fst::Project(&all_expansions_fst, fst::ProjectType::PROJECT_OUTPUT);
       
       
       // Use language model to find best expansion
       Fst best_expansion_fst;
-      fst::Intersect(all_expansions_fst, *(lm_fst.GetFst()), &best_expansion_fst);
+      fst::Intersect(all_expansions_fst, *lm_fst, &best_expansion_fst);
       // fst::WriteFstKaldi(best_expansion_fst, "text_norm/text/best_expansion.fst");
             
       Fst shortest_fst;

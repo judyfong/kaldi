@@ -13,10 +13,10 @@ import sys
 NUM = '<NUM>'
 
 EOS_PUNCTS = {".": ".PERIOD", "?": "?QUESTIONMARK", "!": "!EXCLAMATIONMARK"}
+INS_PUNCTS = {",": ",COMMA", ";": ";SEMICOLON", ":": ":COLON"}
 #INS_PUNCTS = {",": ",COMMA", ";": ";SEMICOLON", ":": ":COLON", "-": "-DASH"}
-INS_PUNCTS = {",": ",COMMA", ":": ":COLON"}
 
-forbidden_symbols = re.compile(r"[\[\]\(\)\/\\\>\<\=\+\_\*]")
+forbidden_symbols = re.compile(r"[\[\]\(\)\\\>\<\=\+\_\*]")
 numbers = re.compile(r"\d")
 #multiple_punct = re.compile(r'([\.\?\!\,\:\;\-])(?:[\.\?\!\,\:\;\-]){1,}')
 multiple_punct = re.compile(r'([\.\?\!\,\:])(?:[\.\?\!\,\:]){1,}')

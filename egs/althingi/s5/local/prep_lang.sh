@@ -2,8 +2,8 @@
 #
 # Prepare training lang dir, given a data dir and Framburðarorðabókin
 #
-# Copyright: 2015 Robert Kjaran
-#            2016 Inga Run
+# Copyright: 2015 Reykjavik University (Author: Robert Kjaran)
+#            2016 Reykjavik University (Author: Inga Run Helgadottir)
 #
 # TODO(rkjaran): G2P using Phonetisaurus and RnnLMG2P
 
@@ -13,7 +13,7 @@ tmpdir=
 cleanup=false
 vocab=
 . utils/parse_options.sh
-if [ $# -ne 4 ]; then
+if [ $# -ne 3 ]; then
     echo "Usage: $0 <frob-tsv> <tmp-dir> <dest-dir>" >&2
     echo "Eg. $0 data/local/frob.txt data/local/dict data/lang" >&2
     exit 1;

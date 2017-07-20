@@ -2,7 +2,9 @@
 
 set -o pipefail
 
-# 2016  Reykjavik University (Author: Inga Rún Helgadóttir)
+# Copyright 2017  Reykjavik University (Author: Inga Rún Helgadóttir)
+# Apache 2.0
+
 # Get the Althingi data on a proper format for kaldi.
 
 stage=-1

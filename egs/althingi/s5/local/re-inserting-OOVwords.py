@@ -1,9 +1,12 @@
-# coding: utf-8
+#!/usr/bin/env python3
+#-*- coding: utf-8 -*-
+
+# Copyright 2017  Reykjavik University (Author: Inga Rún Helgadóttir)
+# Apache 2.0
 
 import sys
 import codecs
 
-# 2017 Inga Rún
 # Mapped words not in numbertexts.txt to <word> before expanding abbreviations and numbers
 # To re-insert the "OOV" words I use the expanded text and the list of words mapped to <word>
 # Example:

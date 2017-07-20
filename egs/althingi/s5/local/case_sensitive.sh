@@ -21,11 +21,11 @@ fi
 # Capitalize words in Althingi texts, that are capitalized in the pron dict
 
 # Extract proper nouns from the althingi texts, which have to be capitalized
-comm -12 <(sed -e 's/\(.*\)/\L\1/' ${pronDictdir}/CaseSensitive_pron_dict_propernouns.txt | sort) <(cut -d" " -f2- ${datadir}/text | tr " " "\n" | grep -Ev "^\s*$" | sort -u ) > ${pronDictdir}/propernouns_althingi.txt
+comm -12 <(sed 's:.*:\L&:' ${pronDictdir}/CaseSensitive_pron_dict_propernouns.txt | sort) <(cut -d" " -f2- ${datadir}/text | tr " " "\n" | grep -Ev "^\s*$" | sort -u ) > ${pronDictdir}/propernouns_althingi.txt
 # Make the regex pattern
-tr "\n" "|" < ${pronDictdir}/propernouns_althingi.txt | sed -e '$s/|$//' | sed -e '$a\' | perl -pe "s/\|/\\\b\\\|\\\b/g" | sed -e 's/\(.*\)/\L\1/' > ${pronDictdir}/propernouns_althingi_pattern.tmp
+tr "\n" "|" < ${pronDictdir}/propernouns_althingi.txt | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > ${pronDictdir}/propernouns_althingi_pattern.tmp
 
 # Capitalize
-srun --mem 8G sed -e 's/\(\b'$(cat ${pronDictdir}/propernouns_althingi_pattern.tmp)'\b\)/\u\1/g' ${datadir}/text > ${datadir}/text_CaseSens.txt
+srun sed -r 's:(\b'$(cat ${pronDictdir}/propernouns_althingi_pattern.tmp)'\b):\u\1:g' ${datadir}/text > ${datadir}/text_CaseSens.txt
 
 rm ${pronDictdir}/*.tmp

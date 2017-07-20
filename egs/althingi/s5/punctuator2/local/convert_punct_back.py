@@ -1,17 +1,14 @@
 # coding: utf-8
 
-from __future__ import division
 from nltk.tokenize import word_tokenize
 
 import os
 import codecs
 import re
 import sys
-#import nltk # I had to add these lines, but only needed once
-#nltk.download('punkt')
 
-EOS_PUNCTS = {".PERIOD":".","?QUESTIONMARK":"?","!EXCLAMATIONMARK":"!"}
-INS_PUNCTS = {",COMMA":",",":COLON":":"}
+EOS_PUNCTS = {".PERIOD":".", "?QUESTIONMARK":"?"}
+INS_PUNCTS = {",COMMA":",", ":COLON":":"}
 
 def process_line(line):
 

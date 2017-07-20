@@ -43,15 +43,14 @@ The subdirectory of this directory, s5, contains scripts for the following three
 #### EXTERNAL TOOLS NEEDED
 
 - [OpenGrm Thrax](http://www.opengrm.org/): For number and abbreviation expansion. As well as for the postprocessing of the ASR output.
-  - Requires [OpenFst 1.6.0 or higher](http://www.openfst.org/twiki/bin/view/FST/WebHome), configured with the ```--enable-grm``` flag (installed when installing Kaldi).
+  - Requires [OpenFst 1.6.0](http://www.openfst.org/twiki/bin/view/FST/WebHome) or higher, configured with the ```--enable-grm``` flag (installed when installing Kaldi).
 - [KenLM](https://kheafield.com/code/kenlm/): For language modelling, fast and allows pruning.
 - [Sequitur-g2p](https://github.com/sequitur-g2p/sequitur-g2p): For grapheme-to-phoneme conversion (not needed when the pronunciation dictionary is ready)
-  - Requires: [Swig](http://www.swig.org)
+  - Requires: [Swig](http://www.swig.org) and numpy
 - [FFmpeg](https://ffmpeg.org/): Used for silence detection when using the ASR to recognize long speeches.
 - [Punctuator2](https://ffmpeg.org/):  For punctuation restoration. (It is already in ```egs/althingi/s5/punctuator2```)
   - Requires: [Theano](https://github.com/Theano/Theano) and python 2.7 and numpy
 - Most python scripts in the repo use python3 but punctuator2 scripts use python2.7
-- numpy
 
 #### WER RESULTS OBTAINED USING OUR CORPORA AND SETTINGS.
 

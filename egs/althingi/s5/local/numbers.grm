@@ -1,6 +1,7 @@
 # Expand numbers to numbernames
 #
-# 2016 Inga Run Helgadottir
+# Copyright 2017  Reykjavik University (Author: Inga Rún Helgadóttir)
+# Apache 2.0
 
 import 'local/common.grm' as c;
 

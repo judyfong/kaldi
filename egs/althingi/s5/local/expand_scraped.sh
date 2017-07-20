@@ -1,11 +1,12 @@
 #!/bin/bash -e
 
+# Copyright 2017  Reykjavik University (Author: Inga Rún Helgadóttir)
+# Apache 2.0
+
 # Expand abbreviations and numbers in the scraped Althingi texts, the LM model texts used when decoding.
 
-# NOTE! I should split up to two scripts, one for the train/test texts and one for the scraped Althingi texts
-# The scraped texts consist of short utterances so then I could skip those that are not expanded. Then I wouldn't
-# have to worry about cleaning the data 100%. Change then save-OOVwords.py and re-insert_OOVwords.py such that
-# they work with files like this: uttID oov1 oov2 ... \n uttID2 oov1 ...
+# The scraped texts consist of short utterances so can skip those that are not expanded.
+# Hence I don't have to worry about cleaning the data 100%.
 
 set -o pipefail
 
@@ -37,15 +38,9 @@ if [ $stage -le 1 ]; then
     echo "We want to process it in parallel."
     IFS=$' \t\n'
     split_text=$(for j in `seq 1 $nj`; do printf "${dir}/split%s/cleantext.%s.txt " $nj $j; done)
-    # The upper condition applies to the ASR training/testing texts and
-    # the lower one applies to the LM training texts.
-    if grep -q "rad[0-9]" ${infile}; then
-        utils/split_scp.pl $infile $split_text # the field separator has to be correct
-    else
-	# I need to add IDs to get the utterances on a Kaldi format
-	awk '{printf("%010d %s\n", NR, $0)}' $infile > ${dir}/cleantext_wID.txt
-	utils/split_scp.pl ${dir}/cleantext_wID.txt $split_text
-    fi
+    # I need to add IDs to get the utterances on a Kaldi format
+    awk '{printf("%010d %s\n", NR, $0)}' $infile > ${dir}/cleantext_wID.txt
+    utils/split_scp.pl ${dir}/cleantext_wID.txt $split_text
 fi
 
 if [ $stage -le 2 ]; then
@@ -86,24 +81,21 @@ if [ $stage -le 5 ]; then
 
     # The following is too slow. Need to fix!
     utils/slurm.pl JOB=1:$nj ${dir}/log/re-insert-oov.JOB.log local/re-insert-oov.sh ${dir}/split${nj}/text_expanded_${order}g.JOB.txt ${dir}/split${nj}/mappedWords_jobJOB.txt
-    
+fi
+
+if [ $stage -le 6 ]; then
     echo "Check if all the speeches were expanded"
     join -1 1 -2 1 <(egrep "[0-9]{10} $" ${dir}/split${nj}/text_expanded_${order}g.*.txt | sed 's/ *//g' | sort) <(sort ${dir}/split${nj}/cleantext_afterWordMapping.*.txt) > ${dir}/split${nj}/text_notexpanded_${order}g.txt
-    if [[ ! -z ${dir}/split${nj}/text_notexpanded_${order}g.txt ]]; then
+    # Ignore lines which were not expanded
+    grep -vF <(cut -d" " -f1 ${dir}/split${nj}/text_notexpanded_${order}g.txt) ${dir}/split${nj}/text_expanded_${order}g.*.wOOV.txt | cut -d":" -f2- | sort -n > ${dir}/split${nj}/text_expanded_${order}g_wOOV.txt
+    if [[ -s ${dir}/split${nj}/text_notexpanded_${order}g.txt ]]; then
         n=$(cat ${dir}/split${nj}/text_notexpanded_${order}g.txt | wc -l)
         echo $n" lines were empty after expansion\n"
         echo "they can be viewed in ${dir}/split${nj}/text_notexpanded_${order}g.txt"
     fi
-    # Ignore lines which were not expanded
-    grep -vFwf <(cut -d" " -f1 ${dir}/split${nj}/text_notexpanded_${order}g.txt) ${dir}/split${nj}/text_expanded_${order}g.*.wOOV.txt | sort -u ${dir}/split${nj}/text_expanded_${order}g_wOOV.txt
 fi
 
 if [ $stage -le 6 ]; then
-    # # Put all expanded text into one file, ignoring un-expanded lines
-    # if [ -f ${dir}/text_expanded_${order}g.txt ]; then
-    # 	mv ${dir}/{,.backup/}text_expanded_${order}g.txt
-    # fi
-    # egrep -v "[0-9]{10} $" ${dir}/split${nj}/text_expanded_${order}g.*.txt > ${dir}/text_expanded_${order}g.txt
 
     if [ -e ${outfile} ]; then
         # we don't want to overwrite old stuff, ask the user to delete it.
@@ -114,7 +106,7 @@ if [ $stage -le 6 ]; then
         echo "  If so, please delete and then rerun this part"
         exit 1;
     else
-        cp ${dir}/split${nj}/text_expanded_${order}g_wOOV.txt ${outfile}
+	cut -d" " -f2- ${dir}/split${nj}/text_expanded_${order}g_wOOV.txt > ${outfile}
     fi
 fi
 

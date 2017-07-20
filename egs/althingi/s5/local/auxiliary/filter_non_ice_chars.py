@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
+# Copyright 2017  Reykjavik University (Author: Anna Björk Nikulásdóttir)
+# Apache 2.0
+
 """
 Filters words containing non-Icelandic characters, like François, Vesterålen, Voices
 

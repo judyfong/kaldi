@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# Copyright 2017  Reykjavik University (Author: Anna Björk Nikulásdóttir)
+# Apache 2.0
+
 # Replaces occurrences of 'hv.' in Alþingi speeches. The abbrevation for 'háttvirtur' will be expanded in combination with words ending
 # with differents forms of 'maður' and with the genitive of 'nefnd', 'nefndar'.
 #

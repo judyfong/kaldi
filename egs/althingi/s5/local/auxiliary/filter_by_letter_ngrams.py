@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# Copyright 2017  Reykjavik University (Author: Anna Björk Nikulásdóttir)
+# Apache 2.0
+
 """
 Creates a letter n-gram set from a word list, tests the second word list for matching starts
 

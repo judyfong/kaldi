@@ -1,3 +1,6 @@
+# Copyright 2017  Reykjavik University (Author: Inga Rún Helgadóttir)
+# Apache 2.0
+
 # Commands used in all grammars
 
 export alphabet = Optimize[

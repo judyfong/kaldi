@@ -1,5 +1,8 @@
 #!/bin/bash -eu
 
+# Copyright 2017  Reykjavik University (Author: Inga Rún Helgadóttir)
+# Apache 2.0
+
 set -o pipefail
 
 # Select segments to keep based on words/second ratio for each congressman.

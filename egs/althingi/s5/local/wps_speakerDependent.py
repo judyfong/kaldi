@@ -1,4 +1,8 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
+#-*- coding: utf-8 -*-
+
+# Copyright 2017  Reykjavik University (Author: Inga Rún Helgadóttir)
+# Apache 2.0
 
 # Calculate some statistics about the word per second ratio distributions for each speaker
 # Takes as input the folder containing wps.txt (which was created with words_per_second.sh).

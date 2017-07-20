@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Copyright 2014  Guoguo Chen
-#           2016  Inga Rún Helgadóttir
+#           2016  Reykjavik University (Inga Rún Helgadóttir)
 # Apache 2.0
 
 # This script demonstrates how to re-segment long audios into short segments.

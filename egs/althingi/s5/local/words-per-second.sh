@@ -1,5 +1,8 @@
 #!/bin/bash -eu
 
+# Copyright 2017  Reykjavik University (Author: Inga Rún Helgadóttir)
+# Apache 2.0
+
 set -o pipefail
 
 # After segmenting the data calculate words per second

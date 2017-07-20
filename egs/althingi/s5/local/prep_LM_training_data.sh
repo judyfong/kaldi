@@ -2,7 +2,9 @@
 
 set -o pipefail
 
-# 2016 Inga Rún
+# Copyright 2017  Reykjavik University (Author: Inga Rún Helgadóttir)
+# Apache 2.0
+
 # Clean the scraped althingi texts for use in a language model
 
 nj=100
@@ -80,7 +82,7 @@ if [ $stage -le 2 ]; then
     # 14 Rewrite vulgar fractions
     # 15) Remove "," when not followed by a number or when not preceded by a number
     # 16) Remove final period,
-    # 17) Lowercase text (not uttID) and rewrite "/a " to "á ári" and "/s " to "á sekúndu"
+    # 17) Lowercase text 
     # 18) Rewrite "/a " to "á ári", "/s " to "á sekúndu" and so on.
     # 19) Change dashes and remaining slashes out for space
     # 20) Rewrite thousands and millions, f.ex. 3.500 to 3500,
@@ -133,13 +135,13 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-    info "Capitalize words in the scraped Althingi texts, that are capitalized in the pron dict"
-    comm -12 <(sed -r 's:.*:\L&:' ${dir}/CaseSensitive_pron_dict_propernouns.txt | sort) <(tr " " "\n" < ${dir}/scraped_expanded.txt | grep -Ev "^\s*$" | sort -u) > ${dir}/propernouns_scraped_althingi_texts.txt
+    echo "Capitalize words in the scraped Althingi texts, that are capitalized in the pron dict"
+    comm -12 <(sed -r 's:.*:\L&:' ${dir}/CaseSensitive_pron_dict_propernouns.txt | sort) <(tr " " "\n" < ${dir}/scraped_expanded_${order}g.txt | egrep -v "^\s*$" | sort -u) > ${dir}/propernouns_scraped_althingi_texts.txt
     # Make the regex pattern
-    tr "\n" "|" < ${dir}/propernouns_scraped_althingi_texts.txt | sed -e '$s/|$//' | sed -e '$a\' | perl -pe "s/\|/\\\b\\\|\\\b/g" | sed -r 's:.*:\L&:' > ${dir}/propernouns_scraped_althingi_texts_pattern.tmp
+    tr "\n" "|" < ${dir}/propernouns_scraped_althingi_texts.txt | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > ${dir}/propernouns_scraped_althingi_texts_pattern.tmp
 
     # Capitalize
-    srun --mem 8G sed -r 's:(\b'$(cat ${dir}/propernouns_scraped_althingi_texts_pattern.tmp)'\b):\u\1:g' ${dir}/scraped_expanded.txt > $out
+    srun sed -r "s:(\b$(cat ${dir}/propernouns_scraped_althingi_texts_pattern.tmp)\b):\u\1:g" ${dir}/scraped_expanded_${order}g.txt > $out
 fi
 
 exit 0

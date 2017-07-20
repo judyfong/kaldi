@@ -1,4 +1,8 @@
-# coding: utf-8
+#!/usr/bin/env python3
+#-*- coding: utf-8 -*-
+
+# Copyright 2017  Reykjavik University (Author: Inga Rún Helgadóttir)
+# Apache 2.0
 
 from nltk.tokenize import word_tokenize
 

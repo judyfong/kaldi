@@ -2,6 +2,10 @@
 set -o pipefail
 # Idea from: Sproat, R. (2010). Lightly supervised learning of text normalization: Russian number names.
 
+# Copyright 2016  Reykjavik University (Author: Robert Kjaran)
+#           2017  Reykjavik University (Author: Inga Rún Helgadóttir)
+# Apache 2.0
+
 # Usage: local/train_LM_forExpansion.sh [options]
 
 nj=60

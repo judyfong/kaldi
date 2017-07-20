@@ -48,7 +48,7 @@ The subdirectory of this directory, s5, contains scripts for the following three
 - [Sequitur-g2p](https://github.com/sequitur-g2p/sequitur-g2p): For grapheme-to-phoneme conversion (not needed when the pronunciation dictionary is ready)
   - Requires: [Swig](http://www.swig.org) and numpy
 - [FFmpeg](https://ffmpeg.org/): Used for silence detection when using the ASR to recognize long speeches.
-- [Punctuator2](https://ffmpeg.org/):  For punctuation restoration. (It is already in ```egs/althingi/s5/punctuator2```)
+- [Punctuator2](https://github.com/ottokart/punctuator2):  For punctuation restoration. (It is already in ```egs/althingi/s5/punctuator2```)
   - Requires: [Theano](https://github.com/Theano/Theano) and python 2.7 and numpy
 - Most python scripts in the repo use python3 but punctuator2 scripts use python2.7
 

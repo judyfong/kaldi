@@ -206,11 +206,11 @@ if [ $stage -le 16 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_3g_cs_023pruned $dir $dir/graph_3g_cs_023pruned
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_3gsmall $dir $dir/graph_3gsmall
 fi
 
 
-graph_dir=$dir/graph_3g_cs_023pruned
+graph_dir=$dir/graph_3gsmall
 iter_opts=
 if [ ! -z $decode_iter ]; then
   iter_opts=" --iter $decode_iter "
@@ -219,23 +219,23 @@ fi
 if [ $stage -le 17 ]; then
   rm $dir/.error 2>/dev/null || true
   for decode_set in dev_cs eval_cs; do
-      (
-	num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-        steps/nnet3/decode.sh --num-threads 4 \
-          --acwt 1.0 --post-decode-acwt 10.0 \
-          --nj $num_jobs --cmd "$decode_cmd --time 0-04" $iter_opts \
-          --extra-left-context $extra_left_context  \
-          --extra-right-context $extra_right_context  \
-          --extra-left-context-initial 0 \
-          --extra-right-context-final 0 \
-          --frames-per-chunk "$frames_per_chunk_primary" \
-          --online-ivector-dir exp/chain/ivectors_${decode_set}_hires \
-         $graph_dir data/${decode_set}_hires \
-         $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_3g_cs_023pruned || exit 1;
+    (
+      num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+      steps/nnet3/decode.sh --num-threads 4 \
+        --acwt 1.0 --post-decode-acwt 10.0 \
+        --nj $num_jobs --cmd "$decode_cmd --time 0-04" $iter_opts \
+        --extra-left-context $extra_left_context  \
+        --extra-right-context $extra_right_context  \
+        --extra-left-context-initial 0 \
+        --extra-right-context-final 0 \
+        --frames-per-chunk "$frames_per_chunk_primary" \
+        --online-ivector-dir exp/chain/ivectors_${decode_set}_hires \
+        $graph_dir data/${decode_set}_hires \
+        $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_3gsmall || exit 1;
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-          data/lang_3g_cs_023pruned data/lang_5g_cs_const data/${decode_set}_hires \
-          $dir/decode_${decode_set}_3g_cs_023pruned $dir/decode_${decode_set}_5g_cs || exit 1;
-      ) &
+        data/lang_{3gsmall,5g} data/${decode_set}_hires \
+        $dir/decode_${decode_set}_{3gsmall,5g} || exit 1;
+    ) &
   done
   wait
   if [ -f $dir/.error ]; then

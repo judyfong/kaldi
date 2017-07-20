@@ -3,11 +3,11 @@
 set -o pipefail
 
 # 2016 Inga Rún
-# Clean the scraped althingi texts for use in a language model
+# Clean the 2005-2015 althingi texts for use in a punctuation restoration model
 
 if [ $# -ne 2 ]; then
     echo "Usage: $0 <texts-to-use-in-LM> <output-clean-texts>" >&2
-    echo "Eg. $0 ~/data/althingi/pronDict_LM/wp_lang.txt ~/data/althingi/postprocessing/scrapedTexts_clean_for_punct_restoring.txt" >&2
+    echo "Eg. $0 data/all/text_orig_endanlegt.txt ~/data/althingi/postprocessing/texts05-15_clean_for_punct_restoring.txt" >&2
     exit 1;
 fi
 
@@ -16,8 +16,24 @@ out=$2
 dir=$(dirname $out)
 prondir=~/data/althingi/pronDict_LM
 
+# tmp=$(mktemp -d)
+# cleanup () {
+#     rm -rf "$tmp"
+# }
+# trap cleanup EXIT
+
+# In the following I separate the numbers on "|":
+# 1) Remove comments on the form "<!--...-->"
+# 2-4) Remove comments like "<truflun>Kliður í salnum.</truflun>"
+# 5) Remove the remaining tags
+# 6) Remove comments in parentheses
+# 7) Remove the uttIDs remove leading spaces and reduce spaces to one between words
+sed -re 's:<!--[^>]*?-->|<truflun>[^<]*?</truflun>|<atburður>[^<]*?</atburður>|<málsheiti>[^<]*?</málsheiti>|<[^>]*?>: :g' \
+    -e 's:\([^/()<>]*?\)+: :g' < <(grep -v rad2016 ${corpus}) \
+    | cut -d" " -f2- | sed -re 's/^[ \t]*//' -e 's/[[:space:]]+/ /g'> ${dir}/noXML.tmp
+
 # echo "Remove some punctuations and rewrite roman numerals to numbers"
-sed -re 's/[^a-záðéíóúýþæöA-ZÁÉÍÓÚÝÞÆÖ0-9 \.,?!:;\/%‰°º&—–²³¼¾½ _)(-]+//g' -e 's/([A-Z]\.?)–([A-Z])/\1 til \2/g' <${corpus} > ${dir}/roman.tmp
+sed -re 's/[^a-záðéíóúýþæöA-ZÁÉÍÓÚÝÞÆÖ0-9 \.,?!:;\/%‰°º&—–²³¼¾½ _)(-]+//g' -e 's/([A-Z]\.?)–([A-Z])/\1 til \2/g' <${dir}/noXML.tmp > ${dir}/roman.tmp
 python3 -c "
 import re
 import sys
@@ -90,16 +106,12 @@ echo -e "amk\ndr\netv\nfrh\nmas\nma\nnk\nnr\nosfrv\nsbr\nskv\ntd\nuþb\nutanrrh\
 sort -u ${dir}/abbr_lex.tmp | tr "\n" "|" | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" > ${dir}/abbr_lex_pattern.tmp
 sed -r "s:(\b$(cat ${dir}/abbr_lex_pattern.tmp))\.:\1:g" ${dir}/noPunct.tmp > ${dir}/noAbbrPeriods.tmp
 
-
 echo "Capitalize words in the scraped Althingi texts, that are capitalized in the pron dict"
-comm -12 <(sed -r 's:.*:\L&:' ${prondir}/CaseSensitive_pron_dict_propernouns.txt | sort) <(tr " " "\n" < ${dir}/noAbbrPeriods.tmp | sed -re 's/[^a-záðéíóúýþæö]+//g'| egrep -v "^\s*$" | sort -u) > ${dir}/propernouns_scraped_althingi_texts.txt
+comm -12 <(sed -r 's:.*:\L&:' ${prondir}/CaseSensitive_pron_dict_propernouns.txt | sort) <(tr " " "\n" < ${dir}/noAbbrPeriods.tmp | sed -re 's/[^a-záðéíóúýþæö]+//g'| egrep -v "^\s*$" | sort -u) > ${dir}/propernouns_althingi_texts.txt
 # Make the regex pattern
-tr "\n" "|" < ${dir}/propernouns_scraped_althingi_texts.txt | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > ${dir}/propernouns_scraped_althingi_texts_pattern.tmp
+tr "\n" "|" < ${dir}/propernouns_althingi_texts.txt | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > ${dir}/propernouns_althingi_texts_pattern.tmp
 
 # Capitalize
-srun sed -r "s:(\b$(cat ${dir}/propernouns_scraped_althingi_texts_pattern.tmp)\b):\u\1:g" ${dir}/noAbbrPeriods.tmp > ${dir}/capitalized.tmp
-
-# Remove the arbitrary newline. Make 20 line long groups.
-tr "\n" " " < ${dir}/capitalized.tmp | sed -r 's:([A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö])([\.?!]) :\1\2\n:g' | awk 'ORS=NR%20?" ":"\n"' > ${out}
+srun sed -r "s:(\b$(cat ${dir}/propernouns_althingi_texts_pattern.tmp)\b):\u\1:g" ${dir}/noAbbrPeriods.tmp > $out
 
 exit 0

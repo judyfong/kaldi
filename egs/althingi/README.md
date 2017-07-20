@@ -38,16 +38,20 @@ The subdirectory of this directory, s5, contains scripts for the following three
 1) Data normalization, alignment and segmentation.
 2) Training of an ASR
 3) Postprocessing of the ASR output, including punctuation restoration, capitalization and denormalization of numbers and common abbreviations
-
+4) In kaldi/src/fstbin there are two files, fststringcompile.cc and expand-numbers.cc, that are not in the official Kaldi toolkit. They are used for the expansion of abbreviations and numbers in the process of text normalization.
 
 #### EXTERNAL TOOLS NEEDED
 
-- OpenGrm Thrax: For number and abbreviation expansion. As well as for the postprocessing of the ASR output.
-- KenLM: For language modelling, fast and allows pruning.
-- Sequitur-g2p: For grapheme-to-phoneme conversion (not needed when the pronunciation dictionary is ready)
-- FFmpeg: Used for silence detection when using the ASR to recognize long speeches.
-- Punctuator2:  For punctuation restoration
-  - Requires: Theano and python2.7
+- [OpenGrm Thrax](http://www.opengrm.org/): For number and abbreviation expansion. As well as for the postprocessing of the ASR output.
+  - Requires [OpenFst 1.6.0 or higher](http://www.openfst.org/twiki/bin/view/FST/WebHome), configured with the ```--enable-grm``` flag (installed when installing Kaldi).
+- [KenLM](https://kheafield.com/code/kenlm/): For language modelling, fast and allows pruning.
+- [Sequitur-g2p](https://github.com/sequitur-g2p/sequitur-g2p): For grapheme-to-phoneme conversion (not needed when the pronunciation dictionary is ready)
+  - Requires: [Swig](http://www.swig.org)
+- [FFmpeg](https://ffmpeg.org/): Used for silence detection when using the ASR to recognize long speeches.
+- [Punctuator2](https://ffmpeg.org/):  For punctuation restoration. (It is already in ```egs/althingi/s5/punctuator2```)
+  - Requires: [Theano](https://github.com/Theano/Theano) and python 2.7 and numpy
+- Most python scripts in the repo use python3 but punctuator2 scripts use python2.7
+- numpy
 
 #### WER RESULTS OBTAINED USING OUR CORPORA AND SETTINGS.
 

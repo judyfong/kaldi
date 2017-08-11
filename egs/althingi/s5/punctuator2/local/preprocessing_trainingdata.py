@@ -3,12 +3,15 @@
 from __future__ import division
 from nltk.tokenize import word_tokenize
 
+import nltk
 import os
 import codecs
 import re
 import sys
 #import nltk # I had to add these lines, but only needed once
 #nltk.download('punkt')
+
+nltk.download('punkt')
 
 NUM = '<NUM>'
 
@@ -28,6 +31,9 @@ def untokenize(line):
     return line
 
 def skip(line):
+
+    if line.strip() == '':
+        return True
 
     last_symbol = line[-1]
     if not last_symbol in EOS_PUNCTS:

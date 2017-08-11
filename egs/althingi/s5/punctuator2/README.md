@@ -16,6 +16,10 @@ The model can be trained in two stages (second stage is optional):
 
 Remember that all the scores given below are on _unsegmented_ text and we did not use prosodic features, so, among other things, the model has to detect sentence boundaries in addition to the boundary type (?QUESTIONMARK, .PERIOD or !EXCLAMATIONMARK) based entirely on textual features. The scores are computed on the test set.
 
+Training speed with default settings, an optimal Theano installation and a modern GPU should be around 10000 words per second.
+
+Pretrained models can be downloaded [here](https://drive.google.com/drive/folders/0B7BsN5f2F1fZQnFsbzJ3TWxxMms?usp=sharing) (Demo + 2 models from the Interspeech paper).
+
 ## English TED talks
 Training set size: 2.1M words. First stage only. More details can be found in [this paper](http://www.isca-speech.org/archive/Interspeech_2016/pdfs/1517.PDF).
 For comparison, our [previous model](https://github.com/ottokart/punctuator) got an overall F1-score of 50.8.
@@ -43,9 +47,8 @@ PUNCTUATION      | PRECISION | RECALL    | F-SCORE
 .PERIOD          | 84.7      |  84.1     |  84.4
 _Overall_        | _75.7_    | _73.9_    | _74.8_
 
-
 # Requirements
-* Python
+* Python 2.7
 * Numpy
 * Theano
 
@@ -98,6 +101,10 @@ Preprocessed text can be punctuated with e.g:
 
 `cat data.dev.txt | python punctuator.py <model_path> <model_output_path>`
 
+or, if pause annotations are present in data.dev.txt and you have a second stage model trained on pause annotated data, then:
+
+`cat data.dev.txt | python punctuator.py <model_path> <model_output_path> 1`
+
 Punctuation tokens in data.dev.txt don't have to be removed - the punctuator.py script ignores them.
 
 
@@ -109,6 +116,12 @@ Error statistics in this example can be computed with:
 You can play with a trained model with:
 
 `python play_with_model.py <model_path>`
+
+or with:
+
+`python play_with_model.py <model_path> 1`
+
+if you want to see, which words the model sees as UNKs (OOVs).
 
 
 # Citing
@@ -122,4 +135,4 @@ The software is described in:
       year      = {2016}
     }
 
-We used PATIENCE_EPOCHS = 5 and MAX_SEQUENCE_LEN = 200 in the paper, but the new defaults (1 and 50 correspondingly) speed things up and work just as well. 
+We used the [release v1.0](https://github.com/ottokart/punctuator2/releases/tag/v1.0) in the paper.

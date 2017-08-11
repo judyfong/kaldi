@@ -93,7 +93,6 @@ GSYMS
 /egs/*/s*/q
 /egs/*/s*/Makefile
 /egs/*/s*/punctuator2/example
-/egs/*/s*/punctuator2/theano-env
 egs/*/s*/punctuator2/libgpuarray
 egs/*/s*/punctuator2/log
 

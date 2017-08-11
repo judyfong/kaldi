@@ -8,13 +8,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 with open(sys.argv[1],'r',encoding='utf-8') as f:
     next(f)
-    wps = [float(line.strip().split()[4]) for line in f]
+    wer = [float(line.strip().split()[4]) for line in f]
         
-plt.hist(wps, 20)
-plt.xlabel('%WER per speaker')
+plt.hist(wer, 30)
+plt.xlabel('%WER')
 plt.ylabel('#Speakers')
-plt.title('%WER distribution over speakers')
-#plt.axis([0, 20, 0, 10])
-#plt.xticks(np.arange(0, 20, 2.0))
-plt.grid(True)
+#plt.title('%WER distribution over speakers')
+plt.axis([0, 20, 0, 7])
+plt.xticks(np.arange(0, 22, 2))
+#plt.grid(True)
 plt.show()

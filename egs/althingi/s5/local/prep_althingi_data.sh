@@ -27,7 +27,7 @@ mkdir -p $outdir
 
 meta=${datadir}/metadata.csv
 
-audiofile=$(ls data/tempcorpus/audio/ | head -n1)
+audiofile=$(ls ${datadir}/audio/ | head -n1)
 extension="${audiofile##*.}"
 
 # Need to convert from mp3 to wav
@@ -123,6 +123,16 @@ if [ $stage -le 2 ]; then
 	-e 's:([0-9]) 1/2\b:\1,5:g' -e 's:\b([0-9])/([0-9]{1,2})\b:\1 \2\.:g' \
 	-e 's:/?([0-9]+)/([0-9]+): \1 \2:g' -e 's:([0-9]+)/([A-Z]{2,}):\1 \2:g' -e 's:([0-9])/ ([0-9]):\1 \2:g' \
         -e 's:[[:space:]]+: :g' ${outdir}/text_orig_endanlegt.txt > ${outdir}/text_noXML_endanlegt.txt
+
+    # Sometimes some of the intermediatary text files are empty. In those cases I use the final text
+    if egrep "rad[0-9][^ ]+ *$" ${outdir}/text_noXML_bb.txt > 0 ; then
+	echo "Empty text_bb files"
+	echo "Insert text from text_endanlegt"
+	egrep "rad[0-9][^ ]+ *$" ${outdir}/text_noXML_bb.txt > empty_text_bb.tmp
+	for file in $(cat empty_text_bb.tmp); do
+	    sed -i -r "s/$file/$(grep $file ${outdir}/text_noXML_endanlegt.txt)/" ${outdir}/text_noXML_bb.txt
+	done
+    fi
 fi
 
 
@@ -203,7 +213,7 @@ if [ $stage -le 4 ]; then
             -e 's: +([0-9]\.) +([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \L\2:g' \
             -e 's:([^ ])–([^ ]):\1 til \2:g' -e 's:([0-9]\.?)tilstr[^ 0-9]*?\.?([0-9]):\1 til \2:g' -e 's:([0-9\.%])-+([0-9]):\1 til \2:g' \
             -e 's:([0-9]+),([0-46-9]):\1 komma \2:g' -e 's:([0-9]+),5([0-9]):\1 komma 5\2:g' \
-	    < ${outdir}/text_noRoman_${n}_sed.txt \
+	    < ${outdir}/text_noRoman_${n}.txt \
 	    | perl -pe 's/ (0(?!,5))/ $1 /g' | perl -pe 's/komma (0? ?)(\d)(\d)(\d)(\d?)/komma $1$2 $3 $4 $5/g' \
             | sed -re 's:¼: einn 4. :g' -e 's:¾: 3 fjórðu:g' -e 's:([0-9])½:\1,5 :g' -e 's: ½: 0,5 :g' \
                   -e 's:,([^0-9]|$):\1:g' -e 's:([^0-9]),:\1 :g' \
@@ -216,7 +226,7 @@ if [ $stage -le 4 ]; then
                   -e 's:( [0-9]+)([^0-9 ,.])([0-9]):\1 \2 \3:g' -e 's:( [a-záðéíóúýþæö]+)\.?-?([0-9]+)\b:\1 \2:g' -e 's:(^| )([0-9,]+%?\.?)-?([a-záðéíóúýþæö]+)\b:\1\2 \3:g' \
                   -e 's: *%:% :g' -e 's:([°º]) c :\1c :g' -e 's: 0([0-9]): 0 \1:g' \
                   -e 's/[^a-záðéíóúýþæö0-9\., %‰°º²³T]+//g' -e 's/ [^ ]*[a-záðéíóúýþæö]+[0-9]+[^ ]*/ /g' -e 's/[[:space:]]+/ /g' \
-                  > ${outdir}/text_noPuncts1_${n}_sed.txt
+                  > ${outdir}/text_noPuncts_${n}.txt
     done
 fi
 

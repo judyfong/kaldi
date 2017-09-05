@@ -149,9 +149,13 @@ egs/*/s*/punctuator2/log
 /tools/openfst-1.5.0/
 /tools/srilm-1.7.2-beta.tar.gz
 /tools/liblbfgs/
+
 tools/kenlm
 tools/openfst-1.6.1.tar.gz
 tools/openfst-1.6.1/
 /tools/IceNLPCore-12.11.zip
 
+/tools/sequitur-g2p/
+/tools/phonetisaurus-g2p
+/tools/phonetisaurus-g2p/
 /kaldiwin_vs*

@@ -23,14 +23,15 @@ set -o pipefail
 nj=20
 nj_decode=32 
 stage=-100
-corpus_zip=~/data/althingi/tungutaekni.tar.gz
-datadir=data/local/corpus
+corpus_zip=/data/althingi/tungutaekni_145.tar.gz
+datadir=/data/althingi/corpus_Sept2017
 existingModeldir=~/data/althingi/ASR_May2017 # Model used for segmentation
 
 . ./cmd.sh
 . ./path.sh
 . utils/parse_options.sh
 . local/utils.sh
+
 
 if [ $stage -le -1 ]; then
     echo "Extracting corpus"
@@ -60,14 +61,20 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
+    if [ -d text_norm ]; then
+	echo "Probably an expansion LM already exists."
+	echo "Are you sure you want to redo it?"
+	echo "  If so, delete the text_norm dir and then rerun this part"
+	exit 1;
+    fi
     echo "Text normalization: Expansion of abbreviations and numbers"
     # train a language model for expansion
-    ./local/train_expansionLM.sh
+    ./local/train_expansionLM.sh text_norm data/all
 fi
 
 if [ $stage -le 2 ]; then
     echo "Expand numbers and abbreviations"
-    ./local/expand.sh text_norm data/all/text_bb_SpellingFixed.txt data/all/text
+    ./local/expand.sh text_norm data/all/text_bb_SpellingFixed_uttID.txt data/all/text
 
     echo "Validate the data dir"
     utils/validate_data_dir.sh --no-feats data/all || utils/fix_data_dir.sh data/all

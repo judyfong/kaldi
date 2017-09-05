@@ -12,14 +12,23 @@ nj=60
 stage=-1
 corpus=/data/leipzig/isl_sentences_10M.txt
 utf8syms=/data/althingi/utf8.syms
-dir=text_norm
-althdir=~/kaldi/egs/althingi/s5/data/all
+#dir=text_norm
+#althdir=data/all
 
 run_tests=false
 
 . ./cmd.sh
 . ./path.sh
 . parse_options.sh || exit 1;
+
+if [ $# -ne 2 ]; then
+    echo "Usage: $0 <text-norm-dir> <althingi-data-dir>" >&2
+    echo "Eg. $0 text_norm data/all" >&2
+    exit 1;
+fi
+
+dir=$1
+althdir=$2
 
 tmp=$(mktemp -d)
 cleanup () {

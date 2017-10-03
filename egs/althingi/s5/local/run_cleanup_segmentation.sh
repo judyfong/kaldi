@@ -25,7 +25,7 @@ stage=0
 cleanup_stage=0
 data=data/train
 cleanup_affix=cleaned
-srcdir=exp/tri4
+srcdir=exp/tri4_cs
 nj=100
 decode_nj=32
 decode_num_threads=4
@@ -45,34 +45,34 @@ if [ $stage -le 1 ]; then
     $data data/lang $srcdir $dir $cleaned_data
 fi
 
-if [ $stage -le 2 ]; then
-  steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
-    $cleaned_data data/lang $srcdir ${srcdir}_ali_${cleanup_affix}
-fi
+# if [ $stage -le 2 ]; then
+#   steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
+#     $cleaned_data data/lang $srcdir ${srcdir}_ali_${cleanup_affix}
+# fi
 
-if [ $stage -le 3 ]; then
-  steps/train_sat.sh --cmd "$train_cmd" \
-    7000 150000 $cleaned_data data/lang ${srcdir}_ali_${cleanup_affix} ${cleaned_dir}
-fi
+# if [ $stage -le 3 ]; then
+#   steps/train_sat.sh --cmd "$train_cmd" \
+#     7000 150000 $cleaned_data data/lang ${srcdir}_ali_${cleanup_affix} ${cleaned_dir}
+# fi
 
-if [ $stage -le 4 ]; then
-  # Test with the models trained on cleaned-up data.
-  utils/mkgraph.sh data/lang_3gsmall ${cleaned_dir} ${cleaned_dir}/graph_3gsmall
+# if [ $stage -le 4 ]; then
+#   # Test with the models trained on cleaned-up data.
+#   utils/mkgraph.sh data/lang_3gsmall ${cleaned_dir} ${cleaned_dir}/graph_3gsmall
 
-  for dset in dev eval; do
-    (
-    steps/decode_fmllr.sh --nj $decode_nj --num-threads $decode_num_threads \
-       --cmd "$decode_cmd" \
-       ${cleaned_dir}/graph_3gsmall data/${dset} ${cleaned_dir}/decode_${dset}_3gsmall
-    steps/lmrescore_const_arpa.sh \
-      --cmd "$decode_cmd" data/lang_{3gsmall,3glarge} \
-      data/${dset} ${cleaned_dir}/decode_${dset}_{3gsmall,3glarge}
-    steps/lmrescore_const_arpa.sh \
-      --cmd "$decode_cmd" data/lang_{3gsmall,5glarge} \
-      data/${dset} ${cleaned_dir}/decode_${dset}_{3gsmall,5glarge}
-   ) &
-  done
-fi
+#   for dset in dev eval; do
+#     (
+#     steps/decode_fmllr.sh --nj $decode_nj --num-threads $decode_num_threads \
+#        --cmd "$decode_cmd" \
+#        ${cleaned_dir}/graph_3gsmall data/${dset} ${cleaned_dir}/decode_${dset}_3gsmall
+#     steps/lmrescore_const_arpa.sh \
+#       --cmd "$decode_cmd" data/lang_{3gsmall,3glarge} \
+#       data/${dset} ${cleaned_dir}/decode_${dset}_{3gsmall,3glarge}
+#     steps/lmrescore_const_arpa.sh \
+#       --cmd "$decode_cmd" data/lang_{3gsmall,5glarge} \
+#       data/${dset} ${cleaned_dir}/decode_${dset}_{3gsmall,5glarge}
+#    ) &
+#   done
+# fi
 
-wait;
+# wait;
 exit 0;

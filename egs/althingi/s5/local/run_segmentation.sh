@@ -23,7 +23,7 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ $# != 3 ]; then
     echo "Usage: local/run_segmentation.sh [options] <data-dir> <lang-dir> <model-dir>"
-    echo " e.g.: local/run_segmentation.sh data/all data/lang_cs exp/chain/tdnn_lstm_1e_sp"
+    echo " e.g.: local/run_segmentation.sh data/all data/lang exp/tri2_cleaned"
     exit 1;
 fi
 
@@ -46,13 +46,13 @@ steps/compute_cmvn_stats.sh ${datadir}_split \
 
 echo "Make segmentation graph, i.e. build one decoding graph for each truncated utterance in segmentation."
 steps/cleanup/make_segmentation_graph.sh \
-  --cmd "$mkgraph_cmd" --nj 32 \
+  --cmd "$mkgraph_cmd" --nj 64 \
   ${datadir}_split ${langdir} ${modeldir} \
   ${modeldir}/graph_${base}_split || exit 1;
 
 echo "Decode segmentation"
 steps/cleanup/decode_segmentation.sh \
-  --nj 64 --cmd "$decode_cmd" --skip-scoring true \
+  --nj 85 --cmd "$decode_cmd --time 0-12" --skip-scoring true \
   ${modeldir}/graph_${base}_split \
   ${datadir}_split ${modeldir}/decode_${base}_split || exit 1;
 

@@ -18,7 +18,6 @@ nj_decode=32
 stage=-100
 corpus_zip=~/data/althingi/tungutaekni.tar.gz
 datadir=data/local/corpus
-existingModeldir=~/data/althingi/ASR_May2017 # Model used for segmentation
 
 . ./cmd.sh
 . ./path.sh
@@ -84,8 +83,9 @@ if [ $stage -le 25 ]; then
     # Here I use the LF-MMI tdnn-lstm recognizer, trained on 514 hrs of
     # data to transcribe the audio so that I can align the new data	
     echo "Segment the data using and in-domain recognizer"
-    local/run_segmentation.sh data/all ${existingModeldir}/lang_cs ${existingModeldir}/tdnn_lstm_1e_sp
-
+    # A SAT model could also be used but then the data has to be aligned first
+    local/run_segmentation.sh data/all data/lang exp/tri2_cleaned
+    
     echo "Analyze the segments and filter based on a words/sec ratio"
     local/words-per-second.sh data/all_reseg
     #local/wps_perSegment_hist.py wps.txt

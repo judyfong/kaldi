@@ -17,6 +17,10 @@
 # Copyright 2017 Reykjavik University (Author: Inga Rún Helgadóttir)
 # Apache 2.0
 #
+# I have not thought this file as to be run through.
+# NOTE! Decide if using speaker names or abbreviations in uttIDs
+# The names are stated in the metafile but the abbreviations can be
+# found on althingi.is
 
 set -o pipefail
 
@@ -24,8 +28,7 @@ nj=20
 nj_decode=32 
 stage=-100
 corpus_zip=/data/althingi/tungutaekni_145.tar.gz
-datadir=/data/althingi/corpus_Sept2017
-existingModeldir=~/data/althingi/ASR_May2017 # Model used for segmentation
+datadir=/data/althingi/corpus
 
 . ./cmd.sh
 . ./path.sh
@@ -95,18 +98,14 @@ if [ $stage -le 4 ]; then
     # I use the LF-MMI tdnn-lstm recognizer, trained on 514 hrs of
     # data to transcribe the audio so that I can align the new data	
     echo "Segment the data using and in-domain recognizer"
-    local/run_segmentation.sh data/all ${existingModeldir}/lang_cs ${existingModeldir}/tdnn_lstm_1e_sp
+    local/run_segmentation.sh data/all data/lang exp/tri2_cleaned
 
-    # NOTE! Should I skip the next three steps and just run run_cleanup_segmentation.sh instead???
-    echo "Analyze the segments and filter based on a words/sec ratio"
-    local/words-per-second.sh data/all_reseg
-    #local/wps_perSegment_hist.py wps.txt
-    local/wps_speakerDependent.py data/all_reseg
-    #local/wps_perSpeaker_hist.py wps_stats.txt
+    # Should be unnecessary
+    # echo "Analyze the segments and filter based on a words/sec ratio"
+    # local/words-per-second.sh data/all_reseg
+    # #local/wps_perSegment_hist.py wps.txt
     
-    # Filter away segments with wps outside 10 and 90 percentiles of all segments
-    # and outside 5 and 95 percentiles for that particular speaker.
-    # NOTE! OK? Should I change the percentile cut over all segments? Or over speakers?
+    # Filter away segments with extreme wps
     local/filter_segments.sh data/all_reseg data/all_reseg_filtered
 fi
 
@@ -181,6 +180,22 @@ if [ $stage -le 7 ]; then
 
     utils/slurm.pl data/lang_3gsmall/format_lm.log utils/format_lm.sh data/lang data/lang_3gsmall/kenlm_3g_023pruned.arpa.gz data/local/dict/lexicon.txt data/lang_3gsmall
 
+    # Temporary: Adding the new data
+    mkdir -p data/lang_3gsmall_comb
+    for s in L_disambig.fst L.fst oov.int oov.txt phones phones.txt \
+                            topo words.txt; do
+	[ ! -e data/lang_3gsmall_comb/$s ] && cp -r data/lang/$s data/lang_3gsmall_comb/$s
+    done
+
+    /opt/kenlm/build/bin/lmplz \
+	--skip_symbols \
+	-o 3 -S 70% --prune 0 2 3 \
+	--text ${pronDictdir}/LMtexts_expanded_Sept2017.txt \
+	--limit_vocab_file <(cat data/lang_3gsmall_comb/words.txt | egrep -v "<eps>|<unk>" | cut -d' ' -f1) \
+	| gzip -c > data/lang_3gsmall_comb/kenlm_3g_023pruned.arpa.gz
+
+    utils/slurm.pl data/lang_3gsmall_comb/format_lm.log utils/format_lm.sh data/lang data/lang_3gsmall_comb/kenlm_3g_023pruned.arpa.gz data/local/dict/lexicon.txt data/lang_3gsmall_comb
+    
     echo "Preparing an unpruned trigram language model"
     mkdir -p data/lang_3glarge
     for s in L_disambig.fst L.fst oov.int oov.txt phones phones.txt \
@@ -198,6 +213,24 @@ if [ $stage -le 7 ]; then
     # Build ConstArpaLm for the unpruned 3g language model.
     utils/build_const_arpa_lm.sh data/lang_3glarge/kenlm_3g.arpa.gz \
         data/lang data/lang_3glarge
+
+    # Temporary: Adding the new data
+    mkdir -p data/lang_3glarge_comb
+    for s in L_disambig.fst L.fst oov.int oov.txt phones phones.txt \
+                            topo words.txt; do
+	[ ! -e data/lang_3glarge_comb/$s ] && cp -r data/lang/$s data/lang_3glarge_comb/$s
+    done
+
+    /opt/kenlm/build/bin/lmplz \
+	--skip_symbols \
+	-o 3 -S 70% --prune 0 \
+	--text ${pronDictdir}/LMtexts_expanded_Sept2017.txt \
+	--limit_vocab_file <(cat data/lang_3glarge_comb/words.txt | egrep -v "<eps>|<unk>" | cut -d' ' -f1) \
+	| gzip -c > data/lang_3glarge_comb/kenlm_3g.arpa.gz
+
+    # Build ConstArpaLm for the unpruned 3g language model.
+    utils/build_const_arpa_lm.sh data/lang_3glarge_comb/kenlm_3g.arpa.gz \
+        data/lang data/lang_3glarge_comb
     
     echo "Preparing an unpruned 5g LM"
     mkdir -p data/lang_5g
@@ -222,34 +255,35 @@ fi
 if [ $stage -le 8 ]; then
     echo "Make subsets of the training data to use for the first mono and triphone trainings"
 
-    utils/subset_data_dir.sh data/train 40000 data/train_40k
-    utils/subset_data_dir.sh --shortest data/train_40k 5000 data/train_5kshort
-    utils/subset_data_dir.sh data/train 10000 data/train_10k
+    # utils/subset_data_dir.sh data/train 40000 data/train_40k
+    # utils/subset_data_dir.sh --shortest data/train_40k 5000 data/train_5kshort
+    # utils/subset_data_dir.sh data/train 10000 data/train_10k
     utils/subset_data_dir.sh data/train 20000 data/train_20k
 
-    # Make one for the dev/eval sets so that I can get a quick estimate
-    # for the first training steps. Try to get 30 utts per speaker
-    # (~30% of the dev/eval set)
-    utils/subset_data_dir.sh --per-spk data/dev 30 data/dev_30
-    utils/subset_data_dir.sh --per-spk data/eval 30 data/eval_30
+    # # Make one for the dev/eval sets so that I can get a quick estimate
+    # # for the first training steps. Try to get 30 utts per speaker
+    # # (~30% of the dev/eval set)
+    # utils/subset_data_dir.sh --per-spk data/dev 30 data/dev_30
+    # utils/subset_data_dir.sh --per-spk data/eval 30 data/eval_30
 fi
 
 if [ $stage -le 9 ]; then
     # NOTE! Should I rather start with SI alignment and then training LDA+MLLT?
-    
+
     echo "Align and train on the segmented data"
     # Now there is no need to start from mono training since we already got a good recognizer.
-    steps/align_fmllr.sh --nj 20 --cmd "$train_cmd" \
-        data/train data/lang ${existingModeldir}/tdnn_lstm_1e_sp exp/reseg_fmllr_ali || exit 1;
+    steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
+        data/train data/lang exp/tri4 exp/reseg_fmllr_ali || exit 1;
 
-    echo "Train LDA + MLLT + SAT"
+    echo "Train SAT"
     steps/train_sat.sh  \
 	--cmd "$train_cmd" \
 	7500 150000 data/train \
-	data/lang exp/reseg_fmllr_ali exp/tri4 || exit 1;
+	data/lang exp/reseg_fmllr_ali exp/tri5 || exit 1;
 
-    utils/mkgraph.sh data/lang_3gsmall exp/tri4 exp/tri4/graph_3gsmall
-    
+    utils/mkgraph.sh data/lang_3gsmall exp/tri5 exp/tri5/graph_3gsmall
+
+    decode_num_threads=4
     for dset in dev eval; do
 	(
 	    steps/decode_fmllr.sh \
@@ -264,12 +298,11 @@ if [ $stage -le 9 ]; then
 		data/${dset} exp/tri4/decode_${dset}_{3gsmall,5glarge}
 	) &
     done
-fi
 
-if [ $stage -le 10 ]; then
-    echo "Clean and resegment the training data"
-    local/run_cleanup_segmentation.sh
-fi
+# if [ $stage -le 10 ]; then
+#     echo "Clean and resegment the training data"
+#     local/run_cleanup_segmentation.sh
+# fi
 
 # NNET Now by default running on un-cleaned data
 # Input data dirs need to be changed

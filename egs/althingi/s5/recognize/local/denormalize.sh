@@ -104,4 +104,4 @@ fststringcompile ark:"sed 's:.*:1 &:' ${dir}/punctuator_out_wPuncts.tmp |" ark:-
 cut -d" " -f2- ${dir}/punctuator_out_wPeriods.tmp | sed -re 's: ::g' -e 's:0x0020: :g' | tr "\n" " " | sed -r "s/[[:space:]]+/ /g" > ${ofile}
 
 # # þingm regex
-# sed -e 's/\([Hh]v\.\) \([0-9\. ]*\)þingm\w\+ \([A-ZÁÉÍÓÚÝÞÆÖ]\)/\1 \2þm\. \3/g' ${dir}/denorm_periods.tmp > ${dir}/$ofile
+# sed -re 's/([Hh]v\.) ([0-9\. ]*)þingm\w+ ([A-ZÁÉÍÓÚÝÞÆÖ])/\1 \2þm\. \3/g' ${dir}/denorm_periods.tmp > ${dir}/$ofile

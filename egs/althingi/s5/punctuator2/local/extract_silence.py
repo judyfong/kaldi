@@ -35,7 +35,7 @@ with codecs.open(sys.argv[2],'w',encoding='utf-8') as fout:
             if uttid != l[0]:
                 if uttid != "":
                     #total.append(uttlist)
-                    fout.write('\n'.join(uttlist) + '\n')
+                    fout.write(' '.join(uttlist) + '\n')
                 i=0
                 uttid=l[0]
                 uttlist=[uttid]
@@ -45,7 +45,7 @@ with codecs.open(sys.argv[2],'w',encoding='utf-8') as fout:
             else:
                 i+=1
         # For the last segment
-        fout.write('\n'.join(uttlist) + '\n')
+        fout.write(' '.join(uttlist) + '\n')
                 
 
         

@@ -32,7 +32,7 @@ iters=7
 if [ $# -ne 2 ]; then
     cat <<EOF >&2
 Usage: $0 <model-dir> <wordlist>
-Example: $0 data/local/g2p words.txt transcribed_words.txt
+Example: $0 data/local/g2p words.txt > transcribed_words.txt
 
 Transcribe a list of words using g2p model in <model>.
 EOF

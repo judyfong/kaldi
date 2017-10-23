@@ -71,22 +71,12 @@ openfst-$(OPENFST_VERSION)/lib: | openfst-$(OPENFST_VERSION)/Makefile
 # Add the -O flag to CXXFLAGS on cygwin as it can fix the compilation error
 # "file too big".
 ifeq ($(OSTYPE),cygwin)
-<<<<<<< HEAD
 	cd openfst-$(OPENFST_VERSION)/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-grm --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS) -O -Wa,-mbig-obj" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 # This new OS path is confirmed working on Windows 10 / Cygwin64
 else ifeq ($(OS),Windows_NT)
 	cd openfst-$(OPENFST_VERSION)/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-grm --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS) -O -Wa,-mbig-obj" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 else
 	cd openfst-$(OPENFST_VERSION)/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-grm --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS)" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
-=======
-  # Note: OSTYPE path is probably dead for latest cygwin64 (installed on 2016/11/11).
-  openfst_add_CXXFLAGS = -O -Wa,-mbig-obj
-else ifeq ($(OS),Windows_NT)
-  # This new OS path is confirmed working on Windows 10 / Cygwin64.
-  openfst_add_CXXFLAGS = -O -Wa,-mbig-obj
-else
-  openfst_add_CXXFLAGS =
->>>>>>> 0a8fdbfa538f817a052ae0ee31f63d0e0b62f78c
 endif
 
 openfst-$(OPENFST_VERSION)/Makefile: openfst-$(OPENFST_VERSION) | check_required_programs

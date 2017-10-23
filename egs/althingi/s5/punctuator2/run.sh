@@ -31,11 +31,13 @@ rm ${data}/*.tmp
 echo "Preprocessing done."
 
 echo "Convert data"
-srun --mem 12G --time 0-12:00 python data.py ${out}
+srun --mem 12G --time 0-12:00 python data.py ${out} &> data.log &
 
-echo "Train the model"
-srun --gres gpu:1 --mem 12G --time 0-12:00 sh -c "python main.py althingi_CS 256 0.02" &
+echo "Train the model using first stage data"
+srun --gres gpu:1 --mem 12G --time 0-12:00 sh -c "python main.py althingi 256 0.02" &> first_stage.log &
 
+echo "Train the second stage"
+srun --gres gpu:1 --mem 12G --time 0-12:00 sh -c "python main2.py althingi 256 0.02 /home/staff/inga/kaldi/egs/althingi/s5/punctuator2" &> second_stage.log &
 
 # Total number of training labels: 38484992
 # Total number of validation labels: 131712

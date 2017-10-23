@@ -46,4 +46,16 @@ deactivate
 sed -re 's/>([^ ]+?-rad)/>\n\1/g' \
     -e 's:<NUM> <sil=[0-9.]+> % (<sil=[0-9.]+>):<NUM> \1:g' \
     < ${dir}/althingi.train_Sept2017_pause_punct.txt \
-    > ${dir}/althingi.train_Sept2017_pause_punct_edited.txt
+    | sort -u > ${dir}/althingi.train_Sept2017_pause_punct_edited.txt
+
+mkdir ${dir}/../second_stage
+mv ${dir}/althingi.train_Sept2017_pause_punct_edited.txt ${dir}/../second_stage/althingi.all.txt
+cd ${dir}/../second_stage
+shuf -n 4000 althingi.all.txt > althingi.dev.txt
+join -j1 <(comm -13 <(cut -d" " -f1 althingi.dev.txt | sort -u) <(cut -d" " -f1 althingi.all.txt | sort -u)) <(sort -u althingi.all.txt) > althingi.train_test.txt
+shuf -n 4000 althingi.train_test.txt > althingi.test.txt
+join -j1 <(comm -13 <(cut -d" " -f1 althingi.test.txt | sort -u) <(cut -d" " -f1 althingi.train_test.txt | sort -u)) <(sort -u althingi.train_test.txt) > althingi_train.txt
+rm althingi.train_test.txt
+cut -d" " -f2- althingi.dev.txt > tmp && mv tmp althingi.dev.txt
+cut -d" " -f2- althingi.test.txt > tmp && mv tmp althingi.test.txt
+cut -d" " -f2- althingi.train.txt > tmp && mv tmp althingi.train.txt

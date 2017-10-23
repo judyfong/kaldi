@@ -39,6 +39,20 @@ srun --gres gpu:1 --mem 12G --time 0-12:00 sh -c "python main.py althingi 256 0.
 echo "Train the second stage"
 srun --gres gpu:1 --mem 12G --time 0-12:00 sh -c "python main2.py althingi 256 0.02 /home/staff/inga/kaldi/egs/althingi/s5/punctuator2" &> second_stage.log &
 
+# Punctuate the dev and test sets using the first stage model
+srun --nodelist=terra sh -c "cat ${out}/althingi.dev.txt | THEANO_FLAGS='device=cpu' python punctuator.py Model_althingi_h256_lr0.02.pcl ${out}/dev_punctuated_stage1.txt &>${out}/dev_punctuated_stage1.log" &
+srun --nodelist=terra sh -c "cat ${out}/althingi.test.txt | THEANO_FLAGS='device=cpu' python punctuator.py Model_althingi_h256_lr0.02.pcl ${out}/test_punctuated_stage1.txt &>${out}/test_punctuated_stage1.log" &
+
+# Punctuate the dev and test sets using the second stage model
+srun --nodelist=terra sh -c "cat ${out}/althingi.dev.txt | THEANO_FLAGS='device=cpu' python punctuator.py Model_stage2_althingi_h256_lr0.002.pcl ${out}/dev_punctuated_stage2.txt 1 &>${out}/dev_punctuated_stage2.log" &
+srun --nodelist=terra sh -c "cat ${out}/althingi.test.txt | THEANO_FLAGS='device=cpu' python punctuator.py Model_stage2_althingi_h256_lr0.002.pcl ${out}/test_punctuated_stage2.txt 1 &>${out}/test_punctuated_stage2.log" &
+
+# Calculate the prediction errors
+python error_calculator.py ${out}/althingi.dev.txt ${out}/dev_punctuated_stage1.txt > ${out}/dev_error_stage1.txt
+python error_calculator.py ${out}/althingi.dev.txt ${out}/dev_punctuated_stage2.txt > ${out}/dev_error_stage2.txt
+python error_calculator.py ${out}/althingi.test.txt ${out}/test_punctuated_stage1.txt > ${out}/test_error_stage1.txt
+python error_calculator.py ${out}/althingi.test.txt ${out}/test_punctuated_stage2.txt > ${out}/test_error_stage2.txt
+
 # Total number of training labels: 38484992
 # Total number of validation labels: 131712
 # Validation perplexity is 1.0905

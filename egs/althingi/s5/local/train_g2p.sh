@@ -38,5 +38,5 @@ g2p.py --model ${modeldir}/g2p_${n}.mdl --encoding="UTF-8" --test ${dictdir}/g2p
 #   Prepare a list of words you want to transcribe as a simple text
 #   file words.txt with one word per line (and no phonemic
 #   transcription), then type:
-# local/transcribe_g2p.sh data/local/g2p words.txt transcribed_words.txt
+# local/transcribe_g2p.sh data/local/g2p words.txt > transcribed_words.txt
 # The above script contains: g2p.py --apply $wordlist --model $model --encoding="UTF-8"

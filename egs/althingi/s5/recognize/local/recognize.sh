@@ -43,7 +43,6 @@ fi
 
 # Dirs used #
 # Already existing
-langdir=data/lang
 graphdir=exp/chain/tdnn_lstm_1e_sp/graph_3gsmall
 oldLMdir=data/lang_3gsmall
 newLMdir=data/lang_5g
@@ -116,7 +115,7 @@ if [ $stage -le 7 ]; then
     echo "Extract the transcript hypothesis from the Kaldi lattice"
     lattice-best-path \
         --lm-scale=$lmwt \
-        --word-symbol-table=${langdir}/words.txt \
+        --word-symbol-table=${oldLMdir}/words.txt \
         "ark:zcat ${rescoredir}/lat.1.gz |" ark,t:- &> ${rescoredir}/extract_transcript.log
 
     # Extract the best path text (tac - concatenate and print files in reverse)
@@ -137,7 +136,7 @@ if [ $score = true ] ; then
 
     echo "Estimate the WER"
     # NOTE! Correct for the mismatch in the beginning and end of recordings.
-    recognize/local/score_recognize.sh --cmd "$train_cmd" $speechname ${langdir} ${rescoredir}
+    recognize/local/score_recognize.sh --cmd "$train_cmd" $speechname ${oldLMdir} ${rescoredir}
 fi
 
 rm -r ${datadir} ${datadir}_segm

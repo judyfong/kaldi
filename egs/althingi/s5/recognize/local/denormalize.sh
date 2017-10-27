@@ -72,7 +72,7 @@ sed -re "s/[[:space:]]\+/ /g" \
 source punctuator2/theano-env/bin/activate
 
 echo "Extract the numbers before punctuation"
-srun python punctuator2/example/local/saving_numbers.py ${dir}/denorm1.tmp ${dir}/punctuator_in.tmp ${dir}/numlist.tmp
+srun python punctuator2/local/saving_numbers.py ${dir}/denorm1.tmp ${dir}/punctuator_in.tmp ${dir}/numlist.tmp
 
 echo "Punctuate"
 srun sh -c "cat ${dir}/punctuator_in.tmp | THEANO_FLAGS='device=cpu' python punctuator2/punctuator.py punctuator2/Model_althingi_July2017_h256_lr0.02.pcl ${dir}/punctuator_out.tmp &>${dir}/punctuator.log"
@@ -80,7 +80,7 @@ wait
 
 echo "Re-insert the numbers"
 if [ -s  ${dir}/numlist.tmp ]; then
-    srun python punctuator2/example/local/re-inserting-numbers.py ${dir}/punctuator_out.tmp ${dir}/numlist.tmp ${dir}/punctuator_out_wNumbers.tmp
+    srun python punctuator2/local/re-inserting-numbers.py ${dir}/punctuator_out.tmp ${dir}/numlist.tmp ${dir}/punctuator_out_wNumbers.tmp
 else
     cp ${dir}/punctuator_out.tmp ${dir}/punctuator_out_wNumbers.tmp
 fi

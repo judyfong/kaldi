@@ -8,33 +8,44 @@ import sys
 import re
 from pyxdameraulevenshtein import damerau_levenshtein_distance
 
-if __name__ == "__main__":
+def CorrectSpelling(speech,vocab_bb,vocab_endanlegt):
+    """Use Damerau Levenshtein distance to correct the spelling
+    in the intermediate texts"""
 
-
-    speech_bb = sys.argv[1] # sys.argv[1] is a shell variable
-    speech_bb_fixed = open(sys.argv[2],'a',encoding='utf-8')
-    with open(sys.argv[3],'r',encoding='utf-8') as f3:
-        vocab_bb  = f3.read().splitlines()
-        with open(sys.argv[4],'r',encoding='utf-8') as f4:
-            vocab_endanlegt  = f4.read().splitlines()
-            
     for word in vocab_bb:
         word_dict={}
         replaced = 0
+
         for w_endanlegt in vocab_endanlegt:
             #dist=MinEditDist(word,w_endanlegt)
             dist = damerau_levenshtein_distance(word, w_endanlegt)
             if dist == 1:
-                speech_bb = re.sub(" "+word+" "," "+w_endanlegt+" ",speech_bb)
+                speech = re.sub(r"\b%s\b" % word,w_endanlegt,speech)
                 replaced = 1
                 break
             else:
                 word_dict[dist]=w_endanlegt
+                
         # Need to find the min dist and substitute if not already substituted
         if replaced == 0:
-            speech_bb = re.sub(" "+word+" "," "+word_dict[min(word_dict,key=int)]+" ",speech_bb)
+            speech = re.sub(r"\b%s\b" % word,word_dict[min(word_dict,key=int)],speech)
+            
+    return speech
 
-    print(speech_bb, file=speech_bb_fixed)
-    speech_bb_fixed.close()
+
+if __name__ == "__main__":
+
+    # speech = sys.argv[1] # sys.argv[1] is a shell variable
+    with open(sys.argv[2],'a',encoding='utf-8') as fout:
+        with open(sys.argv[1],'r',encoding='utf-8') as fspeech:
+            speech = fspeech.read().strip()
+            with open(sys.argv[3],'r',encoding='utf-8') as fvoc_bb:
+                vocab_bb = fvoc_bb.read().splitlines()
+                with open(sys.argv[4],'r',encoding='utf-8') as fvoc_end:
+                    vocab_endanlegt  = fvoc_end.read().splitlines()
+
+                    speech_fixed = CorrectSpelling(speech,vocab_bb,vocab_endanlegt)
+                    print(speech_fixed, file=fout)
+
     
 

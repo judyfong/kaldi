@@ -65,30 +65,73 @@ if [ $stage -le 0 ]; then
     utils/utt2spk_to_spk2utt.pl < ${outdir}/utt2spk > ${outdir}/spk2utt
 fi
 
+# NOTE! The following commented out section is for the case when I have new data that I need to fit to
+# previously obtained data, where I used different speaker IDs.
+
+# name_id_file=data/althingiUploads/spk_spkID.txt
+# meta=data/althingiUploads/rad_spk.txt
+
+# # Need to convert from mp3 to wav
+# samplerate=16000
+# # SoX converts all audio files to an internal uncompressed format before performing any audio processing
+# wav_cmd="sox -tmp3 - -c1 -esigned -r$samplerate -G -twav - "
+
+# if [ $stage -le 0 ]; then
+    
+#     echo "a) utt2spk" # Connect each utterance to a speaker.
+#     echo "b) wav.scp" # Connect every utterance with an audio file
+    
+#     for s in ${outdir}/utt2spk ${outdir}/wav.scp ${outdir}/filename_uttID.txt; do
+#         if [ -f ${s} ]; then rm ${s}; fi
+#     done
+#     IFS=$'\n' # Want to separate on new lines
+#     for line in $(cat $meta)
+#     do
+#         filename=$(echo $line | cut -f1)
+#         spkname=$(echo $line | cut -f2)
+#         spkID=$(grep $spkname ${name_id_file} | cut -f2)
+
+#         # Print to utt2spk
+#         printf "%s %s\n" ${spkID}-${filename} ${spkID} | tr -d $'\r' >> ${outdir}/utt2spk
+
+#         # Make a helper file with mapping between the filenames and uttID
+#         echo -e ${filename} ${spkID}-${filename} | tr -d $'\r' | LC_ALL=C sort -n >> ${outdir}/filename_uttID.txt
+        
+#         #Print to wav.scp
+#         echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f ${datadir}/audio/${filename}".mp3")" |" | tr -d $'\r' >> ${outdir}/wav.scp
+#     done
+
+#     echo "d) spk2utt"
+#     utils/utt2spk_to_spk2utt.pl < ${outdir}/utt2spk > ${outdir}/spk2utt
+# fi
+
 if [ $stage -le 1 ]; then
 
     echo "d) text" # Each line is utterance ID and the utterance itself
-
-    # Extract the text in an xml file.
     for n in bb endanlegt; do
-        export xmldir=${datadir}/text_${n} #text_bb
-        python3 -c "
-import glob
-import os
-import re
-xmlpaths = glob.glob(os.path.join(os.environ['xmldir'],'*.xml'))
-fout = open('${outdir}/text_orig_${n}.txt','w')
-for file in xmlpaths:
-    file_base = os.path.splitext(os.path.basename(file))[0]
-    with open(file, 'r',encoding='utf-8') as myfile:
-        data=myfile.read().replace('\n', ' ')
-        body_txt = re.search('<ræðutexti>(.*)</ræðutexti>',data).group()
-    text = ' '.join([file_base, body_txt]).strip().replace('\n', ' ')
-    print(text, file=fout)
-fout.close()
-"
+        utils/slurm.pl --time 0-06:00 $outdir/log/extract_text_${n}.log python3 local/extract_text.py $datadir/text_${n} $outdir/text_orig_${n}.txt &
     done
-    unset xmldir
+    
+    # Extract the text in an xml file.
+#     for n in bb endanlegt; do
+#         export xmldir=${datadir}/text_${n} #text_bb
+#         python -c "
+# import glob
+# import os
+# import re
+# xmlpaths = glob.glob(os.path.join(os.environ['xmldir'],'*.xml'))
+# fout = open('${outdir}/text_orig_${n}.txt','w')
+# for file in xmlpaths:
+#     file_base = os.path.splitext(os.path.basename(file))[0]
+#     with open(file, 'r',encoding='utf-8') as fin:
+#         data=fin.read().replace('\n', ' ')
+#         body_txt = re.search('<ræðutexti>(.*)</ræðutexti>',data).group()    
+#     text = ' '.join([file_base, body_txt]).strip().replace('\n', ' ')
+#     print(text, file=fout)
+# fout.close()
+# "
+#     done
+#     unset xmldir
 
 fi
 
@@ -124,15 +167,14 @@ if [ $stage -le 2 ]; then
 	-e 's:/?([0-9]+)/([0-9]+): \1 \2:g' -e 's:([0-9]+)/([A-Z]{2,}):\1 \2:g' -e 's:([0-9])/ ([0-9]):\1 \2:g' \
         -e 's:[[:space:]]+: :g' ${outdir}/text_orig_endanlegt.txt > ${outdir}/text_noXML_endanlegt.txt
 
-    # Sometimes some of the intermediatary text files are empty. In those cases I use the final text
-    if egrep "rad[0-9][^ ]+ *$" ${outdir}/text_noXML_bb.txt > 0 ; then
-	echo "Empty text_bb files"
-	echo "Insert text from text_endanlegt"
-	egrep "rad[0-9][^ ]+ *$" ${outdir}/text_noXML_bb.txt > empty_text_bb.tmp
-	for file in $(cat empty_text_bb.tmp); do
-	    sed -i -r "s/$file/$(grep $file ${outdir}/text_noXML_endanlegt.txt)/" ${outdir}/text_noXML_bb.txt
-	done
-    fi
+    # Sometimes some of the intermediatary text files are empty.
+    # I remove the empty files and add corresponding final-text-files in the end
+    egrep -v "rad[0-9][^ ]+ *$" ${outdir}/text_noXML_bb.txt > tmp && mv tmp ${outdir}/text_noXML_bb.txt
+
+    # Remove files that exist only in the intermediate text
+    comm -12 <(cut -d" " -f1 ${outdir}/text_noXML_bb.txt | sort -u) <(cut -d" " -f1 ${outdir}/text_noXML_endanlegt.txt | sort -u) > ${outdir}/common_ids.tmp
+    join -j1 ${outdir}/common_ids.tmp ${outdir}/text_noXML_bb.txt > tmp && mv tmp ${outdir}/text_noXML_bb.txt
+
 fi
 
 
@@ -247,31 +289,47 @@ if [ $stage -le 6 ]; then
 	rm ${outdir}/text_bb_SpellingFixed.txt
     fi
 
+    source py3env/bin/activate
     IFS=$'\n' # Important
-    for speech in $(cat ${outdir}/text_exp2_bb.txt)
+    for speech in $(tail -n +7129 ${outdir}/text_exp2_bb_pruned.txt)
     do
         uttID=$(echo $speech | cut -d" " -f1)
-	echo $speech | cut -d" " -f2- | sed -e 's/[0-9\.,%‰°º]//g' | tr " " "\n" | egrep -v "^\s*$" | sort -u > vocab_speech.tmp
+	echo $speech | cut -d" " -f2- | sed -e 's/\b[0-9\.,%‰°º]+\b//g' | tr " " "\n" | egrep -v "^\s*$" | sort -u > vocab_speech.tmp
 	
 	# Find words that are not in any text_endanlegt speech 
-	comm -23 <(cat vocab_speech.tmp) <(cat  ${outdir}/words_text_endanlegt.txt) > vocab_speech_only.tmp
+	comm -23 <(cat vocab_speech.tmp) <(cat ${outdir}/words_text_endanlegt.txt) > vocab_speech_only.tmp
 	
 	grep $uttID ${outdir}/text_exp2_endanlegt.txt > text_endanlegt_speech.tmp
 	cut -d" " -f2- text_endanlegt_speech.tmp | sed -e 's/[0-9\.,%‰°º]//g' | tr " " "\n" | egrep -v "^\s*$" | sort -u > vocab_text_endanlegt_speech.tmp
 
+	echo $speech > speech.tmp
 	# Find the closest match in vocab_text_endanlegt_speech.tmp and substitute
 	#set +u # Otherwise I will have a problem with unbound variables
-	source py3env/bin/activate
-	python local/MinEditDist.py "$speech" ${outdir}/text_bb_SpellingFixed.txt vocab_speech_only.tmp vocab_text_endanlegt_speech.tmp
-	deactivate
+	python local/MinEditDist.py speech.tmp ${outdir}/text_bb_SpellingFixed.txt vocab_speech_only.tmp vocab_text_endanlegt_speech.tmp	
 	#set -u
     done
+    deactivate
     rm *.tmp
     
 fi
 
 if [ $stage -le 7 ]; then
 
+    # If the intermediate text file is empty or does not exist, use the final one instead
+    egrep "rad[0-9][^ ]+ *$" ${outdir}/text_bb_SpellingFixed.txt > empty_text_bb.tmp
+    if [ -s empty_text_bb.tmp ]; then
+	echo "Empty text_bb files"
+	echo "Insert text from text_endanlegt"
+	for file in $(cat empty_text_bb.tmp); do
+	    sed -i -r "s#${file}#$(grep $file ${outdir}/text_exp2_endanlegt.txt)#" ${outdir}/text_bb_SpellingFixed.txt
+	done
+    fi
+
+    # If the intermediate file did not exist at all, I use the final text instead
+    comm -13 <(cut -d" " -f1 ${outdir}/text_bb_SpellingFixed.txt | sort -u) <(cut -d" " -f1 ${outdir}/text_exp2_endanlegt.txt | sort -u) > ${outdir}/ids_only_in_text_endanlegt.tmp
+    join -j1 ${outdir}/ids_only_in_text_endanlegt.tmp ${outdir}/text_exp2_endanlegt.txt >> ${outdir}/text_bb_SpellingFixed.txt
+    sort -u ${outdir}/text_bb_SpellingFixed.txt > tmp && mv tmp ${outdir}/text_bb_SpellingFixed.txt
+    
     # Join the utterance names with the spkID to make the uttIDs
     join -j 1 <(sort -k1,1 ${outdir}/filename_uttID.txt) <(sort -k1,1 ${outdir}/text_bb_SpellingFixed.txt) | cut -d" " -f2- > ${outdir}/text_bb_SpellingFixed_uttID.txt
     

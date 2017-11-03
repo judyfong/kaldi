@@ -237,7 +237,7 @@ if [ $stage -le 29 ]; then
 
     (
 	# Creating decoding graph (trigram lm), monophone model
-	utils/mkgraph.sh --mono data/lang_3gsmall exp/mono exp/mono/graph_3gsmall
+	utils/mkgraph.sh data/lang_3gsmall exp/mono exp/mono/graph_3gsmall
 	# Decode using the monophone model, trigram LM
 	for test in dev_30 eval_30; do
             steps/decode.sh \

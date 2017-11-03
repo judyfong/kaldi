@@ -16,7 +16,7 @@ cleanup () {
 trap cleanup EXIT
 
 IFS=$'\n'
-cp ${textfile} ${textfile_wOOV}
+#cp ${textfile} ${textfile_wOOV}
 for l in $(cat ${wordfile}); do
     uttID=$(echo $l | cut -d" " -f1)
     num_words=$(echo $l | wc -w)
@@ -25,9 +25,14 @@ for l in $(cat ${wordfile}); do
         w=$(echo $l | cut -d" " -f$i)
         sed -i "s:<word>:$w:" $tmp/expanded_line
     done
-    newline=$(cat $tmp/expanded_line)
-    sed -i -r "s:$uttID.*:$newline:" ${textfile_wOOV}
+    #newline=$(cat $tmp/expanded_line)
+    #sed -i -r "s:$uttID.*:$newline:" ${textfile_wOOV}
+    cat $tmp/expanded_line >> ${textfile_wOOV}
 done
-IFS=$' \t\n'
 
+textfile_base=${textfile##*/}
+comm -13 <(cut -d" " -f1 ${textfile_wOOV} | sort -u) <(cut -d" " -f1 ${textfile} | sort -u) > ids_only_in_${textfile_base%.*}.tmp
+join -j1 ids_only_in_${textfile_base%.*}.tmp ${textfile} >> ${textfile_wOOV}
+sort -u ${textfile_wOOV} > tmp && mv tmp ${textfile_wOOV}
+   
 exit 0;

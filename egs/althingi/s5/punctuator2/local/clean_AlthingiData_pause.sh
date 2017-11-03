@@ -7,7 +7,7 @@ set -o pipefail
 
 if [ $# -ne 2 ]; then
     echo "Usage: $0 <texts-to-use-in-LM> <output-clean-texts>" >&2
-    echo "Eg. $0 data/all/text_orig_bb.txt ~/data/althingi/postprocessing/texts05-15_clean_for_punct_restoring.txt" >&2
+    echo "Eg. $0 data/all_sept2017/text_orig_bb.txt ~/data/althingi/postprocessing/texts_pause_clean_for_punct_restoring.txt" >&2
     exit 1;
 fi
 
@@ -119,13 +119,20 @@ echo "Remove periods after abbreviations"
 # sort -u ${dir}/abbr_lex.tmp | tr "\n" "|" | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" > ${dir}/abbr_lex_pattern.tmp
 sed -r "s:(\b$(cat ${dir}/abbr_lex_pattern.tmp))\.:\1:g" ${dir}/noPunct.tmp > ${dir}/noAbbrPeriods.tmp
 
+echo "Expand abbreviations that expand to more than one word (to match the pause annotated segments better)"
+python3 local/replace_abbr_acro.py ${dir}/noAbbrPeriods.tmp ${dir}/pause_text_exp1.tmp # Switch out for a nicer solution
+python3 local/althingi_replace_plain_text.py ${dir}/pause_text_exp1.tmp ${dir}/pause_text_exp2.tmp
+sed -re "s:\bofl\b:og fleira:g" -e "s:\bþe\b:það er:g" -e "s:\bþmt\b:þar með talið:g" \
+    -e "s:\bdkr\b:danskar krónur:g" -e "s:\bnkr\b:norskar krónur:g" -e "s:\bskr\b:sænskar krónur:g" \
+    < ${dir}/pause_text_exp2.tmp > ${dir}/pause_text_exp3.tmp
+
 # echo "Capitalize words in the scraped Althingi texts, that are capitalized in the pron dict"
 # comm -12 <(sed -r 's:.*:\L&:' ${prondir}/CaseSensitive_pron_dict_propernouns.txt | sort) <(tr " " "\n" < ${dir}/noAbbrPeriods.tmp | sed -re 's/[^a-záðéíóúýþæö]+//g'| egrep -v "^\s*$" | sort -u) > ${dir}/propernouns_althingi_texts.txt
 # # Make the regex pattern
 # tr "\n" "|" < ${dir}/propernouns_althingi_texts.txt | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > ${dir}/propernouns_althingi_texts_pattern.tmp
 
 # Capitalize
-srun sed -r "s:(\b$(cat ${dir}/propernouns_althingi_texts_pattern.tmp)\b):\u\1:g" ${dir}/noAbbrPeriods.tmp > $out
+srun sed -r "s:(\b$(cat ${dir}/propernouns_althingi_texts_pattern.tmp)\b):\u\1:g" ${dir}/pause_text_exp3.tmp > $out
 
 exit 0
 

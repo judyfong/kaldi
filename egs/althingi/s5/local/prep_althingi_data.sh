@@ -8,6 +8,7 @@ set -o pipefail
 # Get the Althingi data on a proper format for kaldi.
 
 stage=-1
+nj=10
 
 . ./path.sh # Needed for KALDI_ROOT
 . ./cmd.sh
@@ -289,26 +290,43 @@ if [ $stage -le 6 ]; then
 	rm ${outdir}/text_bb_SpellingFixed.txt
     fi
 
+    # Split into subfiles and correct them in parallel
+    num_files=$nj
+    mkdir -p ${outdir}/split${num_files}/log
+    total_lines=$(wc -l ${outdir}/text_exp2_bb.txt | cut -d" " -f1)
+    ((lines_per_file = (total_lines + num_files - 1) / num_files))
+    split --lines=${lines_per_file} data/all_okt2017/text_exp2_bb.txt ${outdir}/split${num_files}/text_exp2_bb.
+
     source py3env/bin/activate
     IFS=$'\n' # Important
-    for speech in $(tail -n +7129 ${outdir}/text_exp2_bb_pruned.txt)
-    do
-        uttID=$(echo $speech | cut -d" " -f1)
-	echo $speech | cut -d" " -f2- | sed -e 's/\b[0-9\.,%‰°º]+\b//g' | tr " " "\n" | egrep -v "^\s*$" | sort -u > vocab_speech.tmp
-	
-	# Find words that are not in any text_endanlegt speech 
-	comm -23 <(cat vocab_speech.tmp) <(cat ${outdir}/words_text_endanlegt.txt) > vocab_speech_only.tmp
-	
-	grep $uttID ${outdir}/text_exp2_endanlegt.txt > text_endanlegt_speech.tmp
-	cut -d" " -f2- text_endanlegt_speech.tmp | sed -e 's/[0-9\.,%‰°º]//g' | tr " " "\n" | egrep -v "^\s*$" | sort -u > vocab_text_endanlegt_speech.tmp
-
-	echo $speech > speech.tmp
-	# Find the closest match in vocab_text_endanlegt_speech.tmp and substitute
-	#set +u # Otherwise I will have a problem with unbound variables
-	python local/MinEditDist.py speech.tmp ${outdir}/text_bb_SpellingFixed.txt vocab_speech_only.tmp vocab_text_endanlegt_speech.tmp	
-	#set -u
+    for ext in $(ls ${outdir}/split${num_files}/text_exp2_bb.* | cut -d"." -f2); do
+        srun --time=0-12 --nodelist=terra ./local/correct_spelling.sh $outdir $ext $num_files &>${outdir}/split${num_files}/log/spelling_fixed.${ext}.log &
     done
     deactivate
+
+    cat ${outdir}/split${num_files}/text_bb_SpellingFixed.*.txt > ${outdir}/text_bb_SpellingFixed.txt
+    rm -f ${outdir}/split${num_files}/{speech.*,vocab_speech_only.*,vocab_text_endanlegt_speech.*}
+
+    # source py3env/bin/activate
+    # IFS=$'\n' # Important
+    # for speech in $(tail -n +7129 ${outdir}/text_exp2_bb_pruned.txt)
+    # do
+    #     uttID=$(echo $speech | cut -d" " -f1)
+    # 	echo $speech | cut -d" " -f2- | sed -e 's/\b[0-9\.,%‰°º]+\b//g' | tr " " "\n" | egrep -v "^\s*$" | sort -u > vocab_speech.tmp
+	
+    # 	# Find words that are not in any text_endanlegt speech 
+    # 	comm -23 <(cat vocab_speech.tmp) <(cat ${outdir}/words_text_endanlegt.txt) > vocab_speech_only.tmp
+	
+    # 	grep $uttID ${outdir}/text_exp2_endanlegt.txt > text_endanlegt_speech.tmp
+    # 	cut -d" " -f2- text_endanlegt_speech.tmp | sed -e 's/[0-9\.,%‰°º]//g' | tr " " "\n" | egrep -v "^\s*$" | sort -u > vocab_text_endanlegt_speech.tmp
+
+    # 	echo $speech > speech.tmp
+    # 	# Find the closest match in vocab_text_endanlegt_speech.tmp and substitute
+    # 	#set +u # Otherwise I will have a problem with unbound variables
+    # 	python local/MinEditDist.py speech.tmp ${outdir}/text_bb_SpellingFixed.txt vocab_speech_only.tmp vocab_text_endanlegt_speech.tmp	
+    # 	#set -u
+    # done
+    # deactivate
     rm *.tmp
     
 fi
@@ -316,7 +334,7 @@ fi
 if [ $stage -le 7 ]; then
 
     # If the intermediate text file is empty or does not exist, use the final one instead
-    egrep "rad[0-9][^ ]+ *$" ${outdir}/text_bb_SpellingFixed.txt > empty_text_bb.tmp
+    egrep "^rad[0-9][^ ]+ *$" ${outdir}/text_bb_SpellingFixed.txt > empty_text_bb.tmp
     if [ -s empty_text_bb.tmp ]; then
 	echo "Empty text_bb files"
 	echo "Insert text from text_endanlegt"

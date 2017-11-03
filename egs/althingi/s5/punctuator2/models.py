@@ -2,6 +2,8 @@
 from __future__ import division
 
 import theano
+import cPickle
+import os
 import theano.tensor as T
 import numpy as np
 
@@ -124,9 +126,23 @@ class GRU(object):
         self.y_vocabulary = y_vocabulary
 
         # input model
-        self.We = weights_Glorot(x_vocabulary_size, n_hidden, 'We', rng) # Share embeddings between forward and backward model
-        self.GRU_f = GRULayer(rng=rng, n_in=n_hidden, n_out=n_hidden, minibatch_size=minibatch_size)
-        self.GRU_b = GRULayer(rng=rng, n_in=n_hidden, n_out=n_hidden, minibatch_size=minibatch_size)
+        pretrained_embs_path = "We.pcl"
+        if os.path.exists(pretrained_embs_path):
+            print "Found pretrained embeddings in '%s'. Using them..." % pretrained_embs_path
+            with open(pretrained_embs_path, 'rb') as f:
+                We = cPickle.load(f)
+            n_emb = len(We[0])
+            We.append([0.1]*n_emb) # END
+            We.append([0.0]*n_emb) # UNK - both quite arbitrary initializations
+
+            We = np.array(We).astype(theano.config.floatX)
+            self.We = theano.shared(value=We, name="We", borrow=True)
+        else:
+            n_emb = n_hidden
+            self.We = weights_Glorot(x_vocabulary_size, n_emb, 'We', rng) # Share embeddings between forward and backward model
+
+        self.GRU_f = GRULayer(rng=rng, n_in=n_emb, n_out=n_hidden, minibatch_size=minibatch_size)
+        self.GRU_b = GRULayer(rng=rng, n_in=n_emb, n_out=n_hidden, minibatch_size=minibatch_size)
 
         # output model
         self.GRU = GRULayer(rng=rng, n_in=n_hidden*2, n_out=n_hidden, minibatch_size=minibatch_size)
@@ -154,9 +170,9 @@ class GRU(object):
         self.params += self.GRU.params + self.GRU_f.params + self.GRU_b.params
 
         # bi-directional recurrence
-        def input_recurrence(x_f_t, x_b_t, h_f_tm1, h_b_tm1, We):
-            h_f_t = self.GRU_f.step(x_t=We[x_f_t.flatten()], h_tm1=h_f_tm1)
-            h_b_t = self.GRU_b.step(x_t=We[x_b_t.flatten()], h_tm1=h_b_tm1)
+        def input_recurrence(x_f_t, x_b_t, h_f_tm1, h_b_tm1):
+            h_f_t = self.GRU_f.step(x_t=x_f_t, h_tm1=h_f_tm1)
+            h_b_t = self.GRU_b.step(x_t=x_b_t, h_tm1=h_b_tm1)
             return [h_f_t, h_b_t]
 
         def output_recurrence(x_t, h_tm1, Wa_h, Wa_y, Wf_h, Wf_c, Wf_f, bf, Wy, by, context, projected_context):
@@ -180,9 +196,10 @@ class GRU(object):
 
             return [h_t, hf_t, y_t, alphas]
 
+        x_emb = self.We[x.flatten()].reshape((x.shape[0], minibatch_size, n_emb))
+
         [h_f_t, h_b_t], _ = theano.scan(fn=input_recurrence,
-            sequences=[x, x[::-1]], # forward and backward sequences
-            non_sequences=[self.We],
+            sequences=[x_emb, x_emb[::-1]], # forward and backward sequences
             outputs_info=[self.GRU_f.h0, self.GRU_b.h0])
 
         # 0-axis is time steps, 1-axis is batch size and 2-axis is hidden layer size

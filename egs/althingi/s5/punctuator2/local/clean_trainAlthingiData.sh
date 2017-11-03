@@ -29,7 +29,7 @@ prondir=~/data/althingi/pronDict_LM
 # 6) Remove comments in parentheses
 # 7) Remove the uttIDs remove leading spaces and reduce spaces to one between words
 sed -re 's:<!--[^>]*?-->|<truflun>[^<]*?</truflun>|<atburður>[^<]*?</atburður>|<málsheiti>[^<]*?</málsheiti>|<[^>]*?>: :g' \
-    -e 's:\([^/()<>]*?\)+: :g' < <(grep -v rad2016 ${corpus}) \
+    -e 's:\([^/()<>]*?\)+: :g' < ${corpus} \
     | cut -d" " -f2- | sed -re 's/^[ \t]*//' -e 's/[[:space:]]+/ /g'> ${dir}/noXML.tmp
 
 # echo "Remove some punctuations and rewrite roman numerals to numbers"
@@ -106,7 +106,7 @@ echo -e "amk\ndr\netv\nfrh\nmas\nma\nnk\nnr\nosfrv\nsbr\nskv\ntd\nuþb\nutanrrh\
 sort -u ${dir}/abbr_lex.tmp | tr "\n" "|" | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" > ${dir}/abbr_lex_pattern.tmp
 sed -r "s:(\b$(cat ${dir}/abbr_lex_pattern.tmp))\.:\1:g" ${dir}/noPunct.tmp > ${dir}/noAbbrPeriods.tmp
 
-echo "Capitalize words in the scraped Althingi texts, that are capitalized in the pron dict"
+echo "Capitalize words in the Althingi texts, that are capitalized in the pron dict"
 comm -12 <(sed -r 's:.*:\L&:' ${prondir}/CaseSensitive_pron_dict_propernouns.txt | sort) <(tr " " "\n" < ${dir}/noAbbrPeriods.tmp | sed -re 's/[^a-záðéíóúýþæö]+//g'| egrep -v "^\s*$" | sort -u) > ${dir}/propernouns_althingi_texts.txt
 # Make the regex pattern
 tr "\n" "|" < ${dir}/propernouns_althingi_texts.txt | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > ${dir}/propernouns_althingi_texts_pattern.tmp

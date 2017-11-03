@@ -28,4 +28,4 @@ tr "\n" "|" < ${pronDictdir}/propernouns_althingi.txt | sed '$s/|$//' | perl -pe
 # Capitalize
 srun sed -r 's:(\b'$(cat ${pronDictdir}/propernouns_althingi_pattern.tmp)'\b):\u\1:g' ${datadir}/text > ${datadir}/text_CaseSens.txt
 
-rm ${pronDictdir}/*.tmp
+#rm ${pronDictdir}/*.tmp

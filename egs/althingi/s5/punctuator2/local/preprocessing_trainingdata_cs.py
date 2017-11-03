@@ -58,8 +58,8 @@ def process_line(line):
 
 skipped = 0
 
-with codecs.open(sys.argv[2], 'w', 'utf-8') as out_txt:
-    with codecs.open(sys.argv[1], 'r', 'utf-8') as text:
+with codecs.open(sys.argv[2], 'w', encoding='utf-8') as out_txt:
+    with codecs.open(sys.argv[1], 'r', encoding='utf-8') as text:
 
         for line in text:
 

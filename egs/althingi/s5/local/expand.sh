@@ -7,7 +7,7 @@
 
 set -o pipefail
 
-nj=50
+nj=64
 stage=-1
 order=5
 
@@ -75,15 +75,14 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
-        echo "Expand"
-	utils/slurm.pl JOB=1:$nj ${dir}/log/expand-numbers.JOB.log expand-numbers --word-symbol-table=${normdir}/words30.txt ark,t:${dir}/split${nj}/cleantext_afterWordMapping.JOB.txt ${normdir}/expand_to_words30.fst ${normdir}/numbertexts_althingi100_${order}g.fst ark,t:${dir}/split${nj}/text_expanded_${order}g.JOB.txt
+    echo "Expand"
+    utils/slurm.pl --mem 4G JOB=1:$nj ${dir}/log/expand-numbers.JOB.log expand-numbers --word-symbol-table=${normdir}/words30.txt ark,t:${dir}/split${nj}/cleantext_afterWordMapping.JOB.txt ${normdir}/expand_to_words30.fst ${normdir}/numbertexts_althingi100_${order}g.fst ark,t:${dir}/split${nj}/text_expanded_${order}g.JOB.txt
+
 fi
 
 if [ $stage -le 5 ]; then
 
     echo "Insert words back"
-
-    # The following is too slow. Need to fix!
     utils/slurm.pl JOB=1:$nj ${dir}/log/re-insert-oov.JOB.log local/re-insert-oov.sh ${dir}/split${nj}/text_expanded_${order}g.JOB.txt ${dir}/split${nj}/mappedWords_jobJOB.txt
     
     echo "Check if all the speeches were expanded"

@@ -22,6 +22,9 @@
 # The names are stated in the metafile but the abbreviations can be
 # found on althingi.is
 
+# NOTE! If obtaining the audio and text files from althingi.is run
+# extract_new_files.sh and skip stage -1 instead
+
 set -o pipefail
 
 nj=20
@@ -29,6 +32,7 @@ nj_decode=32
 stage=-100
 corpus_zip=/data/althingi/tungutaekni_145.tar.gz
 datadir=/data/althingi/corpus
+outdir=data/all_okt2017
 
 . ./cmd.sh
 . ./path.sh
@@ -60,7 +64,7 @@ fi
 if [ $stage -le 0 ]; then
     
     echo "Make Kaldi data files, do initial text normalization and clean spelling errors in the text"
-    local/prep_althingi_data.sh ${datadir} data/all
+    local/prep_althingi_data.sh ${datadir} ${outdir}
 fi
 
 if [ $stage -le 1 ]; then
@@ -72,25 +76,25 @@ if [ $stage -le 1 ]; then
     fi
     echo "Text normalization: Expansion of abbreviations and numbers"
     # train a language model for expansion
-    ./local/train_expansionLM.sh text_norm data/all
+    ./local/train_expansionLM.sh text_norm ${outdir}
 fi
 
 if [ $stage -le 2 ]; then
     echo "Expand numbers and abbreviations"
-    ./local/expand.sh text_norm data/all/text_bb_SpellingFixed_uttID.txt data/all/text
+    ./local/expand.sh text_norm ${outdir}/text_bb_SpellingFixed_uttID.txt ${outdir}/text
 
     echo "Validate the data dir"
-    utils/validate_data_dir.sh --no-feats data/all || utils/fix_data_dir.sh data/all
+    utils/validate_data_dir.sh --no-feats ${outdir} || utils/fix_data_dir.sh ${outdir}
 fi
 
 if [ $stage -le 3 ]; then
     
     info "Make the texts case sensitive (althingi and LM training text)"
-    local/case_sensitive.sh ~/data/althingi/pronDict_LM data/all
+    local/case_sensitive.sh ~/data/althingi/pronDict_LM ${outdir}
     
     # Make the CS text be the main text
-    mv data/all/text data/all/LCtext
-    mv data/all/text_CaseSens.txt data/all/text
+    mv ${outdir}/text ${outdir}/LCtext
+    mv ${outdir}/text_CaseSens.txt ${outdir}/text
 fi
 
 if [ $stage -le 4 ]; then
@@ -98,7 +102,7 @@ if [ $stage -le 4 ]; then
     # I use the LF-MMI tdnn-lstm recognizer, trained on 514 hrs of
     # data to transcribe the audio so that I can align the new data	
     echo "Segment the data using and in-domain recognizer"
-    local/run_segmentation.sh data/all data/lang exp/tri2_cleaned
+    nohup local/run_segmentation.sh ${outdir} data/lang exp/tri2_cleaned &>${outdir}/log/segmentation.log
 
     # Should be unnecessary
     # echo "Analyze the segments and filter based on a words/sec ratio"
@@ -106,7 +110,7 @@ if [ $stage -le 4 ]; then
     # #local/wps_perSegment_hist.py wps.txt
     
     # Filter away segments with extreme wps
-    local/filter_segments.sh data/all_reseg data/all_reseg_filtered
+    local/filter_segments.sh ${outdir}_reseg ${outdir}_reseg_filtered
 fi
 
 if [ $stage -le 5 ]; then
@@ -115,11 +119,11 @@ if [ $stage -le 5 ]; then
         --nj $nj       \
         --mfcc-config conf/mfcc.conf \
         --cmd "$train_cmd"           \
-        data/all_reseg_filtered exp/make_mfcc mfcc
+        ${outdir}_reseg_filtered exp/make_mfcc mfcc
 
     echo "Computing cmvn stats"
     steps/compute_cmvn_stats.sh \
-        data/all_reseg_filtered exp/make_mfcc mfcc
+        ${outdir}_reseg_filtered exp/make_mfcc mfcc
 
 fi
     
@@ -135,6 +139,7 @@ if [ $stage -le 6 ]; then
     # Use the data from the year 2016 as my eval data
     grep "rad2016" data/all_reseg_20161128_filtered/utt2spk | cut -d" " -f1 > test_uttlist
     grep -v "rad2016" data/all_reseg_20161128_filtered/utt2spk | cut -d" " -f1 > train_uttlist
+    # NOTE! Now I have multiple sources of data. I need to combine them all into data/train
     subset_data_dir.sh --utt-list train_uttlist data/all_reseg_20161128_filtered data/train
     subset_data_dir.sh --utt-list test_uttlist data/all_reseg_20161128_filtered data/dev_eval
     rm test_uttlist train_uttlist
@@ -162,7 +167,7 @@ if [ $stage -le 7 ]; then
         data/lang
 
     # Make the LM training sample, assuming the 2016 data is used for testing
-    cat ${pronDictdir}/scrapedAlthingiTexts_expanded_CS.txt <(grep -v rad2016 data/all/text | cut -d" " -f2-) > ${pronDictdir}/LMtexts_expanded_CS.txt
+    cat ${pronDictdir}/scrapedAlthingiTexts_expanded_CS.txt <(grep -v rad2016 data/all/text | cut -d" " -f2-) data/all_okt2017/text data/all_sept2017/text > ${pronDictdir}/LMtexts_expanded_CS.txt
     
     echo "Preparing a pruned trigram language model"
     mkdir -p data/lang_3gsmall

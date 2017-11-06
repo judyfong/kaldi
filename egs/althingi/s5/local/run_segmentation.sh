@@ -38,7 +38,7 @@ steps/cleanup/split_long_utterance.sh \
   ${datadir} ${datadir}_split
 
 echo "Make MFCC features and compute CMVN stats"
-steps/make_mfcc.sh --cmd "$train_cmd" --nj 64 \
+steps/make_mfcc.sh --cmd "$train_cmd --time 0-06" --nj 64 \
   ${datadir}_split exp/make_mfcc/${base}_split mfcc || exit 1;
 utils/fix_data_dir.sh ${datadir}_split
 steps/compute_cmvn_stats.sh ${datadir}_split \
@@ -46,7 +46,7 @@ steps/compute_cmvn_stats.sh ${datadir}_split \
 
 echo "Make segmentation graph, i.e. build one decoding graph for each truncated utterance in segmentation."
 steps/cleanup/make_segmentation_graph.sh \
-  --cmd "$mkgraph_cmd" --nj 64 \
+  --cmd "$mkgraph_cmd --time 0-12" --nj 64 \
   ${datadir}_split ${langdir} ${modeldir} \
   ${modeldir}/graph_${base}_split || exit 1;
 
@@ -57,7 +57,7 @@ steps/cleanup/decode_segmentation.sh \
   ${datadir}_split ${modeldir}/decode_${base}_split || exit 1;
 
 echo "Get CTM"
-steps/get_ctm.sh --cmd "$decode_cmd" ${datadir}_split \
+steps/get_ctm.sh --cmd "$decode_cmd  --time 0-12" ${datadir}_split \
   ${modeldir}/graph_${base}_split ${modeldir}/decode_${base}_split
 
 echo "Make segmentation data dir"

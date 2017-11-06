@@ -95,6 +95,8 @@ GSYMS
 /egs/*/s*/punctuator2/example
 egs/*/s*/punctuator2/libgpuarray
 egs/*/s*/punctuator2/log
+egs/*/s*/steps
+egs/*/s*/utils
 
 # /tools/
 /tools/ATLAS/

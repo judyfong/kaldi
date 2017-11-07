@@ -10,6 +10,7 @@
 #from the line after this line: echo "Extract the numbers before punctuation"
 # and from punctuate and reinserting numbers
 # Install KenLM and all dependencies to opt /opt/kenlm/build/bin/lmplz
+#Install python package: nltk
 
 
 #decode_install_dir=./decodeinstall

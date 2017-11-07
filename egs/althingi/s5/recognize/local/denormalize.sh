@@ -15,7 +15,7 @@ set -o pipefail
 ifile=$1
 ofile=$2
 dir=$(dirname $(readlink -f $ifile))
-utf8syms=/data/althingi/utf8.syms
+utf8syms=utf8.syms
 
 echo "Abbreviate"
 # Numbers are not in the words.txt file. Hence I can't compose with an utf8-to-words.fst file.

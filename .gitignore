@@ -103,6 +103,9 @@ egs/*/s*/punctuator2/libgpuarray
 egs/*/s*/punctuator2/log
 egs/*/s*/steps
 egs/*/s*/utils
+egs/*/s*/punctuator2/theano-env/local/bin
+egs/*/s*/punctuator2/theano-env/local/include
+egs/*/s*/punctuator2/theano-env/local/lib
 
 # /tools/
 /tools/ATLAS/

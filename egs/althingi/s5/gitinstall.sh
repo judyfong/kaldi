@@ -20,14 +20,22 @@
 #mkdir -p ${decode_install_dir}
 #tar -zxvf $corpus_zip --directory ${decode_install_dir}/
 
+. path.sh
+
 stage=-1
 corpus_zip=./decodeinstall/tungutaekni.tar.gz
 datadir=data/local/corpus
 
 rm steps
 rm utils
+rm punctuator2/theano-env/local/bin
+rm punctuator2/theano-env/local/include
+rm punctuator2/theano-env/local/lib
 ln -s ../../wsj/s5/utils utils
 ln -s ../../wsj/s5/steps steps
+ln -s $KALDI_ROOT/egs/althingi/s5/punctuator2/theano-env/bin punctuator2/theano-env/local/bin
+ln -s $KALDI_ROOT/egs/althingi/s5/punctuator2/theano-env/include punctuator2/theano-env/local/include
+ln -s $KALDI_ROOT/egs/althingi/s5/punctuator2/theano-env/lib punctuator2/theano-env/local/lib
 
 #Make folders if they don't exist
 

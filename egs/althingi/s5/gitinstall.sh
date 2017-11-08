@@ -1,17 +1,6 @@
 #!/bin/bash -eu
 
 #This script assumes this is a fresh install of the repo
-#Run the usual kaldi installations in kaldi/tools and kaldi/src
-#Modify cmd.sh to run from proper locations
-#Modify path.sh to use the relevant paths
-#src/make remove the reference to kaldi threads
-#change location of utf8.syms table in recognize/local/denormalize.sh
-#in denormalize.sh remove the command, 'srun' if running locally 
-#from the line after this line: echo "Extract the numbers before punctuation"
-# and from punctuate and reinserting numbers
-# Install KenLM and all dependencies to opt /opt/kenlm/build/bin/lmplz
-#Install python package: nltk
-
 
 #decode_install_dir=./decodeinstall
 #decode_zip=./decodeinstall.tar.gz
@@ -124,7 +113,5 @@ fi
 
 echo "Some of the audio files from 2005 still aborts at the making features step due to being unable to find some folders and files i.e. rad20051001T141205.mp3 or new 2017 ones"
 
-#Find a way to clean up old speech extractions when a Decoding aborts midway
-#That way you don't get this error: file recognize/speeches/rad20111208T173926/wav.scp is not in sorted 
-#order or has duplicates
+
 

@@ -1,0 +1,6 @@
+Find a way to clean up old speech extractions when a decoding aborts midway
+That way you don't get this error: 
+  file recognize/speeches/rad20111208T173926/wav.scp is not in sorted order or 
+  has duplicates
+
+when running that audio file again to get the final transcription. 

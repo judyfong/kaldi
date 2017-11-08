@@ -31,7 +31,7 @@ Install pip if you don't already have it.
     >>> nltk.download('punkt')
 
 (7)
-Obtain the existing models in a tar.gz file from the repository owner and save
+Obtain the existing models in a tar.gz file, or as a folder, from the repository owner and save
  them within the althingi/s5 directory.
 The installation instructions are
   ./gitinstall.sh

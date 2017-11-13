@@ -3,8 +3,7 @@ This file assumes this is a fresh install of the repo
   where all you want to do is decode audio files from existing models.
 
 (1)
-Within src/make remove the reference to kaldi threads because the library no longer exists.
-First, run the usual kaldi installations in kaldi/tools and kaldi/src
+Run the usual kaldi installations in kaldi/tools and kaldi/src
 
 (2)
 Modify cmd.sh to run from your local computer or from a cluster

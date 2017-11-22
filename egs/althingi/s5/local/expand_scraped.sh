@@ -8,6 +8,9 @@
 # The scraped texts consist of short utterances so can skip those that are not expanded.
 # Hence I don't have to worry about cleaning the data 100%.
 
+# NOTE! Now I'm mapping OOV words to <word> and re-inserting them again. It is a very slow process and I think it can be skipped
+# Especially since the utterances are so short.
+
 set -o pipefail
 
 nj=100
@@ -33,6 +36,11 @@ infile=$2
 outfile=$3
 dir=$(dirname $infile);
 mkdir -p ${dir}/split$nj/
+
+# I get errors if this script runs on other nodes than terra, hence:
+if ! grep -q "nodelist=terra" conf/slurm.conf ; then
+    sed -r -i 's:(command sbatch .*):\1 --nodelist=terra:' conf/slurm.conf
+fi
 
 if [ $stage -le 1 ]; then
     echo "We want to process it in parallel."
@@ -62,25 +70,26 @@ if [ $stage -le 3 ]; then
     done
 
     # Map words which are not seen in context in numbertexts to <word>
+    source py3env/bin/activate
     utils/slurm.pl JOB=1:$nj ${dir}/split${nj}/log/save-OOVwords.JOB.log python3 local/save_OOVwords.py ${dir}/split${nj}/cleantext.JOB.txt ${dir}/split${nj}/words_jobJOB_only.tmp ${dir}/split${nj}/cleantext_afterWordMapping.JOB.txt ${dir}/split${nj}/mappedWords_jobJOB.txt
     # I get problems if encounter more than one space between words after the thrax step. Temporary fix is this:
     for i in `seq 1 $nj`; do
         sed -r -i 's: (%|‰|\.):\1:g' ${dir}/split${nj}/cleantext_afterWordMapping.${i}.txt
     done
+    deactivate
 fi
 
 if [ $stage -le 4 ]; then
 
     echo "Expand"
-    utils/slurm.pl JOB=1:$nj ${dir}/log/expand-numbers.JOB.log expand-numbers --word-symbol-table=${normdir}/words30.txt ark,t:${dir}/split${nj}/cleantext_afterWordMapping.JOB.txt ${normdir}/expand_to_words30.fst ${normdir}/numbertexts_althingi100_${order}g.fst ark,t:${dir}/split${nj}/text_expanded_${order}g.JOB.txt
+    utils/slurm.pl --mem 4G JOB=1:$nj ${dir}/log/expand-numbers.JOB.log expand-numbers --word-symbol-table=${normdir}/words30.txt ark,t:${dir}/split${nj}/cleantext_afterWordMapping.JOB.txt ${normdir}/expand_to_words30.fst ${normdir}/numbertexts_althingi100_${order}g.fst ark,t:${dir}/split${nj}/text_expanded_${order}g.JOB.txt
 fi
 
 if [ $stage -le 5 ]; then
 
     echo "Insert words back"
-
-    # The following is too slow. Need to fix!
-    utils/slurm.pl JOB=1:$nj ${dir}/log/re-insert-oov.JOB.log local/re-insert-oov.sh ${dir}/split${nj}/text_expanded_${order}g.JOB.txt ${dir}/split${nj}/mappedWords_jobJOB.txt
+    # Too slow!
+    utils/slurm.pl --time 0-16 JOB=1:$nj ${dir}/log/re-insert-oov-short-utt.JOB.log local/re-insert-oov-short-utt.sh ${dir}/split${nj}/text_expanded_${order}g.JOB.txt ${dir}/split${nj}/mappedWords_jobJOB.txt
 fi
 
 if [ $stage -le 6 ]; then
@@ -109,5 +118,8 @@ if [ $stage -le 6 ]; then
 	cut -d" " -f2- ${dir}/split${nj}/text_expanded_${order}g_wOOV.txt > ${outfile}
     fi
 fi
+
+# Change back the slurm config file 
+sed -r -i 's:(command sbatch .*?) --nodelist=terra:\1:' conf/slurm.conf
 
 exit 0;

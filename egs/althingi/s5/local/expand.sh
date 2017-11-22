@@ -31,6 +31,11 @@ outfile=$3
 dir=$(dirname $infile);
 mkdir -p ${dir}/split$nj/
 
+# I get errors if this script runs on other nodes than terra, hence:
+if ! grep -q "nodelist=terra" conf/slurm.conf ; then
+    sed -r -i 's:(command sbatch .*):\1 --nodelist=terra:' conf/slurm.conf
+fi
+
 if [ $stage -le 1 ]; then
     echo "We want to process it in parallel."
     IFS=$' \t\n'
@@ -115,5 +120,8 @@ if [ $stage -le 6 ]; then
 	cp ${dir}/split${nj}/text_expanded_${order}g_wOOV.txt ${outfile}
     fi
 fi
+
+# Change back the slurm config file 
+sed -r -i 's:(command sbatch .*?) --nodelist=terra:\1:' conf/slurm.conf
 
 exit 0;

@@ -107,7 +107,7 @@ if [ $stage -le 4 ]; then
     # Should be unnecessary
     # echo "Analyze the segments and filter based on a words/sec ratio"
     # local/words-per-second.sh data/all_reseg
-    # #local/wps_perSegment_hist.py wps.txt
+    # #local/hist/wps_perSegment_hist.py wps.txt
     
     # Filter away segments with extreme wps
     local/filter_segments.sh ${outdir}_reseg ${outdir}_reseg_filtered
@@ -167,7 +167,9 @@ if [ $stage -le 7 ]; then
         data/lang
 
     # Make the LM training sample, assuming the 2016 data is used for testing
-    cat ${pronDictdir}/scrapedAlthingiTexts_expanded_CS.txt <(grep -v rad2016 data/all/text | cut -d" " -f2-) data/all_okt2017/text data/all_sept2017/text > ${pronDictdir}/LMtexts_expanded_CS.txt
+    #cat ${pronDictdir}/scrapedAlthingiTexts_expanded_CS.txt <(grep -v rad2016 data/all/text | cut -d" " -f2-) > ${pronDictdir}/LMtexts_expanded_CS.txt
+    nohup local/prep_LM_training_data_from_punct_texts.sh # outfile is ${pronDictdir}/LMtext_w_t130_split_on_EOS.txt
+    #cat ${pronDictdir}/t130_131_capitalized_1line.txt <(egrep -v rad2016 data/all/text | cut -d" " -f2-) <(cut -d" " -f2- data/all_okt2017/text) <(cut -d" " -f2-data/all_sept2017/text) > ${pronDictdir}/LMtexts_expanded_CS_okt2017.txt
     
     echo "Preparing a pruned trigram language model"
     mkdir -p data/lang_3gsmall

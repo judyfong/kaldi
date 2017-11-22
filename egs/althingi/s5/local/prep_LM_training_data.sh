@@ -115,17 +115,59 @@ if [ $stage -le 2 ]; then
               -e 's:([0-9]+)\.([0-9]{3})\b\.?:\1\2:g' \
               -e 's:([0-9]{1,2})\.([0-9]{1,2})\b:\1 \2:g' -e 's:([0-9]{1,2})\.([0-9]{1,2})\b\.?:\1 \2 :g' -e 's:([0-9]+)\.([0-9]+%?)\.?:\1 \2 :g' \
               -e 's:\b([0-9]+)([^0-9 ,.])([0-9]):\1 \2 \3:g' -e 's:\b([a-záðéíóúýþæö]+)\.?-?([0-9]+)\b:\1 \2:g' -e 's:\b([0-9,]+%?\.?)-?([a-záðéíóúýþæö]+)\b:\1 \2:g' \
-              -e 's: *%:% :g' -e 's:([°º]) c :\1c :g' -e 's: 0([0-9]): 0 \1:g' \
+              -e 's: +([;!%‰°º²³]):\1:g' -e 's:([°º]) c :\1c :g' -e 's: 0([0-9]): 0 \1:g' \
               -e 's/[^a-záðéíóúýþæö0-9\., %‰°º²³]+//g' -e 's/\b[^ ]*[a-záðéíóúýþæö]+[0-9]+[^ ]*/ /g' -e 's:[0-9]{10,}:<unk>:g' \
 	      -e 's:^\. *::g' -e 's/[[:space:]]+/ /g' | grep -v "^\s*$" > ${dir}/scraped_noPuncts.txt
 
 fi
+#  -e 's:–([^0-9]): \1:g'
 
 if [ $stage -le 3 ]; then
     echo "Expand some abbreviations, incl. 'hv.' and 'þm.'"
-    python3 local/replace_abbr_acro.py ${dir}/scraped_noPuncts.txt ${dir}/scraped_exp1.txt # Switch out for a nicer solution
+    # Start with expanding some abbreviations using regex
+    sed -re 's:\bamk\b:að minnsta kosti:g' \
+	-e 's:\bdr\b:doktor:g' \
+	-e 's:\betv\b:ef til vill:g' \
+	-e 's:\bfrh\b:framhald:g' \
+	-e 's:\bfyrrv\b:fyrrverandi:g' \
+	-e 's:\biðnrh\b:iðnaðarráðherra:g' \
+	-e 's:\bmas\b:meira að segja:g' \
+	-e 's:\bma\b:meðal annars:g' \
+	-e 's:\bmkr\b:millj kr:g' \
+	-e 's:\bnk\b:næstkomandi:g' \
+	-e 's:\bnr\b:númer:g' \
+	-e 's:\bos ?frv\b:og svo framvegis:g' \
+	-e 's:\boþh\b:og þess háttar:g' \
+	-e 's:\bpr\b:per:g' \
+	-e 's:\bsbr\b:samanber:g' \
+	-e 's:\bskv\b:samkvæmt:g' \
+	-e 's:\bss\b:svo sem:g' \
+	-e 's:\bstk\b:stykki:g' \
+	-e 's:\btd\b:til dæmis:g' \
+	-e 's:\btam\b:til að mynda:g' \
+	-e 's:\buþb\b:um það bil:g' \
+	-e 's:\butanrrh\b:utanríkisráðherra:g' \
+	-e 's:\bþáv\b:þáverandi:g' \
+	-e 's:\bþús\b:þúsund:g' \
+	-e 's:\bþeas\b:það er að segja:g' \
+	< ${dir}/scraped_noPuncts.txt > ${dir}/scraped_exp1.txt
+    
+    IFS=$'\n'
+    for var in $(cat text_norm/abbr_acro_as_letters.txt | awk '{ print length, $0 }' | sort -nrs | cut -d" " -f2)
+    do
+	var1=$(echo $var | sed 's/./& /g')
+	sed -i "s/\b$var\b/$var1/g" ${dir}/scraped_exp1.txt
+    done
+    sed -r -i 's/[[:space:]]+/ /g' ${dir}/scraped_exp1.txt
+
+    # Make the regex pattern
+    tr "\n" "|" < text_norm/acronyms_as_words.txt | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > text_norm/acronyms_as_words_pattern.tmp
+
+    # Capitalize 
+    srun sed -r 's:(\b'$(cat text_norm/acronyms_as_words_pattern.tmp)'\b):\U\1:g' ${dir}/scraped_exp1.txt > ${dir}/scraped_exp1_acroCS.txt
+    
     # Use Anna's code
-    python3 local/althingi_replace_plain_text.py ${dir}/scraped_exp1.txt ${dir}/scraped_exp2.txt
+    python3 local/althingi_replace_plain_text.py ${dir}/scraped_exp1_acroCS.txt ${dir}/scraped_exp2.txt
 fi
 
 if [ $stage -le 4 ]; then
@@ -136,7 +178,7 @@ fi
 
 if [ $stage -le 5 ]; then
     echo "Capitalize words in the scraped Althingi texts, that are capitalized in the pron dict"
-    comm -12 <(sed -r 's:.*:\L&:' ${dir}/CaseSensitive_pron_dict_propernouns.txt | sort) <(tr " " "\n" < ${dir}/scraped_expanded_${order}g.txt | egrep -v "^\s*$" | sort -u) > ${dir}/propernouns_scraped_althingi_texts.txt
+    comm -12 <(sed -r 's:.*:\L&:' ${dir}/CaseSensitive_pron_dict_propernouns_plus.txt | sort) <(tr " " "\n" < ${dir}/scraped_expanded_${order}g.txt | egrep -v "^\s*$" | sort -u) > ${dir}/propernouns_scraped_althingi_texts.txt
     # Make the regex pattern
     tr "\n" "|" < ${dir}/propernouns_scraped_althingi_texts.txt | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > ${dir}/propernouns_scraped_althingi_texts_pattern.tmp
 

@@ -49,7 +49,6 @@ text.close()
 text_out.close()
 "
 
-
 echo "Rewrite and remove punctuations that I'm not trying to learn how to restore"
 
 # 1) Remove comments in parentheses and expand "&"
@@ -78,7 +77,7 @@ sed -re 's:\([^/(]*?\): :g' -e 's:&: og :g' \
     -e 's:.*:\L&:g' \
     -e 's:([a-záðéíóúýþæö])-+([a-záðéíóúýþæö]):\1 \2:g' \
     -e 's:\b([0-9]+)([^0-9 ,.–/:])([0-9]):\1 \2 \3:g' -e 's:\b([a-záðéíóúýþæö]+\.?)-?([0-9]+)\b:\1 \2:g' -e 's:\b([0-9,]+%?\.?)-?([a-záðéíóúýþæö]+)\b:\1 \2:g' \
-    -e 's: *%:% :g' -e 's:([°º]) c :\1c :g' \
+    -e 's: +([;!%‰°º²³]):\1:g' -e 's:([°º]) c :\1c :g' -e 's: 0([0-9]): 0 \1:g' \
     -e 's:—|­| |-: :g' -e 's:^\. *::g' \
     -e 's/[[:space:]]+/ /g' ${dir}/noRoman.tmp \
     | egrep -v "\(|\)" | egrep -v "^\s*$"  > ${dir}/noPunct.tmp
@@ -92,14 +91,14 @@ sed -r "s:(\b$(cat ${dir}/abbr_lex_pattern.tmp))\.:\1:g" ${dir}/noPunct.tmp > ${
 
 
 echo "Capitalize words in the scraped Althingi texts, that are capitalized in the pron dict"
-comm -12 <(sed -r 's:.*:\L&:' ${prondir}/CaseSensitive_pron_dict_propernouns.txt | sort) <(tr " " "\n" < ${dir}/noAbbrPeriods.tmp | sed -re 's/[^a-záðéíóúýþæö]+//g'| egrep -v "^\s*$" | sort -u) > ${dir}/propernouns_scraped_althingi_texts.txt
+comm -12 <(sed -r 's:.*:\L&:' ${prondir}/CaseSensitive_pron_dict_propernouns_plus.txt | sort) <(tr " " "\n" < ${dir}/noAbbrPeriods.tmp | sed -re 's/[^a-záðéíóúýþæö]+//g'| egrep -v "^\s*$" | sort -u) > ${dir}/propernouns_scraped_althingi_texts.txt
 # Make the regex pattern
 tr "\n" "|" < ${dir}/propernouns_scraped_althingi_texts.txt | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > ${dir}/propernouns_scraped_althingi_texts_pattern.tmp
 
 # Capitalize
-srun sed -r "s:(\b$(cat ${dir}/propernouns_scraped_althingi_texts_pattern.tmp)\b):\u\1:g" ${dir}/noAbbrPeriods.tmp > ${dir}/capitalized.tmp
+srun sed -r "s:(\b$(cat ${dir}/propernouns_scraped_althingi_texts_pattern.tmp)\b):\u\1:g" ${dir}/noAbbrPeriods.tmp > ${out}
 
 # Remove the arbitrary newline. Make 20 line long groups.
-tr "\n" " " < ${dir}/capitalized.tmp | sed -r 's:([A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö])([\.?!]) :\1\2\n:g' | awk 'ORS=NR%20?" ":"\n"' > ${out}
+#tr "\n" " " < ${dir}/capitalized.tmp | sed -r 's:([A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö])([\.?!]) :\1\2\n:g' | awk 'ORS=NR%20?" ":"\n"' > ${out}
 
 exit 0

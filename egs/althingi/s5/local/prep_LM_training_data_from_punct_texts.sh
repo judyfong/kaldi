@@ -64,7 +64,9 @@ python3 local/replace_abbr_acro.py ${outdir}/LMtext_noPuncts.txt ${outdir}/LMtex
 # Use Anna's code
 python3 local/althingi_replace_plain_text.py ${outdir}/LMtext_exp1.txt ${outdir}/LMtext_exp2.txt
 
-# Split lines on an EOS marker
-sed -re 's:([A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö]|[0-9]{4,}|[%‰°º²³])([\.?!]+)( |$):\1\n:g' -e 's/[[:space:]]+/ /g' < ${outdir}/LMtext_exp2.txt | grep -v "^\s*$" > ${outfile}
+# Split lines on an EOS marker, remove " ... " and
+# split on "bla.[.?]", "bla . bla" and "bla .. bla"
+# change spaces to one between words and remove empty lines.
+sed -re 's:([A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö]|[0-9]{4,}|[%‰°º²³])([\.?!]+)( |$):\1\n:g' < ${outdir}/LMtext_exp2.txt | sed -re 's/ +\.\.\. +/ /g' -e $'s/ *\.[\.\?]? +/\\\n/g' -e 's/[[:space:]]+/ /g' | grep -v "^\s*$" > ${outfile}
 
 

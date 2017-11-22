@@ -89,6 +89,8 @@ tmp
 /egs/*/s*/exp100
 /egs/*/s*/text_norm/*
 !/egs/*/s*/text_norm/acronyms.txt
+!/egs/*/s*/text_norm/abbr_acro_as_letters.txt
+!/egs/*/s*/text_norm/acronyms_as_words.txt
 !/egs/*/s*/text_norm/utf8.syms
 !/egs/*/s*/text_norm/ABBREVIATE.fst
 /egs/*/s*/recognize/*

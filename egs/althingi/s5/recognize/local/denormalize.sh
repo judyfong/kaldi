@@ -15,7 +15,7 @@ set -o pipefail
 ifile=$1
 ofile=$2
 dir=$(dirname $(readlink -f $ifile))
-utf8syms=/data/althingi/utf8.syms
+utf8syms=text_norm/utf8.syms
 
 echo "Abbreviate"
 # Numbers are not in the words.txt file. Hence I can't compose with an utf8-to-words.fst file.
@@ -30,7 +30,7 @@ sed -i -r "s:\b([^ ]+) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r))\b:\u\
 echo "Collapse acronyms pronounced as letters"
 # Collapse first the longest acronyms, in case they contain smaller ones.
 IFS=$'\n'
-for var in $(cat data/acronyms.txt | awk '{ print length, $0 }' | sort -nrs | cut -d" " -f2)
+for var in $(cat text_norm/acronyms.txt | awk '{ print length, $0 }' | sort -nrs | cut -d" " -f2)
 do
     var1=$(echo $var | sed 's/./& /g' | sed -e 's/ +$//')
     sed -i "s/ $var1/ \U$var /g" ${dir}/thrax_out_words.tmp
@@ -45,10 +45,10 @@ echo "Rewrite"
 # 7-9) Rewrite decimal numbers
 # 10) Rewrite f.ex. "4 and half" to "4,5"
 # 11) Remove space in front of °, % and ‰
-# 12) Rewrite website names
-# 13) Rewrite "and or" as "and/or"
-# 14) Add a hyphen in f.ex. allsherjar- og menntamálanefnd
-# 15) Abbreviate "doktor" if followed by a proper name
+# 12-13) Rewrite website names
+# 14) Rewrite "and or" as "and/or"
+# 15) Add a hyphen in f.ex. allsherjar- og menntamálanefnd
+# 16) Abbreviate "doktor" if followed by a proper name
 sed -re "s/[[:space:]]\+/ /g" \
     -e 's:([0-9]+) (frá )?([0-9]+) (EBE|EB|ESB):\1/\3/\4:g' \
     -e 's:nr ([0-9]+) (frá )?([0-9]+):nr \1/\3:g' \
@@ -59,7 +59,8 @@ sed -re "s/[[:space:]]\+/ /g" \
     -e 's:([0-9]+,[0-9]+) ([0-9]{1,2}[^,]):\1\2:g' \
     -e 's:([0-9]+) og hálf[^ ]*:\1,5:g' \
     -e 's: ([°%‰]):\1:g' \
-    -e 's:([[:alnum:]]+) punktur (is|net|com):\1.\2:g' \
+    -e 's:h t t p s:https:g' -e 's:h t t p:http:g' \
+    -e 's:(https?) w w w ([[:alnum:]]+) punktur (is|net|com):\1\://www\.\2.\3:g' -e 's:w w w ([[:alnum:]]+) punktur (is|net|com):www\.\1.\2:g' -e 's:([[:alnum:]]+) punktur (is|net|com):\1.\2:g' \
     -e 's:og eða:og/eða:g' \
     -e 's:([^ ]+)( og [^ ]+nefnd):\1-\2:g' \
     -e 's:doktor ([A-ZÁÉÍÓÚÝÞÆÖ]):dr\. \1:g' \

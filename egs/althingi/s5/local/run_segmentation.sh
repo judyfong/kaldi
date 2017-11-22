@@ -52,12 +52,12 @@ steps/cleanup/make_segmentation_graph.sh \
 
 echo "Decode segmentation"
 steps/cleanup/decode_segmentation.sh \
-  --nj 85 --cmd "$decode_cmd --time 0-12" --skip-scoring true \
+  --nj 300 --cmd "$decode_cmd --time 0-12" --skip-scoring true \
   ${modeldir}/graph_${base}_split \
   ${datadir}_split ${modeldir}/decode_${base}_split || exit 1;
 
-echo "Get CTM"
-steps/get_ctm.sh --cmd "$decode_cmd  --time 0-12" ${datadir}_split \
+echo "Get CTM, changed so that it only uses LMWT 10"
+local/get_ctm_one_score.sh --cmd "$decode_cmd --time 0-12" ${datadir}_split \
   ${modeldir}/graph_${base}_split ${modeldir}/decode_${base}_split
 
 echo "Make segmentation data dir"

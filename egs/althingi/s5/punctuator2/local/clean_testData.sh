@@ -88,7 +88,7 @@ sed -re 's:\([^/(]*?\): :g' -e 's:&: og :g' \
     -e 's:.*:\L&:g' \
     -e 's:([a-záðéíóúýþæö])-+([a-záðéíóúýþæö]):\1 \2:g' \
     -e 's:\b([0-9]+)([^0-9 ,.–/:])([0-9]):\1 \2 \3:g' -e 's:\b([a-záðéíóúýþæö]+\.?)-?([0-9]+)\b:\1 \2:g' -e 's:\b([0-9,]+%?\.?)-?([a-záðéíóúýþæö]+)\b:\1 \2:g' \
-    -e 's: *%:% :g' -e 's:([°º]) c :\1c :g' \
+    -e 's: +([;!%‰°º²³]):\1:g' -e 's:([°º]) c :\1c :g' -e 's: 0([0-9]): 0 \1:g' \
     -e 's:—|­| |-: :g' -e 's:^\. *::g' \
     -e 's/[[:space:]]+/ /g' ${dir}/noRoman.tmp \
     | egrep -v "\(|\)" | egrep -v "^\s*$"  > ${dir}/noPunct.tmp
@@ -101,7 +101,7 @@ sort -u ${dir}/abbr_lex.tmp | tr "\n" "|" | sed '$s/|$//' | perl -pe "s:\|:\\\b\
 sed -r "s:(\b$(cat ${dir}/abbr_lex_pattern.tmp))\.:\1:g" ${dir}/noPunct.tmp > ${dir}/noAbbrPeriods.tmp
 
 echo "Capitalize words in the Althingi texts, that are capitalized in the pron dict"
-comm -12 <(sed -r 's:.*:\L&:' ${prondir}/CaseSensitive_pron_dict_propernouns.txt | sort) <(tr " " "\n" < ${dir}/noAbbrPeriods.tmp | sed -re 's/[^a-záðéíóúýþæö]+//g'| egrep -v "^\s*$" | sort -u) > ${dir}/propernouns_althingi_texts.txt
+comm -12 <(sed -r 's:.*:\L&:' ${prondir}/CaseSensitive_pron_dict_propernouns_plus.txt | sort) <(tr " " "\n" < ${dir}/noAbbrPeriods.tmp | sed -re 's/[^a-záðéíóúýþæö]+//g'| egrep -v "^\s*$" | sort -u) > ${dir}/propernouns_althingi_texts.txt
 # Make the regex pattern
 tr "\n" "|" < ${dir}/propernouns_althingi_texts.txt | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > ${dir}/propernouns_althingi_texts_pattern.tmp
 

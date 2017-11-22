@@ -225,7 +225,7 @@ if [ $stage -le 4 ]; then
     # 2) Rewrite time,
     # 3) Change "&amp;" to "og"
     # 4-5) Remove punctuations which is safe to remove
-    # 6) Remove "ja" from numbers written like "22ja"
+    # 6) Remove "ja" from numbers written like "22ja",
     # 7) Rewrite [ck]?m[23] to [ck]?m[²³] and "kV" to "kw"
     # 8) Add missing space between sentences and fix spelling errors like "be4stu" and "o0g",
     # 9) Rewrite website names,
@@ -242,7 +242,8 @@ if [ $stage -le 4 ]; then
     # 20) Rewrite chapter and clause numbers and time and remove remaining periods between numbers, f.ex. "ákvæði 2.1.3" to "ákvæði 2 1 3" and "kl 15.30" to "kl 15 30",
     # 21) Add spaces between letters and numbers in alpha-numeric words (Example:1st: "4x4", 2nd: f.ex. "bla.3. júlí", 3rd: "1.-bekk."
     # 22) Fix spacing around % and degrees celsius and add space in a number starting with a zero
-    # 23) Remove remaining punctuations (leaving the utt filenames intact) and weird words and fix spacing
+    # 23) Remove "lauk á fyrri spólu"
+    # 24) Remove remaining punctuations (leaving the utt filenames intact) and weird words and fix spacing
     for n in bb endanlegt; do
         sed -re 's:\[(Þingmenn risu úr sætum[^]]*?)|(Strengjakvartett flutti lagið[^]]*?)\]: :g' \
             -e 's/([0-9]):([0-9][0-9])/\1 \2/g' \
@@ -268,17 +269,64 @@ if [ $stage -le 4 ]; then
                   -e 's:([0-9]{1,2})\.([0-9]{1,2})\b:\1 \2:g' -e 's:([0-9]{1,2})\.([0-9]{1,2})\b\.?:\1 \2 :g' -e 's:([0-9]+)\.([0-9]+%?)\.?:\1 \2 :g' \
                   -e 's:( [0-9]+)([^0-9 ,.])([0-9]):\1 \2 \3:g' -e 's:( [a-záðéíóúýþæö]+)\.?-?([0-9]+)\b:\1 \2:g' -e 's:(^| )([0-9,]+%?\.?)-?([a-záðéíóúýþæö]+)\b:\1\2 \3:g' \
                   -e 's: *%:% :g' -e 's:([°º]) c :\1c :g' -e 's: 0([0-9]): 0 \1:g' \
-                  -e 's/[^a-záðéíóúýþæö0-9\., %‰°º²³T]+//g' -e 's/ [^ ]*[a-záðéíóúýþæö]+[0-9]+[^ ]*/ /g' -e 's/[[:space:]]+/ /g' \
+		  -e 's:lauk á (f|fyrri) ?sp.*::' \
+                  -e 's/[^a-záðéíóúýþæö0-9\., %‰°º²³T]+//g' -e 's/ [^ ]*[a-záðéíóúýþæö]+[0-9]+[^ ]*/ /g' -e 's:[0-9]{10,}:<unk>:g' -e 's/[[:space:]]+/ /g' \
                   > ${outdir}/text_noPuncts_${n}.txt
     done
 fi
 
 if [ $stage -le 5 ]; then
-    echo "Expand some abbreviations, incl. 'hv.' and 'þm.'"
+    echo "Expand some abbreviations, incl. 'hv.' and 'þm.' in certain circumstances"
     for n in bb endanlegt; do
-	python3 local/replace_abbr_acro.py ${outdir}/text_noPuncts_${n}.txt ${outdir}/text_exp1_${n}.txt # Switch out for a nicer solution
-	# Use Anna's code
-	python3 local/althingi_replace_plain_text.py ${outdir}/text_exp1_${n}.txt ${outdir}/text_exp2_${n}.txt
+	# Start with expanding some abbreviations using regex
+        sed -re 's:\bamk\b:að minnsta kosti:g' \
+	    -e 's:\bdr\b:doktor:g' \
+	    -e 's:\betv\b:ef til vill:g' \
+	    -e 's:\bfrh\b:framhald:g' \
+	    -e 's:\bfyrrv\b:fyrrverandi:g' \
+	    -e 's:\biðnrh\b:iðnaðarráðherra:g' \
+	    -e 's:\bmas\b:meira að segja:g' \
+	    -e 's:\bma\b:meðal annars:g' \
+	    -e 's:\bmkr\b:millj kr:g' \
+	    -e 's:\bnk\b:næstkomandi:g' \
+	    -e 's:\bnr\b:númer:g' \
+	    -e 's:\bnúv\b:núverandi:g' \
+	    -e 's:\bo ?s ?frv\b:og svo framvegis:g' \
+	    -e 's:\boþh\b:og þess háttar:g' \
+	    -e 's:\bpr\b:per:g' \
+	    -e 's:\bsbr\b:samanber:g' \
+	    -e 's:\bskv\b:samkvæmt:g' \
+	    -e 's:\bss\b:svo sem:g' \
+	    -e 's:\bstk\b:stykki:g' \
+	    -e 's:\btd\b:til dæmis:g' \
+	    -e 's:\btam\b:til að mynda:g' \
+	    -e 's:\buþb\b:um það bil:g' \
+	    -e 's:\butanrrh\b:utanríkisráðherra:g' \
+	    -e 's:\bþáv\b:þáverandi:g' \
+	    -e 's:\bþús\b:þúsund:g' \
+	    -e 's:\bþeas\b:það er að segja:g' \
+	    < ${outdir}/text_noPuncts_${n}.txt > ${outdir}/text_exp1_${n}.txt
+    done
+       
+    for n in bb endanlegt; do
+        # Add spaces into acronyms pronounced as letters
+	IFS=$'\n'
+        for var in $(cat text_norm/abbr_acro_as_letters.txt | awk '{ print length, $0 }' | sort -nrs | cut -d" " -f2)
+        do
+	    var1=$(echo $var | sed 's/./& /g')
+	    sed -i "s/\b$var\b/$var1/g" ${outdir}/text_exp1_${n}.txt
+        done
+        sed -r -i 's/[[:space:]]+/ /g' ${outdir}/text_exp1_${n}.txt
+
+        # Capitalize acronyms which are pronounced as words
+        # Make the regex pattern
+        tr "\n" "|" < text_norm/acronyms_as_words.txt | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > text_norm/acronyms_as_words_pattern.tmp
+
+         # Capitalize 
+         srun sed -r 's:(\b'$(cat text_norm/acronyms_as_words_pattern.tmp)'\b):\U\1:g' ${outdir}/text_exp1_${n}.txt > ${outdir}/text_exp1_${n}_acroCS.txt
+	
+	# Use Anna's code to expand many instances of hv, þm og hæstv
+	python3 local/althingi_replace_plain_text.py ${outdir}/text_exp1_${n}_acroCS.txt ${outdir}/text_exp2_${n}.txt
     done
 fi
 

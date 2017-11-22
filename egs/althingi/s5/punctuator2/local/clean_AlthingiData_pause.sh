@@ -120,16 +120,57 @@ echo "Remove periods after abbreviations"
 sed -r "s:(\b$(cat ${dir}/abbr_lex_pattern.tmp))\.:\1:g" ${dir}/noPunct.tmp > ${dir}/noAbbrPeriods.tmp
 
 echo "Expand abbreviations that expand to more than one word (to match the pause annotated segments better)"
-python3 local/replace_abbr_acro.py ${dir}/noAbbrPeriods.tmp ${dir}/pause_text_exp1.tmp # Switch out for a nicer solution
-python3 local/althingi_replace_plain_text.py ${dir}/pause_text_exp1.tmp ${dir}/pause_text_exp2.tmp
+# Start with expanding some abbreviations using regex
+sed -re 's:\bamk\b:að minnsta kosti:g' \
+    -e 's:\bdr\b:doktor:g' \
+    -e 's:\betv\b:ef til vill:g' \
+    -e 's:\bfrh\b:framhald:g' \
+    -e 's:\bfyrrv\b:fyrrverandi:g' \
+    -e 's:\biðnrh\b:iðnaðarráðherra:g' \
+    -e 's:\bmas\b:meira að segja:g' \
+    -e 's:\bma\b:meðal annars:g' \
+    -e 's:\bmkr\b:millj kr:g' \
+    -e 's:\bnk\b:næstkomandi:g' \
+    -e 's:\bnr\b:númer:g' \
+    -e 's:\bos ?frv\b:og svo framvegis:g' \
+    -e 's:\boþh\b:og þess háttar:g' \
+    -e 's:\bpr\b:per:g' \
+    -e 's:\bsbr\b:samanber:g' \
+    -e 's:\bskv\b:samkvæmt:g' \
+    -e 's:\bss\b:svo sem:g' \
+    -e 's:\bstk\b:stykki:g' \
+    -e 's:\btd\b:til dæmis:g' \
+    -e 's:\btam\b:til að mynda:g' \
+    -e 's:\buþb\b:um það bil:g' \
+    -e 's:\butanrrh\b:utanríkisráðherra:g' \
+    -e 's:\bþáv\b:þáverandi:g' \
+    -e 's:\bþús\b:þúsund:g' \
+    -e 's:\bþeas\b:það er að segja:g' \
+    < ${dir}/noAbbrPeriods.tmp > ${dir}/pause_text_exp1.tmp
+
+IFS=$'\n'
+for var in $(cat text_norm/abbr_acro_as_letters.txt | awk '{ print length, $0 }' | sort -nrs | cut -d" " -f2)
+do
+    var1=$(echo $var | sed 's/./& /g')
+    sed -i "s/\b$var\b/$var1/g" ${dir}/pause_text_exp1.tmp
+done
+sed -r -i 's/[[:space:]]+/ /g' ${dir}/pause_text_exp1.tmp
+
+# Make the regex pattern
+tr "\n" "|" < text_norm/acronyms_as_words.txt | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > text_norm/acronyms_as_words_pattern.tmp
+
+# Capitalize 
+srun sed -r 's:(\b'$(cat text_norm/acronyms_as_words_pattern.tmp)'\b):\U\1:g' ${dir}/pause_text_exp1.tmp > ${dir}/pause_text_exp1_acroCS.tmp
+
+python3 local/althingi_replace_plain_text.py ${dir}/pause_text_exp1_acroCS.tmp ${dir}/pause_text_exp2.tmp
 sed -re "s:\bofl\b:og fleira:g" -e "s:\bþe\b:það er:g" -e "s:\bþmt\b:þar með talið:g" \
     -e "s:\bdkr\b:danskar krónur:g" -e "s:\bnkr\b:norskar krónur:g" -e "s:\bskr\b:sænskar krónur:g" \
     < ${dir}/pause_text_exp2.tmp > ${dir}/pause_text_exp3.tmp
 
-# echo "Capitalize words in the scraped Althingi texts, that are capitalized in the pron dict"
-# comm -12 <(sed -r 's:.*:\L&:' ${prondir}/CaseSensitive_pron_dict_propernouns.txt | sort) <(tr " " "\n" < ${dir}/noAbbrPeriods.tmp | sed -re 's/[^a-záðéíóúýþæö]+//g'| egrep -v "^\s*$" | sort -u) > ${dir}/propernouns_althingi_texts.txt
-# # Make the regex pattern
-# tr "\n" "|" < ${dir}/propernouns_althingi_texts.txt | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > ${dir}/propernouns_althingi_texts_pattern.tmp
+# echo "Capitalize words in the texts, that are capitalized in the pron dict"
+comm -12 <(sed -r 's:.*:\L&:' ${prondir}/CaseSensitive_pron_dict_propernouns_plus.txt | sort) <(tr " " "\n" < ${dir}/pause_text_exp3.tmp | sed -re 's/[^a-záðéíóúýþæö]+//g'| egrep -v "^\s*$" | sort -u) > ${dir}/propernouns_althingi_texts.txt
+# Make the regex pattern
+tr "\n" "|" < ${dir}/propernouns_althingi_texts.txt | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > ${dir}/propernouns_althingi_texts_pattern.tmp
 
 # Capitalize
 srun sed -r "s:(\b$(cat ${dir}/propernouns_althingi_texts_pattern.tmp)\b):\u\1:g" ${dir}/pause_text_exp3.tmp > $out

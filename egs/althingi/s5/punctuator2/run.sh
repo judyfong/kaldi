@@ -3,6 +3,7 @@
 set -o pipefail
 
 # Run from the punctuator2 dir
+source theano-env/bin/activate # Activate the python virtual environment
 
 data=~/data/althingi/postprocessing
 mkdir -p $data
@@ -15,8 +16,9 @@ out_second_stage=example/second_stage
 rm -rf $out
 mkdir $out
 
-#echo "Clean the scraped data"
+echo "Clean the scraped data"
 #nohup local/clean_scrapedAlthingiData.sh ${data}/../pronDict_LM/wp_lang.txt ${data}/scrapedTexts_clean_for_punct_restoring.txt &>log/clean_scraped.log &
+nohup local/clean_scrapedAlthingiData.sh ${data}/../pronDict_LM/t131.txt ${data}/t131_clean_for_punct_restoring.txt &>log/clean_t131.log &
 
 echo "Clean the 2005-2015 althingi data and combine with the scraped data"
 nohup local/clean_trainAlthingiData.sh <(grep -v rad2016 ../data/all/text_orig_endanlegt.txt) ${data}/texts05-15_clean_for_punct_restoring.txt &>log/clean_nov2016_train.log &

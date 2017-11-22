@@ -3,6 +3,7 @@
 set -o pipefail
 
 # Run from the punctuator2 dir
+source theano-env/bin/activate # Activate the python virtual environment
 
 data=~/data/althingi/postprocessing
 mkdir -p $data
@@ -11,8 +12,8 @@ out=example/first_stage_okt17
 rm -rf $out
 mkdir $out
 
-#echo "Clean the scraped data"
-#local/clean_scrapedAlthingiData.sh ${data}/../pronDict_LM/wp_lang.txt ${data}/scrapedTexts_clean_for_punct_restoring.txt
+echo "Clean the scraped data"
+nohup local/clean_scrapedAlthingiData.sh ${data}/../pronDict_LM/t131.txt ${data}/t131_clean_for_punct_restoring.txt &>log/clean_t131.log &
 
 echo "Clean the 2005-2015 althingi data and combine with the scraped data"
 nohup local/clean_trainAlthingiData.sh <(grep -v rad2016 ../data/all/text_orig_endanlegt.txt) ${data}/texts05-15_clean_for_punct_restoring.txt &>log/clean_nov2016_train.log &
@@ -51,14 +52,14 @@ echo "Preprocessing done."
 ##################
 
 echo "Convert data"
-#srun --mem 12G --time 0-12:00 python data.py ${out} &> data.log &
+#srun --mem 12G --time 0-12:00 python data.py ${out} &> log/data.log &
 srun --mem 12G --time 0-12:00 python data.py ${out_first_stage} ${out_second_stage} &> log/data.log &
 
 echo "Train the model using first stage data"
-srun --gres gpu:1 --mem 12G --time 0-12:00 sh -c "python main.py althingi 256 0.02" &> log/first_stage.log &
+srun --gres gpu:1 --mem 12G --time 0-12:00 python main.py althingi 256 0.02 &> log/first_stage.log &
 
 echo "Train the second stage"
-srun --gres gpu:1 --mem 12G --time 0-12:00 sh -c "python main2.py althingi 256 0.02 /home/staff/inga/kaldi/egs/althingi/s5/punctuator2" &> log/second_stage.log &
+srun --gres gpu:1 --mem 12G --time 0-12:00 python main2.py althingi 256 0.02 /home/staff/inga/kaldi/egs/althingi/s5/punctuator2 &> log/second_stage.log &
 
 # Punctuate the dev and test sets using the first stage model
 srun --nodelist=terra sh -c "cat ${out}/althingi.dev.txt | THEANO_FLAGS='device=cpu' python punctuator.py Model_althingi_h256_lr0.02.pcl ${out}/dev_punctuated_stage1.txt &>${out}/dev_punctuated_stage1.log" &

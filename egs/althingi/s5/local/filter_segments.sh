@@ -19,12 +19,13 @@ dir=$1
 newdir=$2
 mkdir -p $newdir
 
-for s in spk2utt text utt2spk wav.scp wps_stats.txt wps.txt; do
+#for s in spk2utt text utt2spk wav.scp wps_stats.txt wps.txt; do
+for s in spk2utt text utt2spk wav.scp wps.txt; do
   [ ! -e ${newdir}/$s ] && cp -r ${dir}/$s ${newdir}/$s
 done
 
 # Filter using constant values
-awk -F" " '{if ($1 > 0.4 && $1 < 5.5) print;}' < wps.txt > ${newdir}/wps_filtered.txt
+awk -F" " '{if ($1 > 0.4 && $1 < 5.5) print;}' < ${newdir}/wps.txt > ${newdir}/wps_filtered.txt
 
 # Filter the segments
 join -1 1 -2 1 <(cut -d" " -f2 ${newdir}/wps_filtered.txt | sort) <(sort ${dir}/segments) | LC_ALL=C sort > ${newdir}/segments

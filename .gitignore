@@ -64,6 +64,7 @@ GSYMS
 
 # Temporary files
 *.tmp
+tmp
 
 # Punctuator model file
 *.pcl
@@ -86,7 +87,10 @@ GSYMS
 /egs/*/s*/exp
 /egs/*/s*/data
 /egs/*/s*/exp100
-/egs/*/s*/text_norm
+/egs/*/s*/text_norm/*
+!/egs/*/s*/text_norm/acronyms.txt
+!/egs/*/s*/text_norm/utf8.syms
+!/egs/*/s*/text_norm/ABBREVIATE.fst
 /egs/*/s*/recognize/*
 !/egs/*/s*/recognize/local
 /egs/*/s*/py3env

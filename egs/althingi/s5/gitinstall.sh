@@ -13,8 +13,10 @@
 . path.sh
 
 stage=-1
-corpus_zip=./decodeinstall/tungutaekni.tar.gz
-datadir=data/local/corpus
+#corpus_zip=./decodeinstall/tungutaekni.tar.gz
+# The corpora is in /data/althingi/{corpus_nov2016,corpus_sept2017,corpus_okt2017}
+
+#datadir=/data/althingi
 
 rm steps
 rm utils
@@ -30,7 +32,7 @@ ln -s $KALDI_ROOT/egs/althingi/s5/punctuator2/theano-env/lib punctuator2/theano-
 #Make folders if they don't exist
 
 #Chain LSTM model
-cp -r decodeinstall/chain/exp/chain  exp/chain
+cp -r decodeinstall/exp  exp
 #exp/chain/tdnn_lstm_1e_sp/graph_3gsmall
 #exp/chain/tdnn_lstm_1e_sp/lang_3gsmall
 #exp/chain/tdnn_lstm_1e_sp/lang_5g
@@ -38,16 +40,15 @@ cp -r decodeinstall/chain/exp/chain  exp/chain
 #exp/chain/tdnn_lstm_1e_sp/final.ie.id
 #exp/chain/tdnn_lstm_1e_sp/cmvn_opts
 #exp/chain/tdnn_lstm_1e_sp/frame_subsampling_factor
-cp -r decodeinstall/chain/data data
-cp -r decodeinstall/chain/data/acronyms.txt data/acronyms.txt
+cp -r decodeinstall/data data
 #data/lang_3gsmall
 #data/lang_5g
 
 #Assuming that the LMs etc have been saved to decodeinstall
 #Copy the files to the correct locations as dictated by the recognize.sh script
-cp decodeinstall/utf8.syms utf8.syms
-cp -r decodeinstall/text_norm/ABBREVIATE.fst text_norm/ABBREVIATE.fst
+cp -r decodeinstall/text_norm/INS_PERIODS.fst text_norm/INS_PERIODS.fst
 cp -r decodeinstall/punctuator2 punctuator2
+
 #cp decodeinstall/lang_bd data/lang_bd
 #cp decodeinstall/lang_tg_bd_023pruned data/lang_tg_bd_023pruned
 #cp decodeinstall/graph_tg_bd_023pruned exp/tri3/graph_tg_bd_023pruned
@@ -113,5 +114,5 @@ fi
 
 echo "Some of the audio files from 2005 still aborts at the making features step due to being unable to find some folders and files i.e. rad20051001T141205.mp3 or new 2017 ones"
 
-
-
+# rad20051001T141205.mp3 does not exist in my data
+# I also don't have any files from 2017. We tested on files from 2017 but I don't have them in my data

@@ -17,16 +17,12 @@ Modify cmd.sh to run from your local computer or from a cluster
 Modify path.sh to use the relevant paths
 
 (4)
-Change the location of utf8.syms table in recognize/local/denormalize.sh to the
- althingi/s5 directory
-
-(5)
 In recognize/local/denormalize.sh remove the command, 'srun' if running locally,
  from the line after this line: echo "Extract the numbers before punctuation"
  and from Punctuate and Reinserting numbers. Basically remove srun if you're 
  not running from a slurm configuration.
 
-(6)
+(5)
 Install KenLM and all dependencies to opt /opt/kenlm/build/bin/lmplz
 Install pip if you don't already have it.
  Install python package: nltk
@@ -34,7 +30,7 @@ Install pip if you don't already have it.
     >>> import nltk
     >>> nltk.download('punkt')
 
-(7)
+(6)
 Obtain the existing models in a tar.gz file, or as a folder, from the repository owner and save
  them within the althingi/s5 directory.
 The installation instructions are

@@ -6,6 +6,11 @@ This file assumes this is a fresh install of the repo
 Run the usual kaldi installations in kaldi/tools and kaldi/src
 
 (2)
+Make sure to install the necessary external tools mentioned on kaldi/egs/althingi/README.md
+
+sudo pip install Theano
+
+(2)
 Modify cmd.sh to run from your local computer or from a cluster
 
 (3)
@@ -34,5 +39,3 @@ Obtain the existing models in a tar.gz file, or as a folder, from the repository
  them within the althingi/s5 directory.
 The installation instructions are
   ./gitinstall.sh
-
-

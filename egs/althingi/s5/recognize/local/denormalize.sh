@@ -91,11 +91,11 @@ deactivate
 echo "Convert punctuation tokens back to actual punctuations and capitalize"
 # Convert punctuation tokens back to actual punctuations
 # Remove space before [°%‰] and in <unk>
-# Capitalize sentence beginnings
+# Capitalize sentence beginnings and the first word in the speech
 # Fix kl/klst and kr./kíló
 sed -re 's/ \.PERIOD/./g; s/ \?QUESTIONMARK/?/g; s/ !EXCLAMATIONMARK/!/g; s/ ,COMMA/,/g; s/ :COLON/:/g' \
     -e 's: ([°%‰]):\1:g' -e 's:< unk >:<unk>:g' \
-    -e 's/([^0-9]\.|\?|:|!) ([a-záðéíóúýþæö])/\1 \u\2/g' -e 's/([0-9]{4,}[\.:?!]) ([a-záðéíóúýþæö])/\1 \u\2/g' \
+    -e 's/([^0-9]\.|\?|:|!) ([a-záðéíóúýþæö])/\1 \u\2/g' -e 's/([0-9]{4,}[\.:?!]) ([a-záðéíóúýþæö])/\1 \u\2/g' -e 's:^([a-záéíóúýþæö]):\u\1:' \
     -e 's:([0-9]+) km á klukkustund:\1 km/klst.:g' -e 's:([0-9]+) kr á kíló[^m ]* ?:\1 kr./kg :g' \
     ${dir}/punctuator_out_wNumbers.tmp > ${dir}/punctuator_out_wPuncts.tmp
 

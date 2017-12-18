@@ -93,6 +93,7 @@ tmp
 !/egs/*/s*/text_norm/acronyms_as_words.txt
 !/egs/*/s*/text_norm/utf8.syms
 !/egs/*/s*/text_norm/ABBREVIATE.fst
+!/egs/*/s*/text_norm/INS_PERIODS.fst
 /egs/*/s*/recognize/*
 !/egs/*/s*/recognize/local
 /egs/*/s*/py3env

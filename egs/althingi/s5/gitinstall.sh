@@ -18,16 +18,11 @@ stage=-1
 
 #datadir=/data/althingi
 
-rm steps
-rm utils
-rm punctuator2/theano-env/local/bin
-rm punctuator2/theano-env/local/include
-rm punctuator2/theano-env/local/lib
-ln -s ../../wsj/s5/utils utils
-ln -s ../../wsj/s5/steps steps
-ln -s $KALDI_ROOT/egs/althingi/s5/punctuator2/theano-env/bin punctuator2/theano-env/local/bin
-ln -s $KALDI_ROOT/egs/althingi/s5/punctuator2/theano-env/include punctuator2/theano-env/local/include
-ln -s $KALDI_ROOT/egs/althingi/s5/punctuator2/theano-env/lib punctuator2/theano-env/local/lib
+ln -sfn ../../wsj/s5/utils utils
+ln -sfn ../../wsj/s5/steps steps
+ln -sfn $KALDI_ROOT/egs/althingi/s5/punctuator2/theano-env/bin punctuator2/theano-env/local/bin
+ln -sfn $KALDI_ROOT/egs/althingi/s5/punctuator2/theano-env/include punctuator2/theano-env/local/include
+ln -sfn $KALDI_ROOT/egs/althingi/s5/punctuator2/theano-env/lib punctuator2/theano-env/local/lib
 
 #Make folders if they don't exist
 
@@ -46,7 +41,8 @@ cp -r decodeinstall/data data
 
 #Assuming that the LMs etc have been saved to decodeinstall
 #Copy the files to the correct locations as dictated by the recognize.sh script
-cp -r decodeinstall/text_norm/INS_PERIODS.fst text_norm/INS_PERIODS.fst
+#Temporary ABBREVIATE measure until the version controlled fst is no longer corrupt
+cp -r decodeinstall/text_norm/ABBREVIATE.fst text_norm/ABBREVIATE.fst
 cp -r decodeinstall/punctuator2 punctuator2
 
 #cp decodeinstall/lang_bd data/lang_bd
@@ -112,7 +108,4 @@ if [ $stage -le -0 ]; then
     rm ${datadir}/name.tmp
 fi
 
-echo "Some of the audio files from 2005 still aborts at the making features step due to being unable to find some folders and files i.e. rad20051001T141205.mp3 or new 2017 ones"
-
-# rad20051001T141205.mp3 does not exist in my data
-# I also don't have any files from 2017. We tested on files from 2017 but I don't have them in my data
+echo "One of the audio files aborts due to bad silences at the segment audio data step i.e. rad20101012T154111.mp3"

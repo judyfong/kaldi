@@ -28,7 +28,7 @@
 set -o pipefail
 
 nj=20
-nj_decode=32 
+decode_nj=32 
 stage=-100
 corpus_zip=/data/althingi/tungutaekni_145.tar.gz
 datadir=/data/althingi/corpus
@@ -139,11 +139,14 @@ if [ $stage -le 6 ]; then
     # Use the data from the year 2016 as my eval data
     grep "rad2016" data/all_reseg_20161128_filtered/utt2spk | cut -d" " -f1 > test_uttlist
     grep -v "rad2016" data/all_reseg_20161128_filtered/utt2spk | cut -d" " -f1 > train_uttlist
-    # NOTE! Now I have multiple sources of data. I need to combine them all into data/train
+    
     subset_data_dir.sh --utt-list train_uttlist data/all_reseg_20161128_filtered data/train
     subset_data_dir.sh --utt-list test_uttlist data/all_reseg_20161128_filtered data/dev_eval
     rm test_uttlist train_uttlist
 
+    # # NOTE! Now I have multiple sources of training data. I need to combine them all
+    # utils/combine_data.sh data/train_okt2017 data/train data/all_okt2017_reseg_filtered &
+    
     # Randomly split the dev_eval set 
     shuf <(cut -d" " -f1 data/dev_eval/utt2spk) > tmp
     m=$(echo $(($(wc -l tmp | cut -d" " -f1)/2)))
@@ -160,7 +163,7 @@ if [ $stage -le 7 ]; then
     # Make lang dir
     mkdir -p data/local/dict
     pronDictdir=~/data/althingi/pronDict_LM
-    frob=${pronDictdir}/CaseSensitive_pron_dict_Fix6.txt
+    frob=${pronDictdir}/CaseSensitive_pron_dict_Fix15_stln_fixed.txt
     local/prep_lang.sh \
         $frob            \
         data/local/dict   \
@@ -168,8 +171,14 @@ if [ $stage -le 7 ]; then
 
     # Make the LM training sample, assuming the 2016 data is used for testing
     #cat ${pronDictdir}/scrapedAlthingiTexts_expanded_CS.txt <(grep -v rad2016 data/all/text | cut -d" " -f2-) > ${pronDictdir}/LMtexts_expanded_CS.txt
-    nohup local/prep_LM_training_data_from_punct_texts.sh # outfile is ${pronDictdir}/LMtext_w_t130_split_on_EOS.txt
+    nohup local/prep_LM_training_data_from_punct_texts.sh # outfile is ${pronDictdir}/LMtext_w_t131_split_on_EOS.txt
     #cat ${pronDictdir}/t130_131_capitalized_1line.txt <(egrep -v rad2016 data/all/text | cut -d" " -f2-) <(cut -d" " -f2- data/all_okt2017/text) <(cut -d" " -f2-data/all_sept2017/text) > ${pronDictdir}/LMtexts_expanded_CS_okt2017.txt
+
+    # Expanded LM training text and split on EOS:
+    #/home/staff/inga/data/althingi/pronDict_LM/LMtext_w_t131_split_on_EOS_expanded.txt
+
+    # Expanded but not split on EOS:
+    # LMtexts_expanded_CS.txt
     
     echo "Preparing a pruned trigram language model"
     mkdir -p data/lang_3gsmall
@@ -180,29 +189,13 @@ if [ $stage -le 7 ]; then
 
     /opt/kenlm/build/bin/lmplz \
 	--skip_symbols \
-	-o 3 -S 70% --prune 0 2 3 \
-	--text ${pronDictdir}/LMtexts_expanded_CS.txt \
+	-o 3 -S 70% --prune 0 3 5 \
+	--text ${pronDictdir}/LMtext_w_t131_split_on_EOS_expanded.txt \
 	--limit_vocab_file <(cat data/lang_3gsmall/words.txt | egrep -v "<eps>|<unk>" | cut -d' ' -f1) \
-	| gzip -c > data/lang_3gsmall/kenlm_3g_023pruned.arpa.gz
+	| gzip -c > data/lang_3gsmall/kenlm_3g_035pruned.arpa.gz
 
-    utils/slurm.pl data/lang_3gsmall/format_lm.log utils/format_lm.sh data/lang data/lang_3gsmall/kenlm_3g_023pruned.arpa.gz data/local/dict/lexicon.txt data/lang_3gsmall
+    utils/slurm.pl data/lang_3gsmall/format_lm.log utils/format_lm.sh data/lang data/lang_3gsmall/kenlm_3g_035pruned.arpa.gz data/local/dict/lexicon.txt data/lang_3gsmall &
 
-    # Temporary: Adding the new data
-    mkdir -p data/lang_3gsmall_comb
-    for s in L_disambig.fst L.fst oov.int oov.txt phones phones.txt \
-                            topo words.txt; do
-	[ ! -e data/lang_3gsmall_comb/$s ] && cp -r data/lang/$s data/lang_3gsmall_comb/$s
-    done
-
-    /opt/kenlm/build/bin/lmplz \
-	--skip_symbols \
-	-o 3 -S 70% --prune 0 2 3 \
-	--text ${pronDictdir}/LMtexts_expanded_Sept2017.txt \
-	--limit_vocab_file <(cat data/lang_3gsmall_comb/words.txt | egrep -v "<eps>|<unk>" | cut -d' ' -f1) \
-	| gzip -c > data/lang_3gsmall_comb/kenlm_3g_023pruned.arpa.gz
-
-    utils/slurm.pl data/lang_3gsmall_comb/format_lm.log utils/format_lm.sh data/lang data/lang_3gsmall_comb/kenlm_3g_023pruned.arpa.gz data/local/dict/lexicon.txt data/lang_3gsmall_comb
-    
     echo "Preparing an unpruned trigram language model"
     mkdir -p data/lang_3glarge
     for s in L_disambig.fst L.fst oov.int oov.txt phones phones.txt \
@@ -213,32 +206,14 @@ if [ $stage -le 7 ]; then
     /opt/kenlm/build/bin/lmplz \
 	--skip_symbols \
 	-o 3 -S 70% --prune 0 \
-	--text ${pronDictdir}/LMtexts_expanded_CS.txt \
+	--text ${pronDictdir}/LMtext_w_t131_split_on_EOS_expanded.txt \
 	--limit_vocab_file <(cat data/lang_3glarge/words.txt | egrep -v "<eps>|<unk>" | cut -d' ' -f1) \
 	| gzip -c > data/lang_3glarge/kenlm_3g.arpa.gz
 
     # Build ConstArpaLm for the unpruned 3g language model.
     utils/build_const_arpa_lm.sh data/lang_3glarge/kenlm_3g.arpa.gz \
-        data/lang data/lang_3glarge
-
-    # Temporary: Adding the new data
-    mkdir -p data/lang_3glarge_comb
-    for s in L_disambig.fst L.fst oov.int oov.txt phones phones.txt \
-                            topo words.txt; do
-	[ ! -e data/lang_3glarge_comb/$s ] && cp -r data/lang/$s data/lang_3glarge_comb/$s
-    done
-
-    /opt/kenlm/build/bin/lmplz \
-	--skip_symbols \
-	-o 3 -S 70% --prune 0 \
-	--text ${pronDictdir}/LMtexts_expanded_Sept2017.txt \
-	--limit_vocab_file <(cat data/lang_3glarge_comb/words.txt | egrep -v "<eps>|<unk>" | cut -d' ' -f1) \
-	| gzip -c > data/lang_3glarge_comb/kenlm_3g.arpa.gz
-
-    # Build ConstArpaLm for the unpruned 3g language model.
-    utils/build_const_arpa_lm.sh data/lang_3glarge_comb/kenlm_3g.arpa.gz \
-        data/lang data/lang_3glarge_comb
-    
+        data/lang data/lang_3glarge &
+   
     echo "Preparing an unpruned 5g LM"
     mkdir -p data/lang_5g
     for s in L_disambig.fst L.fst oov.int oov.txt phones phones.txt \
@@ -249,13 +224,13 @@ if [ $stage -le 7 ]; then
     /opt/kenlm/build/bin/lmplz \
 	--skip_symbols \
 	-o 5 -S 70% --prune 0 \
-	--text ${pronDictdir}/LMtexts_expanded_CS.txt \
+	--text ${pronDictdir}/LMtext_w_t131_split_on_EOS_expanded.txt \
 	--limit_vocab_file <(cat data/lang_5g/words.txt | egrep -v "<eps>|<unk>" | cut -d' ' -f1) \
 	| gzip -c > data/lang_5g/kenlm_5g.arpa.gz
 
     # Build ConstArpaLm for the unpruned 5g language model.
     utils/build_const_arpa_lm.sh data/lang_5g/kenlm_5g.arpa.gz \
-        data/lang data/lang_5g
+        data/lang data/lang_5g &
 
 fi
 
@@ -279,8 +254,8 @@ if [ $stage -le 9 ]; then
 
     echo "Align and train on the segmented data"
     # Now there is no need to start from mono training since we already got a good recognizer.
-    steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
-        data/train data/lang exp/tri4 exp/reseg_fmllr_ali || exit 1;
+    steps/align_fmllr.sh --nj 100 --cmd "$train_cmd --time 1-00" \
+        data/train data/lang exp/tri4 exp/tri4_ali || exit 1;
 
     echo "Train SAT"
     steps/train_sat.sh  \
@@ -292,18 +267,18 @@ if [ $stage -le 9 ]; then
 
     decode_num_threads=4
     for dset in dev eval; do
-	(
-	    steps/decode_fmllr.sh \
-		--nj $decode_nj --num-threads $decode_num_threads \
-		--cmd "$decode_cmd" \
-		exp/tri4/graph_3gsmall data/${dset} exp/tri4/decode_${dset}_3gsmall
-	    steps/lmrescore_const_arpa.sh \
-		--cmd "$decode_cmd" data/lang_{3gsmall,3glarge} \
-		data/${dset} exp/tri4/decode_${dset}_{3gsmall,3glarge}
-	    steps/lmrescore_const_arpa.sh \
-		--cmd "$decode_cmd" data/lang_{3gsmall,5glarge} \
-		data/${dset} exp/tri4/decode_${dset}_{3gsmall,5glarge}
-	) &
+        (
+            steps/decode_fmllr.sh \
+                --nj $decode_nj --num-threads $decode_num_threads \
+                --cmd "$decode_cmd" \
+                exp/tri5/graph_3gsmall data/${dset} exp/tri5/decode_${dset}_3gsmall
+            steps/lmrescore_const_arpa.sh \
+                --cmd "$decode_cmd" data/lang_{3gsmall,3glarge} \
+                data/${dset} exp/tri5/decode_${dset}_{3gsmall,3glarge}
+            steps/lmrescore_const_arpa.sh \
+                --cmd "$decode_cmd" data/lang_{3gsmall,5g} \
+                data/${dset} exp/tri5/decode_${dset}_{3gsmall,5g}
+        ) &
     done
 
 # if [ $stage -le 10 ]; then
@@ -317,4 +292,7 @@ if [ $stage -le 11 ]; then
 
     echo "Run the swbd chain tdnn_lstm recipe with sp"
     local/chain/run_tdnn_lstm.sh >>tdnn_lstm.log 2>&1 &
+
+    echo "Run the swbd chain tdnn_lstm recipe without sp"
+    local/chain/run_tdnn_lstm_noSP.sh >>tdnn_lstm_noSP.log 2>&1 &
 fi

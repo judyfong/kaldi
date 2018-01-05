@@ -5,7 +5,7 @@ set -o pipefail
 # Run from the punctuator2 dir
 source theano-env/bin/activate # Activate the python virtual environment
 
-data=~/data/althingi/postprocessing
+data=/data/althingi/text_corpus
 mkdir -p $data
 
 # Identifier
@@ -13,8 +13,7 @@ mkdir -p $data
 id=okt2017
 out=example/first_stage_$id
 out_second_stage=example/second_stage
-rm -rf $out
-mkdir $out
+mkdir -p $out
 
 echo "Clean the scraped data"
 #nohup local/clean_scrapedAlthingiData.sh ${data}/../pronDict_LM/wp_lang.txt ${data}/scrapedTexts_clean_for_punct_restoring.txt &>log/clean_scraped.log &
@@ -58,7 +57,7 @@ echo "Preprocessing done."
 
 echo "Convert data"
 #srun --mem 12G --time 0-12:00 python data.py ${out} &> data.log &
-srun --mem 12G --time 0-12:00 --nodelist=terra python data.py ${out_first_stage} ${out_second_stage} &> log/data_${id}.log &
+srun --mem 12G --time 0-12:00 --nodelist=terra python data.py ${out} ${out_second_stage} &> log/data_${id}.log &
 
 echo "Train the model using first stage data"
 srun --gres gpu:1 --mem 12G --time 0-12:00 --nodelist=terra python main.py althingi_${id} 256 0.02 &> log/first_stage_${id}.log &
@@ -66,18 +65,20 @@ srun --gres gpu:1 --mem 12G --time 0-12:00 --nodelist=terra python main.py althi
 echo "Train the second stage"
 srun --gres gpu:1 --mem 12G --time 0-12:00 --nodelist=terra python main2.py althingi_${id} 256 0.02 Model_althingi_${id}_h256_lr0.02.pcl &> log/second_stage_${id}.log &
 
-# Punctuate the dev and test sets using the first stage model
+# Punctuate the dev and test sets using the 1st stage model
 srun --nodelist=terra sh -c "cat ${out}/althingi.dev.txt | THEANO_FLAGS='device=cpu' python punctuator.py Model_althingi_${id}_h256_lr0.02.pcl ${out}/dev_punctuated_stage1_${id}.txt &>${out}/dev_punctuated_stage1_${id}.log" &
 srun --nodelist=terra sh -c "cat ${out}/althingi.test.txt | THEANO_FLAGS='device=cpu' python punctuator.py Model_althingi_${id}_h256_lr0.02.pcl ${out}/test_punctuated_stage1_${id}.txt &>${out}/test_punctuated_stage1_${id}.log" &
 
-# Punctuate the dev and test sets using the second stage model
-srun --nodelist=terra sh -c "cat ${out}/althingi.dev.txt | THEANO_FLAGS='device=cpu' python punctuator.py Model_stage2_althingi_${id}_h256_lr0.002.pcl ${out}/dev_punctuated_stage2_${id}.txt 1 &>${out}/dev_punctuated_stage2_${id}.log" &
-srun --nodelist=terra sh -c "cat ${out}/althingi.test.txt | THEANO_FLAGS='device=cpu' python punctuator.py Model_stage2_althingi_${id}_h256_lr0.002.pcl ${out}/test_punctuated_stage2_${id}.txt 1 &>${out}/test_punctuated_stage2_${id}.log" &
+# Punctuate the dev and test sets using the 2nd stage model
+srun --nodelist=terra sh -c "cat ${out}/althingi.dev.txt | THEANO_FLAGS='device=cpu' python punctuator.py Model_stage2_althingi_${id}_h256_lr0.02.pcl ${out}/dev_punctuated_stage2_${id}.txt 1 &>${out}/dev_punctuated_stage2_${id}.log" &
+srun --nodelist=terra sh -c "cat ${out}/althingi.test.txt | THEANO_FLAGS='device=cpu' python punctuator.py Model_stage2_althingi_${id}_h256_lr0.02.pcl ${out}/test_punctuated_stage2_${id}.txt 1 &>${out}/test_punctuated_stage2_${id}.log" &
 
-# Calculate the prediction errors
+# Calculate the prediction errors - 1st stage model
 python error_calculator.py ${out}/althingi.dev.txt ${out}/dev_punctuated_stage1_${id}.txt > ${out}/dev_error_stage1_${id}.txt
-python error_calculator.py ${out}/althingi.dev.txt ${out}/dev_punctuated_stage2_${id}.txt > ${out}/dev_error_stage2_${id}.txt
 python error_calculator.py ${out}/althingi.test.txt ${out}/test_punctuated_stage1_${id}.txt > ${out}/test_error_stage1_${id}.txt
+
+# Calculate the prediction errors - 2nd stage model
+python error_calculator.py ${out}/althingi.dev.txt ${out}/dev_punctuated_stage2_${id}.txt > ${out}/dev_error_stage2_${id}.txt
 python error_calculator.py ${out}/althingi.test.txt ${out}/test_punctuated_stage2_${id}.txt > ${out}/test_error_stage2_${id}.txt
 
 # Total number of training labels: 38484992

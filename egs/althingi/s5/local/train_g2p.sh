@@ -4,7 +4,7 @@
 
 . ./path.sh
 
-dict=~/data/althingi/pronDict_LM/g2p_pron_dict.txt
+dict=~/data/althingi/pronDict_LM/CaseSensitive_pron_dict_Fix15_stln_cap_fixed.txt
 dictdir=`dirname $dict`;
 #dictdir=~/data/althingi/pronDict_LM
 modeldir=data/local/g2p
@@ -14,8 +14,8 @@ n=5 # Number of training iterations
 # 1) Make a train and a test lex
 #    Randomly select 50 words for a test set
 sort -R $dict > ${dictdir}/shuffled_prondict.tmp
-head -n 50 ${dictdir}/shuffled_prondict.tmp | sort > ${dictdir}/g2p_test.lex
-head -n -50 ${dictdir}/shuffled_prondict.tmp | sort > ${dictdir}/g2p_train.lex
+head -n 50 ${dictdir}/shuffled_prondict.tmp | sort > ${dictdir}/g2p_test_des17.lex
+head -n -50 ${dictdir}/shuffled_prondict.tmp | sort > ${dictdir}/g2p_train_des17.lex
 rm ${dictdir}/shuffled_prondict.tmp
 
 # 2) Train a model

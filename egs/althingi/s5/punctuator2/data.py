@@ -42,7 +42,8 @@ WORD_VOCAB_FILE = os.path.join(DATA_PATH, "vocabulary")
 #PUNCTUATION_VOCABULARY = [SPACE, ",COMMA", ".PERIOD", "?QUESTIONMARK", "!EXCLAMATIONMARK", ":COLON", ";SEMICOLON", "-DASH"]
 #PUNCTUATION_MAPPING = {}
 
-PUNCTUATION_VOCABULARY = [SPACE, ",COMMA", ".PERIOD", "?QUESTIONMARK", ":COLON"]
+#PUNCTUATION_VOCABULARY = [SPACE, ",COMMA", ".PERIOD", "?QUESTIONMARK", ":COLON"]
+PUNCTUATION_VOCABULARY = [SPACE, ".PERIOD", "?QUESTIONMARK", ":COLON"]
 PUNCTUATION_MAPPING = {"!EXCLAMATIONMARK": ".PERIOD", ";SEMICOLON": ".PERIOD"}
 
 EOS_TOKENS = {".PERIOD", "?QUESTIONMARK"}
@@ -220,7 +221,7 @@ def create_dev_test_train_split_and_vocabulary(root_path, create_vocabulary, tra
             elif filename.endswith(".dev.txt"):
                 dev_txt_files.append(path)
 
-            else:
+            elif filename.endswith(".train.txt"):
                 train_txt_files.append(path)
 
                 if create_vocabulary and not pretrained_embeddings_path:

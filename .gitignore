@@ -28,8 +28,9 @@ core
 *.a
 *.lib
 
-# Test log files
+# Log files
 *.testlog
+*.log
 
 # emacs saves
 [#]*[#]

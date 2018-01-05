@@ -36,6 +36,8 @@ do
     sed -i "s/ $var1/ \U$var /g" ${dir}/thrax_out_words.tmp
 done
 
+
+
 echo "Rewrite"
 # 1) Change spaces to one between words.
 # 2-3) Rewrite law numbers
@@ -76,7 +78,7 @@ echo "Extract the numbers before punctuation"
 srun python punctuator2/local/saving_numbers.py ${dir}/denorm1.tmp ${dir}/punctuator_in.tmp ${dir}/numlist.tmp
 
 echo "Punctuate"
-srun sh -c "cat ${dir}/punctuator_in.tmp | THEANO_FLAGS='device=cpu' python punctuator2/punctuator.py punctuator2/Model_althingi_July2017_h256_lr0.02.pcl ${dir}/punctuator_out.tmp &>${dir}/punctuator.log"
+srun sh -c "cat ${dir}/punctuator_in.tmp | THEANO_FLAGS='device=cpu' python punctuator2/punctuator.py punctuator2/Model_althingi_noCOMMA_h256_lr0.02.pcl ${dir}/punctuator_out.tmp &>${dir}/punctuator.log"
 wait
 
 echo "Re-insert the numbers"
@@ -102,7 +104,7 @@ sed -re 's/ \.PERIOD/./g; s/ \?QUESTIONMARK/?/g; s/ !EXCLAMATIONMARK/!/g; s/ ,CO
 echo "Insert periods into abbreviations"
 fststringcompile ark:"sed 's:.*:1 &:' ${dir}/punctuator_out_wPuncts.tmp |" ark:- | fsttablecompose --match-side=left ark,t:- text_norm/INS_PERIODS.fst ark:- | fsts-to-transcripts ark:- ark,t:- | int2sym.pl -f 2- ${utf8syms} > ${dir}/punctuator_out_wPeriods.tmp
 
-cut -d" " -f2- ${dir}/punctuator_out_wPeriods.tmp | sed -re 's: ::g' -e 's:0x0020: :g' | tr "\n" " " | sed -r "s/[[:space:]]+/ /g" > ${ofile}
+cut -d" " -f2- ${dir}/punctuator_out_wPeriods.tmp | sed -re 's: ::g' -e 's:0x0020: :g' | tr "\n" " " | sed -r "s/[[:space:]]+/ /g" > ${dir}/punctuator_out_wPeriods_words.tmp
 
-# # þingm regex
-# sed -re 's/([Hh]v\.) ([0-9\. ]*)þingm\w+ ([A-ZÁÉÍÓÚÝÞÆÖ])/\1 \2þm\. \3/g' ${dir}/denorm_periods.tmp > ${dir}/$ofile
+sed -re 's:([Hh])áttv[^ ]+ (þingm[^ .?:eö]+ [A-ZÁÐÉÍÓÚÝÞÆÖ]):\1v\. \2:g' -e 's:([Hh]v\. ([0-9]+\. )?)þingm[^ .?:eö]+ ([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1þm. \3:g' < ${dir}/punctuator_out_wPeriods_words.tmp > $ofile
+

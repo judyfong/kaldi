@@ -84,19 +84,29 @@ sed -re 's:\([^/(]*?\): :g' -e 's:&: og :g' \
 
 echo "Remove periods after abbreviations"
 cut -f1 ~/kaldi/egs/althingi/s5/text_norm/lex/abbr_lexicon.txt | tr " " "\n" | egrep -v "^\s*$" | sort -u | egrep -v "\b[ck]?m[^a-záðéíóúýþæö]*\b|\b[km]?g\b" > ${dir}/abbr_lex.tmp
-echo -e "amk\ndr\netv\nfrh\nmas\nma\nnk\nnr\nosfrv\nsbr\nskv\ntd\nuþb\nutanrrh\nþús" >> ${dir}/abbr_lex.tmp
+cut -f1 ~/kaldi/egs/althingi/s5/text_norm/lex/oldspeech_abbr.txt | tr " " "\n" | egrep -v "^\s*$|form|\btil\b" | sed -r 's:\.::' | sort -u >> ${dir}/abbr_lex.tmp
+cut -f1 ~/kaldi/egs/althingi/s5/text_norm/lex/simple_abbr.txt | tr " " "\n" | egrep -v "^\s*$" | sort -u >> ${dir}/abbr_lex.tmp
 # Make the regex pattern
 sort -u ${dir}/abbr_lex.tmp | tr "\n" "|" | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" > ${dir}/abbr_lex_pattern.tmp
+
 sed -r "s:(\b$(cat ${dir}/abbr_lex_pattern.tmp))\.:\1:g" ${dir}/noPunct.tmp > ${dir}/noAbbrPeriods.tmp
 
 
 echo "Capitalize words in the scraped Althingi texts, that are capitalized in the pron dict"
-comm -12 <(sed -r 's:.*:\L&:' ${prondir}/CaseSensitive_pron_dict_propernouns_plus.txt | sort) <(tr " " "\n" < ${dir}/noAbbrPeriods.tmp | sed -re 's/[^a-záðéíóúýþæö]+//g'| egrep -v "^\s*$" | sort -u) > ${dir}/propernouns_scraped_althingi_texts.txt
+comm -12 <(sed -r 's:.*:\L&:' ${prondir}/CaseSensitive_pron_dict_propernouns.txt | sort) <(tr " " "\n" < ${dir}/noAbbrPeriods.tmp | sed -re 's/[^a-záðéíóúýþæö]+//g'| egrep -v "^\s*$" | sort -u) > ${dir}/propernouns_scraped_althingi_texts.txt
 # Make the regex pattern
 tr "\n" "|" < ${dir}/propernouns_scraped_althingi_texts.txt | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > ${dir}/propernouns_scraped_althingi_texts_pattern.tmp
 
 # Capitalize
-srun sed -r "s:(\b$(cat ${dir}/propernouns_scraped_althingi_texts_pattern.tmp)\b):\u\1:g" ${dir}/noAbbrPeriods.tmp > ${out}
+srun sed -r "s:(\b$(cat ${dir}/propernouns_scraped_althingi_texts_pattern.tmp)\b):\u\1:g" ${dir}/noAbbrPeriods.tmp > ${dir}/Cap1.tmp
+
+# Capitalize acronyms which are pronounced as words
+# Make the regex pattern
+tr "\n" "|" < text_norm/acronyms_as_words.txt | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > text_norm/acronyms_as_words_pattern.tmp
+
+# Capitalize 
+srun sed -r 's:(\b'$(cat text_norm/acronyms_as_words_pattern.tmp)'\b):\U\1:g' ${dir}/Cap1.tmp > ${out}
+
 
 # Remove the arbitrary newline. Make 20 line long groups.
 #tr "\n" " " < ${dir}/capitalized.tmp | sed -r 's:([A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö])([\.?!]) :\1\2\n:g' | awk 'ORS=NR%20?" ":"\n"' > ${out}

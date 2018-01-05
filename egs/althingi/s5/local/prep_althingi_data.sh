@@ -284,9 +284,13 @@ if [ $stage -le 5 ]; then
 	    -e 's:\betv\b:ef til vill:g' \
 	    -e 's:\bfrh\b:framhald:g' \
 	    -e 's:\bfyrrv\b:fyrrverandi:g' \
+	    -e 's:\bheilbrrh\b:heilbrigðisráðherra:g' \
 	    -e 's:\biðnrh\b:iðnaðarráðherra:g' \
+	    -e 's:\binnanrrh\b:innanríkisráðherra:g' \
+	    -e 's:\blandbrh\b:landbúnaðarráðherra:g' \
 	    -e 's:\bmas\b:meira að segja:g' \
 	    -e 's:\bma\b:meðal annars:g' \
+	    -e 's:\bmenntmrh\b:mennta og menningarmálaráðherra:g' \
 	    -e 's:\bmkr\b:millj kr:g' \
 	    -e 's:\bnk\b:næstkomandi:g' \
 	    -e 's:\bnr\b:númer:g' \
@@ -302,6 +306,7 @@ if [ $stage -le 5 ]; then
 	    -e 's:\btam\b:til að mynda:g' \
 	    -e 's:\buþb\b:um það bil:g' \
 	    -e 's:\butanrrh\b:utanríkisráðherra:g' \
+	    -e 's:\bviðskrh\b:viðskiptaráðherra:g' \
 	    -e 's:\bþáv\b:þáverandi:g' \
 	    -e 's:\bþús\b:þúsund:g' \
 	    -e 's:\bþeas\b:það er að segja:g' \

@@ -113,10 +113,12 @@ sed -re 's:\([^/(]*?\): :g' -e 's:&: og :g' \
     | egrep -v "\(|\)" | egrep -v "^\s*$"  > ${dir}/noPunct.tmp
 
 echo "Remove periods after abbreviations"
-# cut -f1 ~/kaldi/egs/althingi/s5/text_norm/lex/abbr_lexicon.txt | tr " " "\n" | egrep -v "^\s*$" | sort -u | egrep -v "\b[ck]?m[^a-záðéíóúýþæö]*\b|\b[km]?g\b" > ${dir}/abbr_lex.tmp
-# echo -e "amk\ndr\netv\nfrh\nmas\nma\nnk\nnr\nosfrv\nsbr\nskv\ntd\nuþb\nutanrrh\nþús" >> ${dir}/abbr_lex.tmp
-# # Make the regex pattern
-# sort -u ${dir}/abbr_lex.tmp | tr "\n" "|" | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" > ${dir}/abbr_lex_pattern.tmp
+cut -f1 ~/kaldi/egs/althingi/s5/text_norm/lex/abbr_lexicon.txt | tr " " "\n" | egrep -v "^\s*$" | sort -u | egrep -v "\b[ck]?m[^a-záðéíóúýþæö]*\b|\b[km]?g\b" > ${dir}/abbr_lex.tmp
+cut -f1 ~/kaldi/egs/althingi/s5/text_norm/lex/oldspeech_abbr.txt | tr " " "\n" | egrep -v "^\s*$|form|\btil\b" | sed -r 's:\.::' | sort -u >> ${dir}/abbr_lex.tmp
+cut -f1 ~/kaldi/egs/althingi/s5/text_norm/lex/simple_abbr.txt | tr " " "\n" | egrep -v "^\s*$" | sort -u >> ${dir}/abbr_lex.tmp
+# Make the regex pattern
+sort -u ${dir}/abbr_lex.tmp | tr "\n" "|" | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" > ${dir}/abbr_lex_pattern.tmp
+
 sed -r "s:(\b$(cat ${dir}/abbr_lex_pattern.tmp))\.:\1:g" ${dir}/noPunct.tmp > ${dir}/noAbbrPeriods.tmp
 
 echo "Expand abbreviations that expand to more than one word (to match the pause annotated segments better)"
@@ -126,13 +128,18 @@ sed -re 's:\bamk\b:að minnsta kosti:g' \
     -e 's:\betv\b:ef til vill:g' \
     -e 's:\bfrh\b:framhald:g' \
     -e 's:\bfyrrv\b:fyrrverandi:g' \
+    -e 's:\bheilbrrh\b:heilbrigðisráðherra:g' \
     -e 's:\biðnrh\b:iðnaðarráðherra:g' \
+    -e 's:\binnanrrh\b:innanríkisráðherra:g' \
+    -e 's:\blandbrh\b:landbúnaðarráðherra:g' \
     -e 's:\bmas\b:meira að segja:g' \
     -e 's:\bma\b:meðal annars:g' \
+    -e 's:\bmenntmrh\b:mennta og menningarmálaráðherra:g' \
     -e 's:\bmkr\b:millj kr:g' \
     -e 's:\bnk\b:næstkomandi:g' \
     -e 's:\bnr\b:númer:g' \
-    -e 's:\bos ?frv\b:og svo framvegis:g' \
+    -e 's:\bnúv\b:núverandi:g' \
+    -e 's:\bo ?s ?frv\b:og svo framvegis:g' \
     -e 's:\boþh\b:og þess háttar:g' \
     -e 's:\bpr\b:per:g' \
     -e 's:\bsbr\b:samanber:g' \
@@ -143,6 +150,7 @@ sed -re 's:\bamk\b:að minnsta kosti:g' \
     -e 's:\btam\b:til að mynda:g' \
     -e 's:\buþb\b:um það bil:g' \
     -e 's:\butanrrh\b:utanríkisráðherra:g' \
+    -e 's:\bviðskrh\b:viðskiptaráðherra:g' \
     -e 's:\bþáv\b:þáverandi:g' \
     -e 's:\bþús\b:þúsund:g' \
     -e 's:\bþeas\b:það er að segja:g' \
@@ -168,7 +176,7 @@ sed -re "s:\bofl\b:og fleira:g" -e "s:\bþe\b:það er:g" -e "s:\bþmt\b:þar me
     < ${dir}/pause_text_exp2.tmp > ${dir}/pause_text_exp3.tmp
 
 # echo "Capitalize words in the texts, that are capitalized in the pron dict"
-comm -12 <(sed -r 's:.*:\L&:' ${prondir}/CaseSensitive_pron_dict_propernouns_plus.txt | sort) <(tr " " "\n" < ${dir}/pause_text_exp3.tmp | sed -re 's/[^a-záðéíóúýþæö]+//g'| egrep -v "^\s*$" | sort -u) > ${dir}/propernouns_althingi_texts.txt
+comm -12 <(sed -r 's:.*:\L&:' ${prondir}/CaseSensitive_pron_dict_propernouns.txt | sort) <(tr " " "\n" < ${dir}/pause_text_exp3.tmp | sed -re 's/[^a-záðéíóúýþæö]+//g'| egrep -v "^\s*$" | sort -u) > ${dir}/propernouns_althingi_texts.txt
 # Make the regex pattern
 tr "\n" "|" < ${dir}/propernouns_althingi_texts.txt | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > ${dir}/propernouns_althingi_texts_pattern.tmp
 

@@ -73,22 +73,21 @@ echo "Rewrite and remove punctuations that I'm not trying to learn how to restor
 # 3) Remove punctuations which is safe to remove
 # 4) Remove "ja" from numbers written like "22ja" and rewrite [ck]?m[23] to [ck]?m[²³]
 # 5) Add missing space between sentences
-# 6-7) Remove abbreviation periods
-# 8) Remove periods after abbreviated middle names
-# 9) In an itemized list, lowercase what comes after the numbering
-# 10) Lowercase text
-# 11) Switch hyphen out for space
-# 12) Add spaces between letters and numbers in alpha-numeric words (Example:1st: "4x4", 2nd: f.ex. "bla.3. júlí", 3rd: "1.-bekk."
-# 13) Fix spacing around % and degrees celsius
-# 14) Remove some dashes (not the kind that is between numbers) and periods at the beginning of lines
-# 15-16) Change spaces to one between words, remove empty lines and write    
+# 6) Remove periods inside abbreviation
+# 7) Remove periods after abbreviated middle names
+# 8) In an itemized list, lowercase what comes after the numbering
+# 9) Lowercase text
+# 10) Switch hyphen out for space
+# 11) Add spaces between letters and numbers in alpha-numeric words (Example:1st: "4x4", 2nd: f.ex. "bla.3. júlí", 3rd: "1.-bekk."
+# 12) Fix spacing around % and degrees celsius
+# 13) Remove some dashes (not the kind that is between numbers) and periods at the beginning of lines
+# 14-15) Change spaces to one between words, remove empty lines and write    
 sed -re 's:\([^/(]*?\): :g' -e 's:&: og :g' \
     -e 's: \.([^\.]):. \1:g' \
     -e 's: ,+| \.+|,\.| |__+: :g' \
     -e 's:([0-9]+)ja\b:\1:g' -e 's:([ck]?m)2: \1²:g' -e 's:([ck]?m)3: \1³:g' \
     -e 's:\b([^ ]*[^ A-ZÁÐÉÍÓÚÝÞÆÖ/-])([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \2:g' \
-    -e 's:(\.[a-záðéíóúýþæö]+)\. :\1 :g' -e 's:\.([a-záðéíóúýþæö]):\1:g' \
-    -e 's:\b(hv|hæstv|þm|dr|frh|nk|nr|sbr|skv|[^ ]+?rh|þús)\.:\1:g' \
+    -e 's:\.([a-záðéíóúýþæö]):\1:g' \
     -e 's: ([A-ZÁÐÉÍÓÚÝÞÆÖ])\. : \1 :g' \
     -e 's:\b([0-9]\.) +([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \L\2:g' \
     -e 's:.*:\L&:g' \
@@ -101,17 +100,27 @@ sed -re 's:\([^/(]*?\): :g' -e 's:&: og :g' \
 
 echo "Remove periods after abbreviations"
 cut -f1 ~/kaldi/egs/althingi/s5/text_norm/lex/abbr_lexicon.txt | tr " " "\n" | egrep -v "^\s*$" | sort -u | egrep -v "\b[ck]?m[^a-záðéíóúýþæö]*\b|\b[km]?g\b" > ${dir}/abbr_lex.tmp
-echo -e "amk\ndr\netv\nfrh\nmas\nma\nnk\nnr\nosfrv\nsbr\nskv\ntd\nuþb\nutanrrh\nþús" >> ${dir}/abbr_lex.tmp
+cut -f1 ~/kaldi/egs/althingi/s5/text_norm/lex/oldspeech_abbr.txt | tr " " "\n" | egrep -v "^\s*$|form|\btil\b" | sed -r 's:\.::' | sort -u >> ${dir}/abbr_lex.tmp
+cut -f1 ~/kaldi/egs/althingi/s5/text_norm/lex/simple_abbr.txt | tr " " "\n" | egrep -v "^\s*$" | sort -u >> ${dir}/abbr_lex.tmp
 # Make the regex pattern
 sort -u ${dir}/abbr_lex.tmp | tr "\n" "|" | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" > ${dir}/abbr_lex_pattern.tmp
+
 sed -r "s:(\b$(cat ${dir}/abbr_lex_pattern.tmp))\.:\1:g" ${dir}/noPunct.tmp > ${dir}/noAbbrPeriods.tmp
 
 echo "Capitalize words in the Althingi texts, that are capitalized in the pron dict"
-comm -12 <(sed -r 's:.*:\L&:' ${prondir}/CaseSensitive_pron_dict_propernouns_plus.txt | sort) <(tr " " "\n" < ${dir}/noAbbrPeriods.tmp | sed -re 's/[^a-záðéíóúýþæö]+//g'| egrep -v "^\s*$" | sort -u) > ${dir}/propernouns_althingi_texts.txt
+comm -12 <(sed -r 's:.*:\L&:' ${prondir}/CaseSensitive_pron_dict_propernouns.txt | sort) <(tr " " "\n" < ${dir}/noAbbrPeriods.tmp | sed -re 's/[^a-záðéíóúýþæö]+//g'| egrep -v "^\s*$" | sort -u) > ${dir}/propernouns_althingi_texts.txt
 # Make the regex pattern
 tr "\n" "|" < ${dir}/propernouns_althingi_texts.txt | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > ${dir}/propernouns_althingi_texts_pattern.tmp
 
 # Capitalize
-srun sed -r "s:(\b$(cat ${dir}/propernouns_althingi_texts_pattern.tmp)\b):\u\1:g" ${dir}/noAbbrPeriods.tmp > $out
+srun sed -r "s:(\b$(cat ${dir}/propernouns_althingi_texts_pattern.tmp)\b):\u\1:g" ${dir}/noAbbrPeriods.tmp > ${dir}/Cap1.tmp
+
+# Capitalize acronyms which are pronounced as words
+# Make the regex pattern
+tr "\n" "|" < text_norm/acronyms_as_words.txt | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > text_norm/acronyms_as_words_pattern.tmp
+
+# Capitalize 
+srun sed -r 's:(\b'$(cat text_norm/acronyms_as_words_pattern.tmp)'\b):\U\1:g' ${dir}/Cap1.tmp > ${out}
+
 
 exit 0

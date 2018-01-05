@@ -9,10 +9,12 @@ corpusdir=/data/althingi/corpus_okt2017/AlthingiUploads
 srun --nodelist=terra sh -c "php local/data_extraction/scrape_althingi_info.php &> data/althingiUploads/log/scraping_althingi_info.log" &
 
 #Parse the info
+source py3env/bin/activate
 for session in $(seq 132 145); do
     python local/data_extraction/parsing_xml.py ${datadir}/thing${session}.txt ${datadir}/thing${session}_mp3_xml_all.txt
     sort -u ${datadir}/thing${session}_mp3_xml_all.txt > tmp && mv tmp ${datadir}/thing${session}_mp3_xml_all.txt
 done
+deactivate
 
 # All speeches already in training and testing sets:
 cat data/train_combined/text data/dev/text data/eval/text | cut -d" " -f1 | cut -d"-" -f2 | cut -d"_" -f1 | sort -u > ids_in_use

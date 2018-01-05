@@ -32,7 +32,7 @@ extra_right_context=0
 # we'll put extra-left-context-initial=0 and extra-right-context-final=0
 # directly without variables.
 
-remove_egs=true #false
+remove_egs=true
 common_egs_dir=
 
 test_online_decoding=false  # if true, it will run the last decoding stage.
@@ -62,10 +62,10 @@ if [ "$speed_perturb" == "true" ]; then
 fi
 
 dir=${dir}$suffix
-train_set=train_cs$suffix
-ali_dir=exp/tri4_cs_ali_${train_set}_comb #exp/tri4_cs_ali$suffix
-treedir=exp/chain/tri4_tree$suffix # NOTE!
-lang=data/lang_chain_cs
+train_set=train_okt2017_fourth$suffix
+ali_dir=exp/tri5_ali_${train_set}_comb #exp/tri4_cs_ali$suffix
+treedir=exp/chain/tri5_tree$suffix # NOTE!
+lang=data/lang_chain
 
 train_data_dir=data/${train_set}_hires_comb
 train_ivector_dir=exp/chain/ivectors_${train_set}_hires_comb
@@ -79,8 +79,8 @@ train_ivector_dir=exp/chain/ivectors_${train_set}_hires_comb
 #   --generate-alignments $speed_perturb || exit 1;
 # From tdnn script:
 local/chain/run_ivector_common.sh --stage $stage \
-                                  --train-set train_cs \
-                                  --gmm tri4_cs || exit 1;
+                                  --train-set train_okt2017_fourth \
+                                  --gmm tri5 || exit 1;
 # From older script:
 #local/nnet3/run_ivector_common_noSP.sh --stage $stage || exit 1;
 
@@ -88,18 +88,17 @@ if [ $stage -le 11 ]; then
   # Get the alignments as lattices (gives the CTC training more freedom).
   # use the same num-jobs as the alignments
   nj=$(cat ${ali_dir}/num_jobs) || exit 1;
-  steps/align_fmllr_lats.sh --nj $nj --cmd "$decode_cmd --time 0-04" data/$train_set \
-    data/lang_cs exp/tri4_cs exp/tri4_cs_lats$suffix
-  rm exp/tri4_cs_lats$suffix/fsts.*.gz # save space
+  steps/align_fmllr_lats.sh --nj $nj --cmd "$decode_cmd --time 2-00" data/$train_set \
+    data/lang exp/tri5 exp/tri5_lats$suffix
+  rm exp/tri5_lats$suffix/fsts.*.gz # save space
 fi
-
 
 if [ $stage -le 12 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
   rm -rf $lang
-  cp -r data/lang_cs $lang
+  cp -r data/lang $lang
   silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
   nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
   # Use our special topology... note that later on may have to tune this
@@ -111,7 +110,7 @@ if [ $stage -le 13 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
-      --cmd "$train_cmd" 7000 data/$train_set $lang $ali_dir $treedir
+      --cmd "$train_cmd --time 2-00" 7000 data/$train_set $lang $ali_dir $treedir
 fi
 
 if [ $stage -le 14 ]; then
@@ -168,7 +167,7 @@ fi
 if [ $stage -le 15 ]; then
 
   steps/nnet3/chain/train.py --stage $train_stage \
-    --cmd "$decode_cmd" \
+    --cmd "$decode_cmd --time 3-12" \
     --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
@@ -198,7 +197,7 @@ if [ $stage -le 15 ]; then
     --cleanup.remove-egs $remove_egs \
     --feat-dir $train_data_dir \
     --tree-dir $treedir \
-    --lat-dir exp/tri4_cs_lats$suffix \
+    --lat-dir exp/tri5_lats$suffix \
     --dir $dir  || exit 1;
 fi
 
@@ -218,12 +217,12 @@ fi
 
 if [ $stage -le 17 ]; then
   rm $dir/.error 2>/dev/null || true
-  for decode_set in dev_cs eval_cs; do
+  for decode_set in dev eval; do
     (
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       steps/nnet3/decode.sh --num-threads 4 \
         --acwt 1.0 --post-decode-acwt 10.0 \
-        --nj $num_jobs --cmd "$decode_cmd --time 0-04" $iter_opts \
+        --nj $num_jobs --cmd "$decode_cmd --time 0-06" $iter_opts \
         --extra-left-context $extra_left_context  \
         --extra-right-context $extra_right_context  \
         --extra-left-context-initial 0 \
@@ -243,65 +242,5 @@ if [ $stage -le 17 ]; then
     exit 1
   fi
 fi
-
-# if [ $stage -le 18 ]; then
-#   # looped decoding.  Note: this does not make sense for BLSTMs or other
-#   # backward-recurrent setups, and for TDNNs and other non-recurrent there is no
-#   # point doing it because it would give identical results to regular decoding.
-#   rm $dir/.error 2>/dev/null || true
-#   for decode_set in train_dev eval2000; do
-#     (
-#       steps/nnet3/decode_looped.sh \
-#          --acwt 1.0 --post-decode-acwt 10.0 \
-#          --nj 50 --cmd "$decode_cmd" --iter $decode_iter \
-#          --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
-#          $graph_dir data/${decode_set}_hires \
-#          $dir/decode_${decode_set}_sw1_tg_looped || exit 1;
-#       if $has_fisher; then
-#           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-#             data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
-#             $dir/decode_${decode_set}_sw1_{tg,fsh_fg}_looped || exit 1;
-#       fi
-#       ) &
-#   done
-#   wait
-#   if [ -f $dir/.error ]; then
-#     echo "$0: something went wrong in looped decoding"
-#     exit 1
-#   fi
-# fi
-
-
-# if $test_online_decoding && [ $stage -le 19 ]; then
-#   # note: if the features change (e.g. you add pitch features), you will have to
-#   # change the options of the following command line.
-#   steps/online/nnet3/prepare_online_decoding.sh \
-#        --mfcc-config conf/mfcc_hires.conf \
-#        $lang exp/nnet3/extractor $dir ${dir}_online
-
-#   rm $dir/.error 2>/dev/null || true
-#   for decode_set in train_dev eval2000; do
-#     (
-#       # note: we just give it "$decode_set" as it only uses the wav.scp, the
-#       # feature type does not matter.
-
-#       steps/online/nnet3/decode.sh --nj $decode_nj --cmd "$decode_cmd" $iter_opts \
-#           --acwt 1.0 --post-decode-acwt 10.0 \
-#          $graph_dir data/${decode_set}_hires \
-#          ${dir}_online/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_tg || exit 1;
-#       if $has_fisher; then
-#           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-#             data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
-#             ${dir}_online/decode_${decode_set}${decode_iter:+_$decode_iter}_sw1_{tg,fsh_fg} || exit 1;
-#       fi
-#     ) || touch $dir/.error &
-#   done
-#   wait
-#   if [ -f $dir/.error ]; then
-#     echo "$0: something went wrong in online decoding"
-#     exit 1
-#   fi
-# fi
-
 
 exit 0;

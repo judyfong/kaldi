@@ -10,8 +10,8 @@ stage=0
 min_seg_len=1.55 # min length in seconds... we do this because chain training
                  # will discard segments shorter than 1.5 seconds. Must remain in sync
                  # with the same option given to prepare_lores_feats_and_alignments.sh
-train_set=train_cs    # you might set this to e.g. train_960
-gmm=tri4_cs         # This specifies a GMM-dir from the features of the type you're training the system on;
+train_set=train_okt2017_fourth    # you might set this to e.g. train_960
+gmm=tri5        # This specifies a GMM-dir from the features of the type you're training the system on;
                          # it should contain alignments for 'train_set'.
 num_threads_ubm=24 # Lowers from 32
 #nnet3_affix=  # affix for exp/nnet3 directory to put iVector stuff in, so it
@@ -37,7 +37,7 @@ if [ $stage -le 1 ]; then
   echo "$0: preparing directory for low-resolution speed-perturbed data (for alignment)"
   utils/data/perturb_data_dir_speed_3way.sh data/${train_set} data/${train_set}_sp
   echo "$0: making MFCC features for low-resolution speed-perturbed data"
-  steps/make_mfcc.sh --cmd "$train_cmd" --nj 50 data/${train_set}_sp || exit 1;
+  steps/make_mfcc.sh --cmd "$train_cmd --time 2-00" --nj 100 data/${train_set}_sp || exit 1;
   steps/compute_cmvn_stats.sh data/${train_set}_sp || exit 1;
   echo "$0: fixing input data-dir to remove nonexistent features, in case some "
   echo ".. speed-perturbed segments were too short."
@@ -60,8 +60,8 @@ if [ $stage -le 2 ]; then
     exit 1
   fi
   echo "$0: aligning with the perturbed, short-segment-combined low-resolution data"
-  steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
-    $comb data/lang_cs $gmm_dir $ali_dir || exit 1
+  steps/align_fmllr.sh --nj 100 --cmd "$train_cmd --time 2-12" \
+    $comb data/lang $gmm_dir $ali_dir || exit 1
 fi
 
 if [ $stage -le 3 ]; then
@@ -73,7 +73,7 @@ if [ $stage -le 3 ]; then
   echo "$0: creating high-resolution MFCC features"
   mfccdir=data/${train_set}_sp_hires/data
 
-  for datadir in ${train_set}_sp dev_cs eval_cs; do
+  for datadir in ${train_set}_sp dev eval; do
     utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
   done
 
@@ -81,9 +81,9 @@ if [ $stage -le 3 ]; then
   # features; this helps make trained nnets more invariant to test data volume.
   utils/data/perturb_data_dir_volume.sh data/${train_set}_sp_hires
 
-  for datadir in ${train_set}_sp dev_cs eval_cs; do
-    steps/make_mfcc.sh --nj 70 --mfcc-config conf/mfcc_hires.conf \
-      --cmd "$train_cmd" data/${datadir}_hires || exit 1;
+  for datadir in ${train_set}_sp dev eval; do
+    steps/make_mfcc.sh --nj 100 --mfcc-config conf/mfcc_hires.conf \
+      --cmd "$train_cmd --time 2-00" data/${datadir}_hires || exit 1;
     steps/compute_cmvn_stats.sh data/${datadir}_hires || exit 1;
     utils/fix_data_dir.sh data/${datadir}_hires
   done
@@ -115,7 +115,7 @@ if [ $stage -le 5 ]; then
      data/${train_set}_sp data/${train_set}_sp_35k
 
   steps/align_fmllr.sh --nj 40 --cmd "$train_cmd" \
-    data/${train_set}_sp_35k data/lang_cs $gmm_dir ${gmm_dir}_ali_sp_35k
+    data/${train_set}_sp_35k data/lang $gmm_dir ${gmm_dir}_ali_sp_35k
 fi
 
 if [ $stage -le 6 ]; then
@@ -123,17 +123,17 @@ if [ $stage -le 6 ]; then
   # because after we get the transform (12th iter is the last), any further
   # training is pointless.
   echo "$0: training a system on the hires subset data for its LDA+MLLT transform, in order to produce the diagonal GMM."
-  if [ -e exp/chain/tri5/final.mdl ]; then
+  if [ -e exp/chain/tri6/final.mdl ]; then
     # we don't want to overwrite old stuff, ask the user to delete it.
-    echo "$0: exp/chain/tri7b/final.mdl already exists: "
+    echo "$0: exp/chain/tri6/final.mdl already exists: "
     echo " ... please delete and then rerun, or use a later --stage option."
     exit 1;
   fi
   steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
     --realign-iters "" \
     --splice-opts "--left-context=3 --right-context=3" \
-    5000 10000 data/${train_set}_sp_hires_35k data/lang_cs \
-    ${gmm_dir}_ali_sp_35k exp/chain/tri5
+    5000 10000 data/${train_set}_sp_hires_35k data/lang \
+    ${gmm_dir}_ali_sp_35k exp/chain/tri6
 fi
 
 
@@ -147,7 +147,7 @@ if [ $stage -le 7 ]; then
     --num-frames 700000 \
     --num-threads $num_threads_ubm \
     data/${train_set}_sp_hires_35k 512 \
-    exp/chain/tri5 exp/chain/diag_ubm
+    exp/chain/tri6 exp/chain/diag_ubm
 fi
 
 if [ $stage -le 8 ]; then
@@ -155,7 +155,7 @@ if [ $stage -le 8 ]; then
   # this one has a fairly small dim (defaults to 100) so we don't use all of it,
   # we use just the 60k subset (about one fifth of the data, or 200 hours).
   echo "$0: training the iVector extractor"
-  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
+  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd --time 0-12" --nj 10 \
     data/${train_set}_sp_hires_70k exp/chain/diag_ubm exp/chain/extractor || exit 1;
 fi
 
@@ -174,14 +174,14 @@ if [ $stage -le 9 ]; then
   utils/data/modify_speaker_info.sh --utts-per-spk-max 2 \
     data/${train_set}_sp_hires_comb ${ivectordir}/${train_set}_sp_hires_comb_max2
   
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 60 \
+  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd --time 2-12" --nj 100 \
     ${ivectordir}/${train_set}_sp_hires_comb_max2 exp/chain/extractor \
     $ivectordir || exit 1;
 fi
 
 if [ $stage -le 10 ]; then
   echo "$0: extracting iVectors for dev and test data"
-  for data in dev_cs eval_cs; do
+  for data in dev eval; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
       data/${data}_hires exp/chain/extractor \
       exp/chain/ivectors_${data}_hires || exit 1;

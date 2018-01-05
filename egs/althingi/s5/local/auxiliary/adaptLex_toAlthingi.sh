@@ -68,8 +68,8 @@ comm -13 <(sed 's/.\+/\L&/g' ${dir}/UCpart2_CaseSens_pron_dict.txt | sort) <(sor
 # Combine
 cat ${dir}/UCpart2_CaseSens_pron_dict.txt ${dir}/rest_of_CaseSens_pron_dict2.txt | sort > ${dir}/CaseSensitive_pron_dict_Fix2.txt
 
-# Fix transcriptions starting with: tj kj pj tv kv tæ pæ kæ pl kl ky kn ki ke (Both UC and LC) 
-perl -pe 's/^([Tt]|[Kk]|[Pp])(j|l|v|æ)([a-záðéíóúýþæö]+)\s([^ ]) /$1$2$3\t$4ʰ /' ${dir}/CaseSensitive_pron_dict_Fix2.txt | perl -pe 's/^([Kk])(e|i|n|y)([a-záðéíóúýþæö]+)\s([^ ]) /$1$2$3\t$4ʰ /' | sort > ${dir}/CaseSensitive_pron_dict_Fix3.txt
+# Fix transcriptions starting with: tj kj pj tv kv tæ pæ kæ pl kl ky ký kn ki kí ke and hv (hv also inside words) (Both UC and LC) 
+perl -pe 's:^([Tt]|[Pp]|[kk])([a-záðéíóúýþæö]+)\t[ptkc] :$1$2\t$3ʰ :' ${dir}/CaseSensitive_pron_dict_Fix2.txt | perl -pe 's:^([Hh]v[a-záðéíóúýþæö]+)\tk v:$1\tkʰ v:' | perl -pe 's:(hv[^\s]+)\t(.+?)k v:$1\t$2kʰ v:' | sort > ${dir}/CaseSensitive_pron_dict_Fix3.txt
 
 # Fix transcription starting with hv and Hv:
 #perl -pe 's:^([Hh]v[a-záðéíóúýþæö]+)\tk v:$1\tkʰ v:' CaseSensitive_pron_dict_Fix7_okt2017.txt | perl -pe 's:(hv[^\s]+)\t(.+?)k v:$1\t$2kʰ v:' > CaseSensitive_pron_dict_Fix8.txt
@@ -114,70 +114,20 @@ for line in $(awk '{ print length, $0 }' ${dir}/frablastursord.txt | sort -n | c
         echo -e $line >> ${dir}/frablastursord_uniq.txt
     fi
 done
-
-	     
-# Then I extract the words in CaseSensitive_pron_dict_Fix6.txt that do not have frablastur, when the respective word in frablasturord.txt, has. Check if there is an s in front, or the same letter again (f.ex. "kul" has fráblástur but "skulda" and "súkkulaði" do not.)
-
-# I don't add the words if there is an s in front of the word part
-IFS=$'\n'
-for line in $(cat ${dir}/frablastursord.txt | grep -v "\bkinn\b"); do
-    word=$(echo $line | cut -f1);
-    phonemes=$(echo $line | cut -f2-);
-    IFS=$' ';
-    character1=$(echo $phonemes | cut -d" " -f1);
-    newphonemes="${character1/ː/}ː?";
-    for character in $(echo $phonemes | cut -d" " -f2-) ; do
-	newphonemes="$newphonemes ${character/ː/}ː?";
-    done;
-    IFS=$'\n';
-    # Get rid of words containing these phonemes (wo/ "fráblástur") if there is and s in front of them
-    phonemes2=$(echo $newphonemes | perl -pe 's/^(.)ʰ/$1/');
-    phonemes3=${phonemes2::-4};
-    grep $word ${dir}/CaseSensitive_pron_dict_Fix6.txt \
-	| egrep -v "^$word" | egrep -v "$newphonemes" | egrep -v "s $phonemes3" \
-	>> ${dir}/words_missingfrablastur.txt;
-done
-
-# This one was called words_missingfrablastur2.txt because I had already found them once using the method commented out below.
-sort -u ${dir}/words_missingfrablastur.txt > tmp && mv tmp ${dir}/words_missingfrablastur.txt
-
-# In the following I make sure I don't match words starting with the frablastur word, because the first phoneme should be correct in all words.
-#for line in $(cat frab.tmp); do word=$(echo $line | cut -d" " -f1); echo $word; egrep ".$word" missingfrablastur_test.tmp; done
-
-# After fixing the matched words for this frab word I should remove them from the list, so that the next frab word is only matched to the remaining words.
+sed -r 's:ʰ::' frablastursord_4to8_uniq.txt > frablastursord_4to8_uniq_frab_removed.txt
 
 # Now I need to fix these words.
-# Search for the words in frablastursord.txt inside words_missingfrablastur.txt, if I find them and the "frablastur" is missing and there is not an "s" in front, I need to insert fráblástur
+# Search for the words in frablastursord.txt inside words in the pron dict, if I find them and the "frablastur" is missing and there is neither an "s" in front nor the same letter, I insert fráblástur
 IFS=$'\n'
-for line in $(cat ${dir}/words_missingfrablastur.txt); do
-    word=$(echo $line | cut -f1); echo "word: $word" ;
-    phonemes=$(echo $line | cut -f2-); echo "phonemes: $phonemes";
-    for line2 in $(cat ${dir}/frablastursord.txt | grep -v "\bkinn\b"); do
-        frabword=$(echo $line2 | cut -f1);
-        if (echo "$word" | grep -q "$frabword"); then
-            echo "frabword: $frabword" ;
-            frabphonemes=$(echo $line2 | cut -f2-); echo "frabphonemes: $frabphonemes";
-            IFS=$' ';
-            character1=$(echo $frabphonemes | cut -d" " -f1);
-            newfrabphonemes="${character1/ː/}ː\?";
-            for character in $(echo $frabphonemes | cut -d" " -f2-) ; do
-                newfrabphonemes="$newfrabphonemes ${character/ː/}ː\?";
-            done;
-            IFS=$'\n'; echo "newfrabphonemes: $newfrabphonemes";
-            # Get rid of words containing these phonemes (wo/ "fráblástur") if there is and s in front of them
-            frabphonemes2=$(echo $newfrabphonemes | perl -pe 's/^(.)ʰ/$1/'); echo "frabphonemes2: $frabphonemes2";
-            if ! (echo "$phonemes" | grep -q "s $frabphonemes2") && ! (echo "$phonemes" | grep -q "$newfrabphonemes") ; then
-                echo "Inside if";
-                newphonemes=$(echo $phonemes | sed -e 's/'$frabphonemes2'/'$frabphonemes'/'); echo "newphonemes: $newphonemes";
-                echo -e $word $newphonemes >> ${dir}/words_missingfrablastur_fixed.txt;
-            fi
-        fi
-    done
+cp ~/data/althingi/pronDict_LM/CaseSensitive_pron_dict_Fix10_frab_inside_words.txt ~/data/althingi/pronDict_LM/CaseSensitive_pron_dict_Fix11_frab_inside_words.txt
+for line in $(cat frablastursord_4to8_uniq_frab_removed.txt); do
+    word=$(echo $line | cut -d" " -f1);
+    phonemes=$(echo $line | cut -d" " -f2-);
+    phon1=$(echo $phonemes | cut -d" " -f1);
+    phon_rest=$(echo $phonemes | cut -d" " -f2-);
+    sed -r -i "s:([^skpt]${word}[a-záðéíóúýþæö]*)\t(([^ ]+ )*?${phon1}) (${phon_rest})\b:\1\t\2ʰ \4:" CaseSensitive_pron_dict_Fix11_frab_inside_words.txt
 done
-
-# Substitute the incorrect words with the fixed words
-
-
+	
 # Add transcribed country and city names + foreign words (companies, contries, names of parliament memebers)
 cat ${dir}/CaseSensitive_pron_dict_Fix4.txt NotInPronDict_ice_transcribed.txt NotInPronDict_foreign.txt | sort > ${dir}/CaseSensitive_pron_dict_Fix5.txt
 
@@ -189,3 +139,4 @@ sed -r 's:^(hv[^    ]+)     k v:\1  kʰ v:' ~/data/althingi/pronDict_LM/CaseSens
 
 # Make a case sensitive dictionary which I will use to train g2p models on:
 tr '\t' ' ' < ${dir}/CaseSensitive_pron_dict_Fix4.txt | tr -s " " | sed 's/ /\t/1' | sed -e 's/[ \t]*$//' > ${dir}/g2p_pron_dict.txt
+G

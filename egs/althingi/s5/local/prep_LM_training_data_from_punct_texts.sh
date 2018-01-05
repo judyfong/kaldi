@@ -62,19 +62,28 @@ sed -re 's:([0-9]) 1/2\b:\1,5:g' -e 's:\b([0-9])/([0-9]{1,2})\b:\1 \2\.:g' \
 echo "Expand some abbreviations, incl. 'hv.' and 'þm.' in certain circumstances"
 # Start with expanding some abbreviations using regex
 sed -re 's:\bamk\b:að minnsta kosti:g' \
+    -e 's:\bdómsmrh\b:dómsmálaráðherra:g' \
     -e 's:\bdr\b:doktor:g' \
     -e 's:\betv\b:ef til vill:g' \
+    -e 's:\bfjmrh\b:fjármálaráðherra:g' \
+    -e 's:\bforsrh\b:forsætisráðherra:g' \
     -e 's:\bfrh\b:framhald:g' \
     -e 's:\bfyrrv\b:fyrrverandi:g' \
+    -e 's:\bheilbrrh\b:heilbrigðisráðherra:g' \
     -e 's:\biðnrh\b:iðnaðarráðherra:g' \
+    -e 's:\binnanrrh\b:innanríkisráðherra:g' \
+    -e 's:\blandbrh\b:landbúnaðarráðherra:g' \
     -e 's:\bmas\b:meira að segja:g' \
     -e 's:\bma\b:meðal annars:g' \
+    -e 's:\bmenntmrh\b:mennta og menningarmálaráðherra:g' \
     -e 's:\bmkr\b:millj kr:g' \
     -e 's:\bnk\b:næstkomandi:g' \
     -e 's:\bnr\b:númer:g' \
-    -e 's:\bos ?frv\b:og svo framvegis:g' \
+    -e 's:\bnúv\b:núverandi:g' \
+    -e 's:\bo ?s ?frv\b:og svo framvegis:g' \
     -e 's:\boþh\b:og þess háttar:g' \
     -e 's:\bpr\b:per:g' \
+    -e 's:\bsamgrh\b:samgönguráðherra:g' \
     -e 's:\bsbr\b:samanber:g' \
     -e 's:\bskv\b:samkvæmt:g' \
     -e 's:\bss\b:svo sem:g' \
@@ -83,6 +92,7 @@ sed -re 's:\bamk\b:að minnsta kosti:g' \
     -e 's:\btam\b:til að mynda:g' \
     -e 's:\buþb\b:um það bil:g' \
     -e 's:\butanrrh\b:utanríkisráðherra:g' \
+    -e 's:\bviðskrh\b:viðskiptaráðherra:g' \
     -e 's:\bþáv\b:þáverandi:g' \
     -e 's:\bþús\b:þúsund:g' \
     -e 's:\bþeas\b:það er að segja:g' \

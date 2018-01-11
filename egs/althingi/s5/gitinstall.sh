@@ -18,6 +18,18 @@ stage=-1
 
 #datadir=/data/althingi
 
+display_usage() { 
+    echo -e "Usage:\n$0 \
+             \n\nSets up a version of the Althingi kaldi ASR for decoding, \n\
+             using audio metadata for speeches before 2017 and existing \n\
+             models.\n" 
+} 
+if [[ ( $1 == "--help") ||  $1 == "-h" ]] 
+then 
+    display_usage
+    exit 0
+fi
+
 ln -sfn ../../wsj/s5/utils utils
 ln -sfn ../../wsj/s5/steps steps
 ln -sfn $KALDI_ROOT/egs/althingi/s5/punctuator2/theano-env/bin punctuator2/theano-env/local/bin
@@ -107,5 +119,7 @@ if [ $stage -le -0 ]; then
     done
     rm ${datadir}/name.tmp
 fi
+
+python nltkdownload.py
 
 echo "One of the audio files aborts due to bad silences at the segment audio data step i.e. rad20101012T154111.mp3"

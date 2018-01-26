@@ -11,10 +11,12 @@ display_usage() {
              using audio metadata for speeches before 2017 and existing \n\
              models.\n" 
 } 
-if [[ ( $1 == "--help") ||  $1 == "-h" || $1 == "--h" ]] 
-then 
-    display_usage
-    exit 0
+if [ $# = 1 ]; then
+  if [[ ( $1 == "--help") ||  $1 == "-h" || $1 == "--h" ]] 
+  then 
+      display_usage
+      exit 0
+  fi
 fi
 
 stage=-1
@@ -89,42 +91,42 @@ cp -r decodeinstall/data data
 #        exp/tri3/decode_tg_bd_eval
 
 #Extracts audio files, metadata.csv and makes the name_id_gender.tsv file
-if [ $stage -le -0 ]; then
-   echo "Extracting corpus"
-   [ -f $corpus_zip ] || error "$corpus_zip not a file"
-   mkdir -p ${datadir}
-   tar -zxvf $corpus_zip --directory ${datadir}/
-   mv ${datadir}/2016/* ${datadir}/
-   rm -r ${datadir}/2016
-   # validate
-   if ! [[ -d ${datadir}/audio && \
-		  -d ${datadir}/text_bb && \
-		  -d ${datadir}/text_endanlegt && \
-		  -f ${datadir}/metadata.csv ]]; then
-       error "Corpus does not have correct structure"
-    fi
-    encoding=$(file -i ${datadir}/metadata.csv | cut -d" " -f3)
-    if [[ "$encoding"=="charset=iso-8859-1" ]]; then
-	iconv -f ISO-8859-1 -t UTF-8 ${datadir}/metadata.csv > tmp && mv tmp ${datadir}/metadata.csv
-    fi
+# if [ $stage -le -0 ]; then
+#    echo "Extracting corpus"
+#    [ -f $corpus_zip ] || error "$corpus_zip not a file"
+#    mkdir -p ${datadir}
+#    tar -zxvf $corpus_zip --directory ${datadir}/
+#    mv ${datadir}/2016/* ${datadir}/
+#    rm -r ${datadir}/2016
+#    # validate
+#    if ! [[ -d ${datadir}/audio && \
+# 		  -d ${datadir}/text_bb && \
+# 		  -d ${datadir}/text_endanlegt && \
+# 		  -f ${datadir}/metadata.csv ]]; then
+#        error "Corpus does not have correct structure"
+#     fi
+#     encoding=$(file -i ${datadir}/metadata.csv | cut -d" " -f3)
+#     if [[ "$encoding"=="charset=iso-8859-1" ]]; then
+# 	iconv -f ISO-8859-1 -t UTF-8 ${datadir}/metadata.csv > tmp && mv tmp ${datadir}/metadata.csv
+#     fi
 
-    # Make a name-id-gender file (remember to remove the carriage return):
-    # NOTE! Categorize those with family names as male
-    cut -d"," -f1 ${datadir}/metadata.csv | sort -u > ${datadir}/name.tmp
-    IFS=$'\n'
-    for name in $(cat ${datadir}/name.tmp); do
-	speech=$(grep -m 1 $name ${datadir}/metadata.csv | cut -d"," -f6 | tr -d '\r')
-	id=$(perl -ne 'print "$1\n" if /\bskst=\"([^\"]+)/' ${datadir}/text_endanlegt/${speech}.xml)
-	last=$((${#name}-6))
-	if [ "${name:$last:6}" == "dóttir" ]; then
-	    gender="f"
-	else
-	    gender="m"
-	fi
-	echo -e $name'\t'$(echo $id | cut -d" " -f1)'\t'$gender >> ${datadir}/name_id_gender.tsv
-    done
-    rm ${datadir}/name.tmp
-fi
+#     # Make a name-id-gender file (remember to remove the carriage return):
+#     # NOTE! Categorize those with family names as male
+#     cut -d"," -f1 ${datadir}/metadata.csv | sort -u > ${datadir}/name.tmp
+#     IFS=$'\n'
+#     for name in $(cat ${datadir}/name.tmp); do
+# 	speech=$(grep -m 1 $name ${datadir}/metadata.csv | cut -d"," -f6 | tr -d '\r')
+# 	id=$(perl -ne 'print "$1\n" if /\bskst=\"([^\"]+)/' ${datadir}/text_endanlegt/${speech}.xml)
+# 	last=$((${#name}-6))
+# 	if [ "${name:$last:6}" == "dóttir" ]; then
+# 	    gender="f"
+# 	else
+# 	    gender="m"
+# 	fi
+# 	echo -e $name'\t'$(echo $id | cut -d" " -f1)'\t'$gender >> ${datadir}/name_id_gender.tsv
+#     done
+#     rm ${datadir}/name.tmp
+# fi
 
 python decodeinstall/nltkdownload.py
 

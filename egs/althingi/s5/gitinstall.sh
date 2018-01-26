@@ -2,21 +2,8 @@
 
 #This script assumes this is a fresh install of the repo
 
-#decode_install_dir=./decodeinstall
-#decode_zip=./decodeinstall.tar.gz
-
-#echo "Extracting necessary decoding files"
-#[ -f $decode_zip ] || error "$decode_zip not a file"
-#mkdir -p ${decode_install_dir}
-#tar -zxvf $corpus_zip --directory ${decode_install_dir}/
-
-. path.sh
-
-stage=-1
-#corpus_zip=./decodeinstall/tungutaekni.tar.gz
-# The corpora is in /data/althingi/{corpus_nov2016,corpus_sept2017,corpus_okt2017}
-
-#datadir=/data/althingi
+# Copyright 2018  Reykjavík University (Author: Judy Fong)
+# Apache 2.0
 
 display_usage() { 
     echo -e "Usage:\n$0 \
@@ -24,11 +11,30 @@ display_usage() {
              using audio metadata for speeches before 2017 and existing \n\
              models.\n" 
 } 
-if [[ ( $1 == "--help") ||  $1 == "-h" ]] 
+if [[ ( $1 == "--help") ||  $1 == "-h" || $1 == "--h" ]] 
 then 
     display_usage
     exit 0
 fi
+
+stage=-1
+
+decode_install_dir=./decodeinstall
+decode_zip=./decodeinstall.tar.gz
+
+if [ $stage -le -0 ]; then
+    echo "Extracting necessary decoding files"
+    [ -f $decode_zip ] || error "$decode_zip not a file"
+    mkdir -p ${decode_install_dir}
+    tar -zxvf $decode_zip --directory ${decode_install_dir}/
+fi
+
+#corpus_zip=./decodeinstall/tungutaekni.tar.gz
+# The corpora is in /data/althingi/{corpus_nov2016,corpus_sept2017,corpus_okt2017}
+
+#datadir=/data/althingi
+
+. path.sh
 
 ln -sfn ../../wsj/s5/utils utils
 ln -sfn ../../wsj/s5/steps steps
@@ -54,8 +60,8 @@ cp -r decodeinstall/data data
 #Assuming that the LMs etc have been saved to decodeinstall
 #Copy the files to the correct locations as dictated by the recognize.sh script
 #Temporary ABBREVIATE measure until the version controlled fst is no longer corrupt
-cp -r decodeinstall/text_norm/ABBREVIATE.fst text_norm/ABBREVIATE.fst
-cp -r decodeinstall/punctuator2 punctuator2
+#cp -r decodeinstall/text_norm/ABBREVIATE.fst text_norm/ABBREVIATE.fst
+#cp -r decodeinstall/punctuator2 punctuator2
 
 #cp decodeinstall/lang_bd data/lang_bd
 #cp decodeinstall/lang_tg_bd_023pruned data/lang_tg_bd_023pruned
@@ -84,18 +90,18 @@ cp -r decodeinstall/punctuator2 punctuator2
 
 #Extracts audio files, metadata.csv and makes the name_id_gender.tsv file
 if [ $stage -le -0 ]; then
-    echo "Extracting corpus"
-    [ -f $corpus_zip ] || error "$corpus_zip not a file"
-    mkdir -p ${datadir}
-    tar -zxvf $corpus_zip --directory ${datadir}/
-    mv ${datadir}/2016/* ${datadir}/
-    rm -r ${datadir}/2016
-    # validate
-    if ! [[ -d ${datadir}/audio && \
+   echo "Extracting corpus"
+   [ -f $corpus_zip ] || error "$corpus_zip not a file"
+   mkdir -p ${datadir}
+   tar -zxvf $corpus_zip --directory ${datadir}/
+   mv ${datadir}/2016/* ${datadir}/
+   rm -r ${datadir}/2016
+   # validate
+   if ! [[ -d ${datadir}/audio && \
 		  -d ${datadir}/text_bb && \
 		  -d ${datadir}/text_endanlegt && \
 		  -f ${datadir}/metadata.csv ]]; then
-        error "Corpus does not have correct structure"
+       error "Corpus does not have correct structure"
     fi
     encoding=$(file -i ${datadir}/metadata.csv | cut -d" " -f3)
     if [[ "$encoding"=="charset=iso-8859-1" ]]; then
@@ -120,6 +126,6 @@ if [ $stage -le -0 ]; then
     rm ${datadir}/name.tmp
 fi
 
-python nltkdownload.py
+python decodeinstall/nltkdownload.py
 
 echo "One of the audio files aborts due to bad silences at the segment audio data step i.e. rad20101012T154111.mp3"

@@ -43,7 +43,8 @@ fi
 
 # Dirs used #
 # Already existing
-graphdir=exp/chain/tdnn_lstm_1e_sp/graph_3gsmall
+modeldir=exp/chain
+graphdir=${modeldir}/tdnn_lstm_1e_sp/graph_3gsmall
 oldLMdir=data/lang_3gsmall
 newLMdir=data/lang_5g
 # Created
@@ -53,14 +54,14 @@ rescoredir=${datadir}_segm_hires/decode_5g
 if [ $stage -le 0 ]; then
 
     echo "Set up a directory in the right format of Kaldi and extract features"
-    recognize/local/prep_audiodata.sh $speechfile $speakerfile $datadir
+    recognize/local/prep_audiodata.sh $speechfile $speakerfile $datadir || exit 1;
 fi
 spkID=$(cut -d" " -f1 $datadir/spk2utt)
 
 if [ $stage -le 3 ]; then
 
     echo "Segment audio data"
-    recognize/local/segment_audio.sh ${datadir} ${datadir}_segm
+    recognize/local/segment_audio.sh ${datadir} ${datadir}_segm || exit 1;
 fi
 
 if [ $stage -le 4 ]; then
@@ -80,7 +81,7 @@ if [ $stage -le 5 ]; then
     mkdir -p ${datadir}_segm_hires/ivectors_hires
     steps/online/nnet2/extract_ivectors_online.sh \
 	--cmd "$train_cmd" --nj $num_jobs \
-        ${datadir}_segm_hires exp/chain/extractor \
+        ${datadir}_segm_hires ${modeldir}/extractor \
         ${datadir}_segm_hires/ivectors_hires || exit 1;
 fi
 
@@ -91,7 +92,7 @@ if [ $stage -le 6 ]; then
     frames_per_chunk_primary=$(echo $frames_per_chunk | cut -d, -f1)
     extra_left_context=50
     extra_right_context=0
-    cp exp/chain/tdnn_lstm_1e_sp/{final.mdl,final.ie.id,cmvn_opts,frame_subsampling_factor} ${datadir}_segm_hires
+    cp ${modeldir}/tdnn_lstm_1e_sp/{final.mdl,final.ie.id,cmvn_opts,frame_subsampling_factor} ${datadir}_segm_hires || exit 1;
 
     steps/nnet3/decode.sh \
 	--acwt 1.0 --post-decode-acwt 10.0 \
@@ -116,10 +117,10 @@ if [ $stage -le 7 ]; then
     lattice-best-path \
         --lm-scale=$lmwt \
         --word-symbol-table=${oldLMdir}/words.txt \
-        "ark:zcat ${rescoredir}/lat.1.gz |" ark,t:- &> ${rescoredir}/extract_transcript.log
+        "ark:zcat ${rescoredir}/lat.1.gz |" ark,t:- &> ${rescoredir}/extract_transcript.log || exit 1;
 
     # Extract the best path text (tac - concatenate and print files in reverse)
-    tac ${rescoredir}/extract_transcript.log | grep -e '^[^ ]\+rad' | sort -u -t" " -k1,1 > ${rescoredir}/transcript.txt
+    tac ${rescoredir}/extract_transcript.log | grep -e '^[^ ]\+rad' | sort -u -t" " -k1,1 > ${rescoredir}/transcript.txt || exit 1;
 
 fi
 
@@ -128,7 +129,7 @@ if [ $stage -le 8 ]; then
     echo "Denormalize the transcript"
     recognize/local/denormalize.sh \
         ${rescoredir}/transcript.txt \
-        ${rescoredir}/${speechname}.txt
+        ${datadir}/../${speechname}.txt || exit 1;
     rm ${rescoredir}/*.tmp
 fi
 # ${rescoredir}/${spkID}_${speechname}_transcript.txt
@@ -137,6 +138,9 @@ if [ $score = true ] ; then
     echo "Estimate the WER"
     # NOTE! Correct for the mismatch in the beginning and end of recordings.
     recognize/local/score_recognize.sh --cmd "$train_cmd" $speechname ${oldLMdir} ${rescoredir}
+
+    rm -r ${datadir} ${datadir}_segm
+else
+    rm -r ${datadir} ${datadir}_segm ${datadir}_segm_hires
 fi
 
-rm -r ${datadir} ${datadir}_segm

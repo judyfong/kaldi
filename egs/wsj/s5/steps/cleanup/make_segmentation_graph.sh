@@ -60,37 +60,19 @@ done
 utils/lang/check_phones_compatible.sh $lang/phones.txt $model_dir/phones.txt
 
 # If --ngram-order is larger than 1, we will have to use MITLM
-loc=`which estimate-ngram`;
-if [ -z $loc ]; then
+if [ $ngram_order -gt 1 ]; then
+  loc=`which estimate-ngram` || true
+  if [ -z $loc ]; then
     sdir=/opt/mitlm/bin
     if [ -f $sdir/estimate-ngram ]; then
-        echo "Using MITLM language modelling tool from $sdir"
-    	export PATH=$PATH:$sdir
+      echo "Using MITLM language modelling tool from $sdir"
+      export PATH=$PATH:$sdir
     else
-        echo "MITLM toolkit is probably not installed."
-    	exit 1
+      echo "MITLM toolkit is probably not installed."
+      exit 1
     fi
+  fi
 fi
-
-# if [ $ngram_order -gt 1 ]; then
-#   ngram_count=`which ngram-count` || true
-#   if [ -z $ngram_count ]; then
-#     if uname -a | grep 64 >/dev/null; then # some kind of 64 bit...
-#       sdir=`pwd`/../../../tools/srilm/bin/i686-m64
-#     else
-#       sdir=`pwd`/../../../tools/srilm/bin/i686
-#     fi
-#     if [ -f $sdir/ngram-count ]; then
-#       echo Using SRILM tools from $sdir
-#       export PATH=$PATH:$sdir
-#     else
-#       echo You appear to not have SRILM tools installed, either on your path,
-#       echo or installed in $sdir.  See tools/install_srilm.sh for installation
-#       echo instructions.
-#       exit 1
-#     fi
-#   fi
-# fi
 
 # Creates one graph for each transcript. We parallelize the process a little
 # bit.

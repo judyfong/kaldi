@@ -13,13 +13,10 @@ include ../kaldi.mk
 BINFILES = fstdeterminizestar  \
            fstrmsymbols fstisstochastic fstminimizeencoded fstmakecontextfst \
            fstmakecontextsyms fstaddsubsequentialloop fstaddselfloops  \
-           fstrmepslocal fstcomposecontext fsttablecompose fstrand fstfactor \
-           fstdeterminizelog fstphicompose fstrhocompose fstpropfinal fstcopy \
+           fstrmepslocal fstcomposecontext fsttablecompose fstrand \
+           fstdeterminizelog fstphicompose fstcopy \
            fstpushspecial fsts-to-transcripts fststringcompile fsttablefilter \
-           expand-numbers fsts-project fsts-union fsts-scale fsts-difference
-
-# What newest Kaldi version wants instead of the last 2 lines above:
-# fstpushspecial fsts-to-transcripts fsts-project fsts-union
+           expand-numbers fsts-project fsts-union
 
 OBJFILES =
 

@@ -4,32 +4,33 @@
 
 . ./path.sh
 
-dict=~/data/althingi/pronDict_LM/CaseSensitive_pron_dict_Fix15_stln_cap_fixed.txt
-dictdir=`dirname $dict`;
-#dictdir=~/data/althingi/pronDict_LM
+dictdir=/home/staff/inga/data/althingi/pronDict_LM
+# Remove non-Icelandic words
+#comm -13 <(sort ${dictdir}/erlend_ord_wtrans.txt | uniq) <(sort ${dictdir}/CaseSensitive_pron_dict_Fix16.txt | uniq) > ${dictdir}/g2p_pron_dict_Fix16.txt
 modeldir=data/local/g2p
+id=_jan18
 
-n=5 # Number of training iterations
+n=4 # Number of training iterations
 
 # 1) Make a train and a test lex
 #    Randomly select 50 words for a test set
-sort -R $dict > ${dictdir}/shuffled_prondict.tmp
-head -n 50 ${dictdir}/shuffled_prondict.tmp | sort > ${dictdir}/g2p_test_des17.lex
-head -n -50 ${dictdir}/shuffled_prondict.tmp | sort > ${dictdir}/g2p_train_des17.lex
+sort -R ${dictdir}/g2p_pron_dict_Fix16.txt > ${dictdir}/shuffled_prondict.tmp
+head -n 200 ${dictdir}/shuffled_prondict.tmp | sort > ${dictdir}/g2p_test${id}.lex
+tail -n +201 ${dictdir}/shuffled_prondict.tmp | sort > ${dictdir}/g2p_train${id}.lex
 rm ${dictdir}/shuffled_prondict.tmp
 
 # 2) Train a model
 #    Train the first model, will be rather poor because it is only a unigram
-utils/slurm.pl --mem 4G ${modeldir}/g2p_1.log g2p.py --train ${dictdir}/g2p_train.lex --devel 5% --encoding="UTF-8" --write-model ${modeldir}/g2p_1.mdl
+utils/slurm.pl --mem 4G ${modeldir}/g2p_1${id}.log g2p.py --train ${dictdir}/g2p_train${id}.lex --devel 5% --encoding="UTF-8" --write-model ${modeldir}/g2p_1${id}.mdl
 
 #    To create higher order models you need to run g2p.py again a few times
-for i in `seq 1 $n`; do
-    utils/slurm.pl --mem 4G --time 0-06 ${modeldir}/g2p_$[$i+1].log g2p.py --model ${modeldir}/g2p_${i}.mdl --ramp-up --train ${dictdir}/g2p_train.lex --devel 5% --encoding="UTF-8" --write-model ${modeldir}/g2p_$[$i+1].mdl
+for i in `seq 1 $[$n-1]`; do
+    utils/slurm.pl --mem 4G --time 0-06 ${modeldir}/g2p_$[$i+1]${id}.log g2p.py --model ${modeldir}/g2p_${i}${id}.mdl --ramp-up --train ${dictdir}/g2p_train${id}.lex --devel 5% --encoding="UTF-8" --write-model ${modeldir}/g2p_$[$i+1]${id}.mdl
 done
 
 # 3) Evaluate the model
 #    To find out how accurately your model can transcribe unseen words type:
-g2p.py --model ${modeldir}/g2p_${n}.mdl --encoding="UTF-8" --test ${dictdir}/g2p_test.lex
+g2p.py --model ${modeldir}/g2p_${n}${id}.mdl --encoding="UTF-8" --test ${dictdir}/g2p_test${id}.lex
 
 # If happy with the model I would rename it to g2p.mdl
 # mv ${modeldir}/g2p_${n}.mdl ${modeldir}/g2p.mdl

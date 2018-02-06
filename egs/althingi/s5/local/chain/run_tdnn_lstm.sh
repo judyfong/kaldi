@@ -7,7 +7,7 @@
 set -e
 
 # configs for 'chain'
-stage=0
+stage=15 #0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
@@ -32,7 +32,7 @@ extra_right_context=0
 # we'll put extra-left-context-initial=0 and extra-right-context-final=0
 # directly without variables.
 
-remove_egs=true
+remove_egs=false
 common_egs_dir=
 
 test_online_decoding=false  # if true, it will run the last decoding stage.

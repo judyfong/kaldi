@@ -20,8 +20,6 @@
 import 'local/common.grm' as c;
 import 'local/numbers.grm' as n;
 import 'local/ordinals.grm' as o;
-# Use factorize since Robert already had introduced appropriate wheights
-#import 'local/factorize.grm' as f;
 
 # This transducer deletes a sequence of zero or more spaces:
 delspace = c.space* : "".utf8;

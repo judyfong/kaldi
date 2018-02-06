@@ -139,4 +139,6 @@ sed -r 's:^(hv[^    ]+)     k v:\1  kʰ v:' ~/data/althingi/pronDict_LM/CaseSens
 
 # Make a case sensitive dictionary which I will use to train g2p models on:
 tr '\t' ' ' < ${dir}/CaseSensitive_pron_dict_Fix4.txt | tr -s " " | sed 's/ /\t/1' | sed -e 's/[ \t]*$//' > ${dir}/g2p_pron_dict.txt
-G
+
+# Find incomplete transcriptions
+sed 's: ::g' ~/data/althingi/pronDict_LM/CaseSensitive_pron_dict_Fix17.txt | awk '{print $0"\t"length($1)"\t"length($2)}' | awk '{$5=($3)/($4)}1' | awk '{if ($5 > 1.4) print;}' > incomplete_transcriptions.tmp &

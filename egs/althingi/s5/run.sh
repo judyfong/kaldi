@@ -163,7 +163,7 @@ if [ $stage -le 7 ]; then
     # Make lang dir
     mkdir -p data/local/dict
     pronDictdir=~/data/althingi/pronDict_LM
-    frob=${pronDictdir}/CaseSensitive_pron_dict_Fix15_stln_fixed.txt
+    frob=${pronDictdir}/CaseSensitive_pron_dict_Fix17.txt
     local/prep_lang.sh \
         $frob            \
         data/local/dict   \
@@ -230,7 +230,17 @@ if [ $stage -le 7 ]; then
 
     # Build ConstArpaLm for the unpruned 5g language model.
     utils/build_const_arpa_lm.sh data/lang_5g/kenlm_5g.arpa.gz \
-        data/lang data/lang_5g &
+				 data/lang data/lang_5g &
+
+    # Make a zerogram language model to be able to check the effect of
+    # the language model in the ASR results
+    mkdir -p data/lang_zg
+    for s in L_disambig.fst L.fst oov.int oov.txt phones phones.txt \
+                            topo words.txt; do
+	[ ! -e data/lang_zg/$s ] && cp -r data/lang/$s data/lang_zg/$s
+    done
+    estimate-ngram -order 1 -text <(cat data/lang_zg/words.txt | egrep -v "<eps>|<s>|</s>|#" | cut -d' ' -f1) -wl data/lang_zg/zerogram.arpa.gz
+    utils/slurm.pl data/lang_zg/format_lm.log utils/format_lm.sh data/lang data/lang_zg/zerogram.arpa.gz data/local/dict/lexicon.txt data/lang_zg &
 
 fi
 

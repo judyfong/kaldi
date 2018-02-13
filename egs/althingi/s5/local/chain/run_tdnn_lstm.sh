@@ -7,17 +7,19 @@
 set -e
 
 # configs for 'chain'
-stage=15 #0
-train_stage=-10
+stage=14 #0
+train_stage=-2 #10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_lstm_1e # Note: _sp will get added to this if $speed_perturb == true.
+tdnn_lstm_affix=_2  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
+dir=exp/chain/tdnn_lstm${tdnn_lstm_affix} # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 
 # training options
 xent_regularize=0.01
 self_repair_scale=0.00001
 label_delay=5
+dropout_schedule='0,0@0.20,0.3@0.50,0'
 
 chunk_left_context=40
 chunk_right_context=0
@@ -120,7 +122,7 @@ if [ $stage -le 14 ]; then
   [ -z $num_targets ] && { echo "$0: error getting num-targets"; exit 1; }
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
-  lstm_opts="decay-time=20"
+  lstm_opts="decay-time=20 dropout-proportion=0.0"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -141,9 +143,11 @@ if [ $stage -le 14 ]; then
   fast-lstmp-layer name=fastlstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
   relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
-  fast-lstmp-layer name=fastlstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
   relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
+  fast-lstmp-layer name=fastlstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
   relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
+  relu-renorm-layer name=tdnn8 input=Append(-3,0,3) dim=1024
+  relu-renorm-layer name=tdnn9 input=Append(-3,0,3) dim=1024
   fast-lstmp-layer name=fastlstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
 
   ## adding the layers for chain branch
@@ -161,7 +165,7 @@ if [ $stage -le 14 ]; then
   output-layer name=output-xent input=fastlstm3 output-delay=$label_delay dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 
 EOF
-  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
+  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs
 fi
 
 if [ $stage -le 15 ]; then
@@ -178,13 +182,14 @@ if [ $stage -le 15 ]; then
     --trainer.num-chunk-per-minibatch 64,32 \
     --trainer.frames-per-iter 1500000 \
     --trainer.max-param-change 2.0 \
-    --trainer.num-epochs 4 \
+    --trainer.num-epochs 6 \
     --trainer.optimization.shrink-value 0.99 \
     --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.momentum 0.0 \
+    --trainer.dropout-schedule $dropout_schedule \
     --trainer.deriv-truncate-margin 8 \
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0" \
@@ -205,7 +210,10 @@ if [ $stage -le 16 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_3gsmall $dir $dir/graph_3gsmall
+    #utils/mkgraph.sh --self-loop-scale 1.0 data/lang_3gsmall $dir $dir/graph_3gsmall
+    
+    # Make a zerogram graph to be able to check the effect of the language model in the ASR results
+    #utils/slurm.pl --mem 4G --time 0-06 $dir/mkgraph_zg.log utils/mkgraph.sh --self-loop-scale 1.0 data/lang_zg $dir $dir/graph_zg &
 fi
 
 
@@ -242,5 +250,60 @@ if [ $stage -le 17 ]; then
     exit 1
   fi
 fi
+
+# # Check the effect of the LM
+# if [ $stage -le 18 ]; then
+#   rm $dir/.error 2>/dev/null || true
+#   for decode_set in dev eval; do
+#     (
+#       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+#       steps/nnet3/decode.sh --stage 2 --num-threads 4 \
+#         --acwt 1.0 --post-decode-acwt 10.0 \
+#         --nj $num_jobs --cmd "$decode_cmd --time 0-06" $iter_opts \
+#         --extra-left-context $extra_left_context  \
+#         --extra-right-context $extra_right_context  \
+#         --extra-left-context-initial 0 \
+#         --extra-right-context-final 0 \
+#         --frames-per-chunk "$frames_per_chunk_primary" \
+#         --online-ivector-dir exp/chain/ivectors_${decode_set}_hires \
+#         $dir/graph_zg data/${decode_set}_hires \
+#         $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_zg || exit 1;
+#     ) &
+#   done
+#   wait
+#   if [ -f $dir/.error ]; then
+#     echo "$0: something went wrong in decoding"
+#     exit 1
+#   fi
+# fi
+
+# # Check the bias
+# if [ $stage -le 19 ]; then
+#   rm $dir/.error 2>/dev/null || true
+#   for decode_set in train-dev; do
+#     (
+#       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+#       steps/nnet3/decode.sh --num-threads 4 \
+#         --acwt 1.0 --post-decode-acwt 10.0 \
+#         --nj $num_jobs --cmd "$decode_cmd --time 0-06" $iter_opts \
+#         --extra-left-context $extra_left_context  \
+#         --extra-right-context $extra_right_context  \
+#         --extra-left-context-initial 0 \
+#         --extra-right-context-final 0 \
+#         --frames-per-chunk "$frames_per_chunk_primary" \
+#         --online-ivector-dir exp/chain/ivectors_${decode_set}_hires \
+#         $graph_dir data/${decode_set}_hires \
+#         $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_3gsmall || exit 1;
+#       #steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+#       #  data/lang_{3gsmall,5g} data/${decode_set}_hires \
+#       #  $dir/decode_${decode_set}_{3gsmall,5g} || exit 1;
+#     ) &
+#   done
+#   wait
+#   if [ -f $dir/.error ]; then
+#     echo "$0: something went wrong in decoding"
+#     exit 1
+#   fi
+# fi
 
 exit 0;

@@ -112,7 +112,7 @@ if [ $stage -le 13 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
-      --cmd "$train_cmd --time 2-00" 7000 data/$train_set $lang $ali_dir $treedir
+      --cmd "$train_cmd --time 2-00" 11000 data/$train_set $lang $ali_dir $treedir
 fi
 
 if [ $stage -le 14 ]; then
@@ -147,7 +147,6 @@ if [ $stage -le 14 ]; then
   fast-lstmp-layer name=fastlstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
   relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn8 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn9 input=Append(-3,0,3) dim=1024
   fast-lstmp-layer name=fastlstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
 
   ## adding the layers for chain branch

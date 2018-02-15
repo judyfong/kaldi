@@ -2,7 +2,7 @@
 
 # To be run from the s5/ directory.
 
-. path.sh
+. ./path.sh
 
 set -e -o pipefail -u
 
@@ -11,13 +11,20 @@ set -e -o pipefail -u
 # obligatory).
 data_dir=data/rnnlm
 dir=exp/rnnlm
+mkdir -p $data_dir/data
 mkdir -p $dir
+
+# make data dir
+sort -R ~/data/althingi/pronDict_LM/LMtext_w_t131_split_on_EOS_expanded.txt > shuffled_lmtext.tmp
+head -n 200000 shuffled_lmtext.tmp > data/rnnlm/data/dev.txt
+tail -n +200001 shuffled_lmtext.tmp > data/rnnlm/data/train.txt
+rm shuffled_lmtext.tmp
 
 # validata data dir
 rnnlm/validate_data_dir.py $data_dir/data
 
 # get unigram counts
-local/rnnlm/get_unigram_counts.sh $data_dir/data
+local/rnnlm/ensure_counts_present.sh $data_dir/data
 
 # get vocab
 mkdir -p $data_dir/vocab

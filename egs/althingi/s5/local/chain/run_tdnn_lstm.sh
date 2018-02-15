@@ -7,8 +7,8 @@
 set -e
 
 # configs for 'chain'
-stage=14 #0
-train_stage=-2 #10
+stage=15 #0
+train_stage=1383 #-2 #10
 get_egs_stage=-10
 speed_perturb=true
 tdnn_lstm_affix=_2  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
@@ -19,7 +19,7 @@ decode_iter=
 xent_regularize=0.01
 self_repair_scale=0.00001
 label_delay=5
-dropout_schedule='0,0@0.20,0.3@0.50,0'
+#dropout_schedule='0,0@0.20,0.3@0.50,0'
 
 chunk_left_context=40
 chunk_right_context=0
@@ -122,7 +122,7 @@ if [ $stage -le 14 ]; then
   [ -z $num_targets ] && { echo "$0: error getting num-targets"; exit 1; }
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
-  lstm_opts="decay-time=20 dropout-proportion=0.0"
+  lstm_opts="decay-time=20" # dropout-proportion=0.0"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -143,11 +143,9 @@ if [ $stage -le 14 ]; then
   fast-lstmp-layer name=fastlstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
   relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
   fast-lstmp-layer name=fastlstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
   relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn8 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn9 input=Append(-3,0,3) dim=1024
   fast-lstmp-layer name=fastlstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
 
   ## adding the layers for chain branch
@@ -170,7 +168,8 @@ fi
 
 if [ $stage -le 15 ]; then
 
-  steps/nnet3/chain/train.py --stage $train_stage \
+  # steps/nnet3/chain/train.py
+  local/old_train.py --stage $train_stage \
     --cmd "$decode_cmd --time 3-12" \
     --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
@@ -182,14 +181,13 @@ if [ $stage -le 15 ]; then
     --trainer.num-chunk-per-minibatch 64,32 \
     --trainer.frames-per-iter 1500000 \
     --trainer.max-param-change 2.0 \
-    --trainer.num-epochs 6 \
+    --trainer.num-epochs 5 \
     --trainer.optimization.shrink-value 0.99 \
     --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.momentum 0.0 \
-    --trainer.dropout-schedule $dropout_schedule \
     --trainer.deriv-truncate-margin 8 \
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0" \
@@ -206,15 +204,17 @@ if [ $stage -le 15 ]; then
     --dir $dir  || exit 1;
 fi
 
-if [ $stage -le 16 ]; then
-  # Note: it might appear that this $lang directory is mismatched, and it is as
-  # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
-  # the lang directory.
-    #utils/mkgraph.sh --self-loop-scale 1.0 data/lang_3gsmall $dir $dir/graph_3gsmall
+#     --trainer.dropout-schedule $dropout_schedule \
+
+# if [ $stage -le 16 ]; then
+#   # Note: it might appear that this $lang directory is mismatched, and it is as
+#   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
+#   # the lang directory.
+#     utils/mkgraph.sh --self-loop-scale 1.0 data/lang_3gsmall $dir $dir/graph_3gsmall
     
-    # Make a zerogram graph to be able to check the effect of the language model in the ASR results
-    #utils/slurm.pl --mem 4G --time 0-06 $dir/mkgraph_zg.log utils/mkgraph.sh --self-loop-scale 1.0 data/lang_zg $dir $dir/graph_zg &
-fi
+#     # Make a zerogram graph to be able to check the effect of the language model in the ASR results
+#     #utils/slurm.pl --mem 4G --time 0-06 $dir/mkgraph_zg.log utils/mkgraph.sh --self-loop-scale 1.0 data/lang_zg $dir $dir/graph_zg &
+# fi
 
 
 graph_dir=$dir/graph_3gsmall

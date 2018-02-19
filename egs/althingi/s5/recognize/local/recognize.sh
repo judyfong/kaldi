@@ -43,8 +43,8 @@ fi
 
 # Dirs used #
 # Already existing
-modeldir=exp/chain
-graphdir=${modeldir}/tdnn_lstm_1e_sp/graph_3gsmall
+modeldir=exp/chain/tdnn_lstm_2_sp
+graphdir=${modeldir}/graph_3gsmall
 oldLMdir=data/lang_3gsmall
 newLMdir=data/lang_5g
 # Created
@@ -81,7 +81,7 @@ if [ $stage -le 5 ]; then
     mkdir -p ${datadir}_segm_hires/ivectors_hires
     steps/online/nnet2/extract_ivectors_online.sh \
 	--cmd "$train_cmd" --nj $num_jobs \
-        ${datadir}_segm_hires ${modeldir}/extractor \
+        ${datadir}_segm_hires ${modeldir}/../extractor \
         ${datadir}_segm_hires/ivectors_hires || exit 1;
 fi
 
@@ -92,7 +92,7 @@ if [ $stage -le 6 ]; then
     frames_per_chunk_primary=$(echo $frames_per_chunk | cut -d, -f1)
     extra_left_context=50
     extra_right_context=0
-    cp ${modeldir}/tdnn_lstm_1e_sp/{final.mdl,final.ie.id,cmvn_opts,frame_subsampling_factor} ${datadir}_segm_hires || exit 1;
+    cp ${modeldir}/{final.mdl,final.ie.id,cmvn_opts,frame_subsampling_factor} ${datadir}_segm_hires || exit 1;
 
     steps/nnet3/decode.sh \
 	--acwt 1.0 --post-decode-acwt 10.0 \

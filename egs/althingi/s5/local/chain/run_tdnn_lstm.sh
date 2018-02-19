@@ -7,8 +7,8 @@
 set -e
 
 # configs for 'chain'
-stage=15 #0
-train_stage=1383 #-2 #10
+stage=17 #0
+train_stage=1727 #-2 #10
 get_egs_stage=-10
 speed_perturb=true
 tdnn_lstm_affix=_2  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.

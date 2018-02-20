@@ -14,6 +14,9 @@ speed_perturb=true
 tdnn_lstm_affix=_2  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
 dir=exp/chain/tdnn_lstm${tdnn_lstm_affix} # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
+generate_plots=false
+calculate_bias=false
+zerogram_decoding=false
 
 # training options
 xent_regularize=0.01
@@ -250,59 +253,62 @@ if [ $stage -le 17 ]; then
   fi
 fi
 
-# # Check the effect of the LM
-# if [ $stage -le 18 ]; then
-#   rm $dir/.error 2>/dev/null || true
-#   for decode_set in dev eval; do
-#     (
-#       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-#       steps/nnet3/decode.sh --stage 2 --num-threads 4 \
-#         --acwt 1.0 --post-decode-acwt 10.0 \
-#         --nj $num_jobs --cmd "$decode_cmd --time 0-06" $iter_opts \
-#         --extra-left-context $extra_left_context  \
-#         --extra-right-context $extra_right_context  \
-#         --extra-left-context-initial 0 \
-#         --extra-right-context-final 0 \
-#         --frames-per-chunk "$frames_per_chunk_primary" \
-#         --online-ivector-dir exp/chain/ivectors_${decode_set}_hires \
-#         $dir/graph_zg data/${decode_set}_hires \
-#         $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_zg || exit 1;
-#     ) &
-#   done
-#   wait
-#   if [ -f $dir/.error ]; then
-#     echo "$0: something went wrong in decoding"
-#     exit 1
-#   fi
-# fi
+if [ $generate_plots = true ]; then
+    echo "Generating plots and compiling a latex report on the training"
+    steps/nnet3/report/generate_plots.py \
+	--is-chain true $dir $dir/report_tdnn_lstm_2_sp
+fi
 
-# # Check the bias
-# if [ $stage -le 19 ]; then
-#   rm $dir/.error 2>/dev/null || true
-#   for decode_set in train-dev; do
-#     (
-#       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-#       steps/nnet3/decode.sh --num-threads 4 \
-#         --acwt 1.0 --post-decode-acwt 10.0 \
-#         --nj $num_jobs --cmd "$decode_cmd --time 0-06" $iter_opts \
-#         --extra-left-context $extra_left_context  \
-#         --extra-right-context $extra_right_context  \
-#         --extra-left-context-initial 0 \
-#         --extra-right-context-final 0 \
-#         --frames-per-chunk "$frames_per_chunk_primary" \
-#         --online-ivector-dir exp/chain/ivectors_${decode_set}_hires \
-#         $graph_dir data/${decode_set}_hires \
-#         $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_3gsmall || exit 1;
-#       #steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-#       #  data/lang_{3gsmall,5g} data/${decode_set}_hires \
-#       #  $dir/decode_${decode_set}_{3gsmall,5g} || exit 1;
-#     ) &
-#   done
-#   wait
-#   if [ -f $dir/.error ]; then
-#     echo "$0: something went wrong in decoding"
-#     exit 1
-#   fi
-# fi
+if [ $zerogram_decoding = true ]; then
+  echo "Do zerogram decoding to check the effect of the LM"
+  rm $dir/.error 2>/dev/null || true
+  for decode_set in dev eval; do
+    (
+      num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+      steps/nnet3/decode.sh --stage 2 --num-threads 4 \
+        --acwt 1.0 --post-decode-acwt 10.0 \
+        --nj $num_jobs --cmd "$decode_cmd --time 0-06" $iter_opts \
+        --extra-left-context $extra_left_context  \
+        --extra-right-context $extra_right_context  \
+        --extra-left-context-initial 0 \
+        --extra-right-context-final 0 \
+        --frames-per-chunk "$frames_per_chunk_primary" \
+        --online-ivector-dir exp/chain/ivectors_${decode_set}_hires \
+        $dir/graph_zg data/${decode_set}_hires \
+        $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_zg || exit 1;
+    ) &
+  done
+  wait
+  if [ -f $dir/.error ]; then
+    echo "$0: something went wrong in decoding"
+    exit 1
+  fi
+fi
+
+if [ $calculate_bias = true ]; then
+  echo "Calculate the bias by decoding a subset of the training set"
+  rm $dir/.error 2>/dev/null || true
+  for decode_set in train-dev; do
+    (
+      num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+      steps/nnet3/decode.sh --num-threads 4 \
+        --acwt 1.0 --post-decode-acwt 10.0 \
+        --nj $num_jobs --cmd "$decode_cmd --time 0-06" $iter_opts \
+        --extra-left-context $extra_left_context  \
+        --extra-right-context $extra_right_context  \
+        --extra-left-context-initial 0 \
+        --extra-right-context-final 0 \
+        --frames-per-chunk "$frames_per_chunk_primary" \
+        --online-ivector-dir exp/chain/ivectors_${decode_set}_hires \
+        $graph_dir data/${decode_set}_hires \
+        $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_3gsmall || exit 1;
+    ) &
+  done
+  wait
+  if [ -f $dir/.error ]; then
+    echo "$0: something went wrong in decoding"
+    exit 1
+  fi
+fi
 
 exit 0;

@@ -7,8 +7,8 @@
 set -e
 
 # configs for 'chain'
-stage=14 #0
-train_stage=-2 #10
+stage=0
+train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
 tdnn_lstm_affix=_2  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
@@ -172,7 +172,8 @@ fi
 
 if [ $stage -le 15 ]; then
 
-  steps/nnet3/chain/train.py --stage $train_stage \
+  # steps/nnet3/chain/train.py
+  local/old_train.py --stage $train_stage \
     --cmd "$decode_cmd --time 3-12" \
     --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
@@ -191,8 +192,8 @@ if [ $stage -le 15 ]; then
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.momentum 0.0 \
-    --trainer.dropout-schedule $dropout_schedule \
     --trainer.deriv-truncate-margin 8 \
+    --trainer.dropout-schedule $dropout_schedule \
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width $frames_per_chunk \
@@ -212,12 +213,11 @@ if [ $stage -le 16 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-    #utils/mkgraph.sh --self-loop-scale 1.0 data/lang_3gsmall $dir $dir/graph_3gsmall
-    
-    # Make a zerogram graph to be able to check the effect of the language model in the ASR results
-    #utils/slurm.pl --mem 4G --time 0-06 $dir/mkgraph_zg.log utils/mkgraph.sh --self-loop-scale 1.0 data/lang_zg $dir $dir/graph_zg &
+  if [ $dir/graph_3gsmall/HCLG.fst -ot data/lang_3gsmall/G.fst ]; then
+    echo "Make a small 3-gram graph"
+    utils/mkgraph.sh --self-loop-scale 1.0 data/lang_3gsmall $dir $dir/graph_3gsmall
+  fi
 fi
-
 
 graph_dir=$dir/graph_3gsmall
 iter_opts=
@@ -262,6 +262,12 @@ fi
 if [ $zerogram_decoding = true ]; then
   echo "Do zerogram decoding to check the effect of the LM"
   rm $dir/.error 2>/dev/null || true
+
+  if [ $dir/graph_zg/HCLG.fst -ot data/lang_zg/G.fst ]; then
+    echo "Make a zerogram graph"
+    utils/slurm.pl --mem 4G --time 0-06 $dir/log/mkgraph_zg.log utils/mkgraph.sh --self-loop-scale 1.0 data/lang_zg $dir $dir/graph_zg
+  fi
+  
   for decode_set in dev eval; do
     (
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`

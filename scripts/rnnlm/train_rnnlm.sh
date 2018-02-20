@@ -11,8 +11,8 @@
 
 
 stage=0
-num_jobs_initial=1
-num_jobs_final=1
+num_jobs_initial=3
+num_jobs_final=12
 rnnlm_max_change=0.5
 embedding_max_change=0.5
 chunk_length=32

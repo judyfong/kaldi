@@ -1,23 +1,28 @@
 #!/bin/bash
 
-# run_tdnn_lstm_1e.sh is like run_tdnn_lstm_1d.sh but
-# trying the change of xent_regularize from 0.025 (which was an
-# unusual value) to the more usual 0.01.
+# run_tdnn_lstm_3.sh is based on run_tdnn_lstm_1n.sh from the swbd recipe,
+# while keeping in mind how much training data I have
+# (I'm using 1500 hrs w/ sp, but have 6200 hrs in total)
 
 set -e
 
 # configs for 'chain'
-stage=15 #0
+stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_lstm_1e # Note: _sp will get added to this if $speed_perturb == true.
+tdnn_lstm_affix=_2  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
+dir=exp/chain/tdnn_lstm${tdnn_lstm_affix} # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
+generate_plots=false
+calculate_bias=false
+zerogram_decoding=false
 
 # training options
-xent_regularize=0.01
+xent_regularize=0.025
 self_repair_scale=0.00001
 label_delay=5
+dropout_schedule='0,0@0.20,0.3@0.50,0'
 
 chunk_left_context=40
 chunk_right_context=0
@@ -110,7 +115,7 @@ if [ $stage -le 13 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
-      --cmd "$train_cmd --time 2-00" 7000 data/$train_set $lang $ali_dir $treedir
+      --cmd "$train_cmd --time 2-00" 11000 data/$train_set $lang $ali_dir $treedir
 fi
 
 if [ $stage -le 14 ]; then
@@ -120,8 +125,11 @@ if [ $stage -le 14 ]; then
   [ -z $num_targets ] && { echo "$0: error getting num-targets"; exit 1; }
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
-  lstm_opts="decay-time=20"
-
+  opts="l2-regularize=0.002"
+  linear_opts="orthonormal-constraint=1.0"
+  lstm_opts="l2-regularize=0.0005 decay-time=40"
+  output_opts="l2-regularize=0.0005 output-delay=$label_delay max-change=1.5 dim=$num_targets"
+ 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
@@ -130,24 +138,37 @@ if [ $stage -le 14 ]; then
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
-  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=1024
-  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
-  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
+  relu-batchnorm-layer name=tdnn1 $opts dim=1280
+  linear-component name=tdnn2l dim=256 $linear_opts input=Append(-1,0)
+  relu-batchnorm-layer name=tdnn2 $opts input=Append(0,1) dim=1280
+  linear-component name=tdnn3l dim=256 $linear_opts
+  relu-batchnorm-layer name=tdnn3 $opts dim=1280
+  linear-component name=tdnn4l dim=256 $linear_opts input=Append(-1,0)
+  relu-batchnorm-layer name=tdnn4 $opts input=Append(0,1) dim=1280
+  linear-component name=tdnn5l dim=256 $linear_opts
+  relu-batchnorm-layer name=tdnn5 $opts dim=1280 input=Append(tdnn5l, tdnn3l)
+  linear-component name=tdnn6l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-layer name=tdnn6 $opts input=Append(0,3) dim=1280
+  linear-component name=lstm1l dim=256 $linear_opts input=Append(-3,0)
 
   # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
-  fast-lstmp-layer name=fastlstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
-  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
-  fast-lstmp-layer name=fastlstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
-  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
-  fast-lstmp-layer name=fastlstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  fast-lstmp-layer name=lstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=128 delay=-3 dropout-proportion=0.0 $lstm_opts
+  relu-batchnorm-layer name=tdnn7 $opts input=Append(0,3,tdnn6l,tdnn4l,tdnn2l) dim=1280
+  linear-component name=tdnn8l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-layer name=tdnn8 $opts input=Append(0,3) dim=1280
+  linear-component name=lstm2l dim=256 $linear_opts input=Append(-3,0)
+  fast-lstmp-layer name=lstm2 cell-dim=1280 recurrent-projection-dim=256 non-recurrent-projection-dim=128 delay=-3 dropout-proportion=0.0 $lstm_opts
+  relu-batchnorm-layer name=tdnn9 $opts input=Append(0,3,tdnn8l,tdnn6l,tdnn4l) dim=1280
+  linear-component name=tdnn10l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-layer name=tdnn10 $opts input=Append(0,3) dim=1280
+  linear-component name=lstm3l dim=256 $linear_opts input=Append(-3,0)
+  fast-lstmp-layer name=lstm3 cell-dim=1280 recurrent-projection-dim=256 non-recurrent-projection-dim=128 delay=-3 dropout-proportion=0.0 $lstm_opts
 
   ## adding the layers for chain branch
-  output-layer name=output input=fastlstm3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
+  output-layer name=output input=lstm3 include-log-softmax=false $output_opts
 
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
@@ -158,10 +179,10 @@ if [ $stage -le 14 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  output-layer name=output-xent input=fastlstm3 output-delay=$label_delay dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  output-layer name=output-xent input=lstm3 learning-rate-factor=$learning_rate_factor $output_opts
 
 EOF
-  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
+  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs
 fi
 
 if [ $stage -le 15 ]; then
@@ -172,14 +193,14 @@ if [ $stage -le 15 ]; then
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
-    --chain.l2-regularize 0.00005 \
+    --chain.l2-regularize 0.0 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
+    --trainer.dropout-schedule $dropout_schedule \
     --trainer.num-chunk-per-minibatch 64,32 \
     --trainer.frames-per-iter 1500000 \
     --trainer.max-param-change 2.0 \
-    --trainer.num-epochs 4 \
-    --trainer.optimization.shrink-value 0.99 \
+    --trainer.num-epochs 8 \
     --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.001 \
@@ -205,9 +226,11 @@ if [ $stage -le 16 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_3gsmall $dir $dir/graph_3gsmall
+  if [ $dir/graph_3gsmall/HCLG.fst -ot data/lang_3gsmall/G.fst ]; then
+    echo "Make a small 3-gram graph"
+    utils/mkgraph.sh --self-loop-scale 1.0 data/lang_3gsmall $dir $dir/graph_3gsmall
+  fi
 fi
-
 
 graph_dir=$dir/graph_3gsmall
 iter_opts=
@@ -234,6 +257,70 @@ if [ $stage -le 17 ]; then
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
         data/lang_{3gsmall,5g} data/${decode_set}_hires \
         $dir/decode_${decode_set}_{3gsmall,5g} || exit 1;
+    ) &
+  done
+  wait
+  if [ -f $dir/.error ]; then
+    echo "$0: something went wrong in decoding"
+    exit 1
+  fi
+fi
+
+if [ $generate_plots = true ]; then
+    echo "Generating plots and compiling a latex report on the training"
+    steps/nnet3/report/generate_plots.py \
+	--is-chain true $dir $dir/report_tdnn_lstm_2_sp
+fi
+
+if [ $zerogram_decoding = true ]; then
+  echo "Do zerogram decoding to check the effect of the LM"
+  rm $dir/.error 2>/dev/null || true
+
+  if [ $dir/graph_zg/HCLG.fst -ot data/lang_zg/G.fst ]; then
+    echo "Make a zerogram graph"
+    utils/slurm.pl --mem 4G --time 0-06 $dir/log/mkgraph_zg.log utils/mkgraph.sh --self-loop-scale 1.0 data/lang_zg $dir $dir/graph_zg
+  fi
+  
+  for decode_set in dev eval; do
+    (
+      num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+      steps/nnet3/decode.sh --stage 2 --num-threads 4 \
+        --acwt 1.0 --post-decode-acwt 10.0 \
+        --nj $num_jobs --cmd "$decode_cmd --time 0-06" $iter_opts \
+        --extra-left-context $extra_left_context  \
+        --extra-right-context $extra_right_context  \
+        --extra-left-context-initial 0 \
+        --extra-right-context-final 0 \
+        --frames-per-chunk "$frames_per_chunk_primary" \
+        --online-ivector-dir exp/chain/ivectors_${decode_set}_hires \
+        $dir/graph_zg data/${decode_set}_hires \
+        $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_zg || exit 1;
+    ) &
+  done
+  wait
+  if [ -f $dir/.error ]; then
+    echo "$0: something went wrong in decoding"
+    exit 1
+  fi
+fi
+
+if [ $calculate_bias = true ]; then
+  echo "Calculate the bias by decoding a subset of the training set"
+  rm $dir/.error 2>/dev/null || true
+  for decode_set in train-dev; do
+    (
+      num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+      steps/nnet3/decode.sh --num-threads 4 \
+        --acwt 1.0 --post-decode-acwt 10.0 \
+        --nj $num_jobs --cmd "$decode_cmd --time 0-06" $iter_opts \
+        --extra-left-context $extra_left_context  \
+        --extra-right-context $extra_right_context  \
+        --extra-left-context-initial 0 \
+        --extra-right-context-final 0 \
+        --frames-per-chunk "$frames_per_chunk_primary" \
+        --online-ivector-dir exp/chain/ivectors_${decode_set}_hires \
+        $graph_dir data/${decode_set}_hires \
+        $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_3gsmall || exit 1;
     ) &
   done
   wait

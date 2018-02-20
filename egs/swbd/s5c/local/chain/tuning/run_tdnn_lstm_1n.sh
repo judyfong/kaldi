@@ -133,7 +133,7 @@ if [ $stage -le 12 ]; then
   lstm_opts="l2-regularize=0.0005 decay-time=40"
   output_opts="l2-regularize=0.0005 output-delay=$label_delay max-change=1.5 dim=$num_targets"
 
-
+  
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector

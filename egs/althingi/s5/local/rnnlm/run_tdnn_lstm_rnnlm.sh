@@ -73,7 +73,7 @@ fi
 
 
 if [ $stage -le 1 ]; then
-  rnnlm/prepare_rnnlm_dir.sh $data_dir/data $dir/config $dir
+  rnnlm/prepare_rnnlm_dir.sh --cmd "$train_cmd" $data_dir/data $dir/config $dir
 fi
 
 if [ $stage -le 2 ]; then

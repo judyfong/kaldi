@@ -3,8 +3,6 @@
 # Copyright 2017 Reykjavik University (Author: Inga Rún Helgadóttir)
 # Apache 2.0
 
-[ -f ./path.sh ] && . ./path.sh
-
 # begin configuration section.
 cmd=run.pl
 stage=0

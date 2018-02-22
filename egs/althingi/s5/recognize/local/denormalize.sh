@@ -24,7 +24,8 @@ fststringcompile ark:$ifile ark:- | fsttablecompose --match-side=left ark,t:- te
 # Remove uttIDs and map to words
 cut -d" " -f2- ${dir}/thrax_out.tmp | sed -re 's: ::g' -e 's:0x0020: :g' | tr "\n" " " | sed -r "s/[[:space:]]+/ /g" > ${dir}/thrax_out_words.tmp
 
-echo "Fix casing in Ari trausti Guðmundsson and Unnur brá Konráðsdóttir for exemple"
+echo "Uppercase first names when followed by family names (eftirnafn)." 
+#F.ex. in Ari trausti Guðmundsson and Unnur brá Konráðsdóttir
 sed -i -r "s:\b([^ ]+) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r))\b:\u\1 \2:g" ${dir}/thrax_out_words.tmp
 
 echo "Collapse acronyms pronounced as letters"

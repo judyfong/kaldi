@@ -24,12 +24,15 @@ echo "$0 $@"  # Print the command line for logging
 . ./path.sh
 . ./utils/parse_options.sh
 
+# Calculate the decoding and denormalization time
+begin=$(date +%s)
+
 speechfile=$1
 speechname=$(basename "$speechfile")
 extension="${speechname##*.}"
 speechname="${speechname%.*}"
 
-datadir=recognize/chain/$speechname
+datadir=recognize/chain/notendaprof2/$speechname
 logdir=${datadir}/../log
 mkdir -p ${datadir}
 mkdir -p ${logdir}
@@ -133,6 +136,10 @@ if [ $stage -le 8 ]; then
         ${rescoredir}/transcript.txt \
         ${datadir}/../${speechname}.txt || exit 1;
 fi
+
+end=$(date +%s)
+tottime=$(expr $end - $begin)
+echo "total time: $tottime seconds"
 
 if [ $score = true ] ; then
 

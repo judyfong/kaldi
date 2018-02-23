@@ -3,19 +3,24 @@
 # Calculate the edit distance between the ASR output and the manually transcribed text.
 # I only compair the two texts, no scoring for different LM weights or word insertion penalty.
 
-# configuration section.
-cmd=run.pl
-
 echo "$0 $@"  # Print the command line for logging
 . ./path.sh
 . ./cmd.sh
+
+if [ $# -ne 3 ]; then
+    echo "Usage: $0 [options] <textfile1> <textfile2> <output-dir>"
+    echo "e.g.:  local/estimate_wordEditDistance.sh \\"
+    echo "  recognize/notendaprof2/Lestur/rad20180219T150803.xml \\"
+    echo "  recognize/notendaprof2/ASR/rad20180219T150803.txt recognize/notendaprof2/edit_dist"
+    exit 1;
+fi
 
 # If one of the texts is and ASR transcription and one is either a manual transcription
 # or an edited ASR text, then text2 should be the unedited ASR transcription
 textfile1=$1
 textfile2=$2
 dir=$3
-mkdir -p $dir/log
+mkdir -p $dir
 
 base=$(basename "$textfile1")
 extension1="${text1##*.}"
@@ -64,23 +69,20 @@ cut -d" " -f1-$idx2 $dir/${base}_trimmed.tmp > $dir/${base}_trimmed.txt
 rm $dir/${base}_trimmed.tmp
 
 # Get a percentage value over the edit distance
-$cmd $dir/log/${base}_score.log \
-     cat $dir/${base}_trimmed.txt \| \
-     compute-wer --text --mode=present \
-     ark:$dir/text1.tmp ark,p:- ">&" $dir/dist_$base || exit 1;
+cat $dir/${base}_trimmed.txt | \
+    compute-wer --text --mode=present \
+    ark:$dir/text1.tmp ark,p:- >& $dir/dist_$base || exit 1;
 
 # Get a view of the alignment between the texts, plus values of
 # correct words, substituions, insertions and deletions
-$cmd $dir/log/${base}_stats1.log \
-     cat $dir/${base}_trimmed.txt \| \
-     align-text --special-symbol="'***'" ark:$dir/text1.tmp ark:- ark,t:- \|  \
-     utils/scoring/wer_per_utt_details.pl --special-symbol "'***'" \| tee $dir/per_utt_$base || exit 1;
+cat $dir/${base}_trimmed.txt | \
+    align-text --special-symbol="'***'" ark:$dir/text1.tmp ark:- ark,t:- |  \
+    utils/scoring/wer_per_utt_details.pl --special-symbol "'***'" > $dir/per_utt_$base || exit 1;
 
 # Get statistics over correct words, substituions, insertions and deletions.
 # F.ex. how often "virðulegi" is switched out for "virðulegur" and so on. 
-$cmd $dir/log/${base}_stats2.log \
-     cat $dir/per_utt_$base \| \
-     utils/scoring/wer_ops_details.pl --special-symbol "'***'" \| \
-     sort -b -i -k 1,1 -k 4,4rn -k 2,2 -k 3,3 \> $dir/ops_$base || exit 1;
+cat $dir/per_utt_$base | \
+    utils/scoring/wer_ops_details.pl --special-symbol "'***'" | \
+    sort -b -i -k 1,1 -k 4,4rn -k 2,2 -k 3,3 > $dir/ops_$base || exit 1;
 
-#rm $dir/text{1,2}.tmp
+rm $dir/text{1,2}.tmp

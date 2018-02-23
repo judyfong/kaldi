@@ -7,7 +7,7 @@
 #
 # Usage: $0 <audiofile> [<metadata>]
 # Example (if want to save the time info as well):
-# { time recognize/local/recognize.sh data/local/corpus/audio/rad20160309T151154.flac data/local/corpus/metadata.csv; } &> recognize/chain/rad20160309T151154.log
+# { time local/recognize/recognize.sh /data/althingi/corpus_nov2016/audio/rad20160309T151154.flac data/local/corpus/metadata.csv; } &> recognize/chain/rad20160309T151154.log
 
 set -e
 set -o pipefail
@@ -32,7 +32,7 @@ speechname=$(basename "$speechfile")
 extension="${speechname##*.}"
 speechname="${speechname%.*}"
 
-datadir=recognize/chain/notendaprof2/$speechname
+datadir=recognize/notendaprof2/$speechname
 logdir=${datadir}/../log
 mkdir -p ${datadir}
 mkdir -p ${logdir}
@@ -43,7 +43,7 @@ elif [ $# = 1 ]; then
     echo -e "unknown",$speechname > ${datadir}/${speechname}_meta.tmp
     speakerfile=${datadir}/${speechname}_meta.tmp
 else
-    echo "Usage: recognize/local/recognize.sh [options] <audiofile> [<metadata>]"
+    echo "Usage: local/recognize/recognize.sh [options] <audiofile> [<metadata>]"
 fi
 
 # Dirs used #
@@ -59,14 +59,14 @@ rescoredir=${datadir}_segm_hires/decode_5g
 if [ $stage -le 0 ]; then
 
     echo "Set up a directory in the right format of Kaldi and extract features"
-    recognize/local/prep_audiodata.sh $speechfile $speakerfile $datadir || exit 1;
+    local/recognize/prep_audiodata.sh $speechfile $speakerfile $datadir || exit 1;
 fi
 spkID=$(cut -d" " -f1 $datadir/spk2utt)
 
 if [ $stage -le 3 ]; then
 
     echo "Segment audio data"
-    recognize/local/segment_audio.sh ${datadir} ${datadir}_segm || exit 1;
+    local/recognize/segment_audio.sh ${datadir} ${datadir}_segm || exit 1;
 fi
 
 if [ $stage -le 4 ]; then
@@ -132,7 +132,7 @@ fi
 if [ $stage -le 8 ]; then
 
     echo "Denormalize the transcript"
-    $train_cmd ${logdir}/${speechname}_denormalize.log recognize/local/denormalize.sh \
+    $train_cmd ${logdir}/${speechname}_denormalize.log local/recognize/denormalize.sh \
         ${rescoredir}/transcript.txt \
         ${datadir}/../${speechname}.txt || exit 1;
 fi
@@ -145,7 +145,7 @@ if [ $score = true ] ; then
 
     echo "Estimate the WER"
     # NOTE! Correct for the mismatch in the beginning and end of recordings.
-    recognize/local/score_recognize.sh \
+    local/recognize/score_recognize.sh \
 	--cmd "$train_cmd" $speechname ${oldLMdir} ${datadir}/.. || exit 1;
 fi
 

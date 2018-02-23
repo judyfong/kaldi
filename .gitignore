@@ -104,6 +104,7 @@ tmp
 /egs/*/s*/punctuator2/example
 egs/*/s*/punctuator2/libgpuarray
 egs/*/s*/punctuator2/log
+egs/althingi/s5/ivector_clustering/
 
 # /tools/
 /tools/ATLAS/
@@ -124,6 +125,7 @@ egs/*/s*/punctuator2/log
 /tools/openfst-1.6.1/
 /tools/openfst-1.6.2.tar.gz
 /tools/openfst-1.6.2/
+/tools/openfst-1.6.5.tar.gz
 /tools/pa_stable_v19_20111121.tgz
 /tools/portaudio/
 /tools/sctk-2.4.0-20091110-0958.tar.bz2

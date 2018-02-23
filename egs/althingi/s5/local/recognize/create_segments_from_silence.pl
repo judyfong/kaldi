@@ -17,9 +17,9 @@ of silences in an audio file, and creates a segments file.
 A minimum segment length is required before splitting on a silence and the
 silence must also be of a minimum length to be used for splitting.
 
-Usage: recognize/local/create_segments_from_silence.pl [options] \
+Usage: local/recognize/create_segments_from_silence.pl [options] \
                               <silence info from ffmpeg> <segments>
- e.g.: recognize/local/create_segments_from_silence.pl \
+ e.g.: local/recognize/create_segments_from_silence.pl \
           --min-seg-length $min_seg_length \
           --min-sil-length $min_sil_length \
           $silence_file $new_data_dir/segments

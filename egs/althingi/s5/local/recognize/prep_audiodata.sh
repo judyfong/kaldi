@@ -50,7 +50,7 @@ if [ $stage -le 0 ]; then
     
     echo "b) wav.scp" # Connect every speech ID with an audio file location.
     echo -e ${spkID}-${speechname} $wav_cmd" < "$(readlink -f ${speechfile})" |" | tr -d $'\r' > ${datadir}/wav.scp
-    #echo -e ${spkID}-${speechname} $wav_cmd" < "$(readlink -f data/local/corpus/audio/${speechname}".flac")" |" | tr -d $'\r' > ${datadir}/wav.scp
+    
     rm ${datadir}/spkname_speechname.tmp ${datadir}/speechname_uttID.tmp
 
     echo "c) spk2utt"

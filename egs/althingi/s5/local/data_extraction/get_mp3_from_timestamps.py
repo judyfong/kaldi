@@ -20,7 +20,7 @@ def getMP3(stamps):
         end = re.sub(':', '', end)
 
         rad = 'rad' + date + 'T' + start
-        audio_file_name = '/home/staff/inga/kaldi/egs/althingi/s5/recognize/chain/notendaprof2/audio/' + rad + '.mp3'
+        audio_file_name = '/home/staff/inga/kaldi/egs/althingi/s5/recognize/notendaprof2/audio/' + rad + '.mp3'
         urllib.urlretrieve(mp3url, audio_file_name)
 
 

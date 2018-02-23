@@ -75,7 +75,7 @@ for line in $(cat $datadir/wav.scp); do
 	
     	# Used make_segmentation_data_dir.sh and create_segments_from_ctm.pl as bases for the segmentation step
     	echo "Make data dir with segmented audio"
-    	recognize/local/make_audio_segmentation_data_dir.sh \
+    	local/recognize/make_audio_segmentation_data_dir.sh \
     	    --min-seg-length $min_seg_length \
     	    --min-sil-length $min_sil_length \
     	    ${outdir}/${filename}_silence.txt $datadir $outdir

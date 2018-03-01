@@ -24,9 +24,21 @@ fststringcompile ark:$ifile ark:- | fsttablecompose --match-side=left ark,t:- te
 # Remove uttIDs and map to words
 cut -d" " -f2- ${dir}/thrax_out.tmp | sed -re 's: ::g' -e 's:0x0020: :g' | tr "\n" " " | sed -r "s/[[:space:]]+/ /g" > ${dir}/thrax_out_words.tmp
 
+# Fix ratios, f.ex. "einn 3." -> "1/3"
+sed -re 's:\b(einn|einum|eins) ([0-9]{1,3})\.:1/\2:g' \
+    -e 's:\b(tveir|tvo|tveimur) ([0-9]{1,3})\.:2/\2:g' \
+    -e 's:\b(þrír|þrjá|þrem(ur)?|þriggja) ([0-9]{1,3})\.:3/\3:g' \
+    -e 's:\b(fjórir|fjóra|fjórum|fjögurra) ([0-9]{1,3})\.:4/\2:g' \
+    -e 's:\bfimm ([0-9]{1,3})\.:5/\1:g' \
+    -e 's:\bsex ([0-9]{1,3})\.:6/\1:g' \
+    -e 's:\bsjö ([0-9]{1,3})\.:7/\1:g' \
+    -e 's:\bátta ([0-9]{1,3})\.:8/\1:g' \
+    -e 's:\bníu ([0-9]{1,3})\.:9/\1:g' \
+    <${dir}/thrax_out_words.tmp > ${dir}/text_w_ratios.tmp
+
 echo "Uppercase first names when followed by family names (eftirnafn)." 
 #F.ex. in Ari trausti Guðmundsson and Unnur brá Konráðsdóttir
-sed -i -r "s:\b([^ ]+) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r))\b:\u\1 \2:g" ${dir}/thrax_out_words.tmp
+sed -i -r "s:\b([^ ]+) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r))\b:\u\1 \2:g" ${dir}/text_w_ratios.tmp
 
 echo "Collapse acronyms pronounced as letters"
 # Collapse first the longest acronyms, in case they contain smaller ones.
@@ -34,7 +46,7 @@ IFS=$'\n'
 for var in $(cat text_norm/acronyms.txt | awk '{ print length, $0 }' | sort -nrs | cut -d" " -f2)
 do
     var1=$(echo $var | sed 's/./& /g' | sed -e 's/ +$//')
-    sed -i "s/ $var1/ \U$var /g" ${dir}/thrax_out_words.tmp
+    sed -i "s/ $var1/ \U$var /g" ${dir}/text_w_ratios.tmp
 done
 
 
@@ -65,9 +77,9 @@ sed -re "s/[[:space:]]\+/ /g" \
     -e 's:h t t p s:https:g' -e 's:h t t p:http:g' \
     -e 's:(https?) w w w ([[:alnum:]]+) punktur (is|net|com):\1\://www\.\2.\3:g' -e 's:w w w ([[:alnum:]]+) punktur (is|net|com):www\.\1.\2:g' -e 's:([[:alnum:]]+) punktur (is|net|com):\1.\2:g' \
     -e 's:og eða:og/eða:g' \
-    -e 's:([^ ]+)( og [^ ]+nefnd):\1-\2:g' \
+    -e 's:(allsherjar|efnahags|stjórnskipunar|umhverfis)( og [^ ]+nefnd):\1-\2:g' \
     -e 's:doktor ([A-ZÁÉÍÓÚÝÞÆÖ]):dr\. \1:g' \
-<${dir}/thrax_out_words.tmp > ${dir}/denorm1.tmp
+<${dir}/text_w_ratios.tmp > ${dir}/denorm1.tmp
 
 # Restore punctuations
 #export PYTHONPATH="${PYTHONPATH}:~/.local/lib/python2.7/site-packages/:~/punctuator2/:~/punctuator2/example/local/" <- added to .bashrc and kaldi/tools/env.sh

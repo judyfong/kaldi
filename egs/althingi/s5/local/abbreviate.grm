@@ -55,7 +55,7 @@ abbr_unit_CDbefore = Optimize[
 abbr_unit_CDafter = Optimize[
                      CDRewrite[units,
                      ("[BOS]".utf8 | " ".utf8),
-                     ( " ".utf8 "til".utf8 | " ".utf8 "komma".utf8
+                     ( " ".utf8 "til ".utf8 | " ".utf8 "komma".utf8
                      | " ".utf8 "og hálf".utf8 | " ".utf8 "prósent".utf8
                      | " ".utf8 "prómill".utf8 | " ".utf8 "gráð".utf8),
                      c.whole_alphabet*,

@@ -70,7 +70,7 @@ half = Optimize[rewrite_half05 @ rewrite_half1];
 deg = ("º".utf8"c".utf8? | "°".utf8"c".utf8?) : (" gráða".utf8 | " gráðu".utf8 |
 (" gráður".utf8 <-1.0>) | " gráðum".utf8);
 expanddeg = CDRewrite[
-  degc,
+  deg,
   "".utf8,
   (c.u8_punct | c.space | "[EOS]".utf8),
   c.whole_alphabet*];

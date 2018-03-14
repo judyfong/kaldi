@@ -37,7 +37,7 @@ void TokenVectorToUtf8Fst(std::vector<std::string> const& tokens,
                           fst::VectorFst<fst::StdArc> *transcript_fst) {
   std::string transcript = StringFromTokenVector(tokens);
   fst::StringCompiler<fst::StdArc> str_compiler(
-      fst::StringCompiler<fst::StdArc>::UTF8);
+      fst::StringTokenType::UTF8);
 
   bool success = str_compiler(transcript, transcript_fst);
   if (!success) {

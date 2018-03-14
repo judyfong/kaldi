@@ -13,9 +13,9 @@ speed_perturb=true
 tdnn_lstm_affix=_2  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
 dir=exp/chain/tdnn_lstm${tdnn_lstm_affix} # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
-generate_plots=false
+generate_plots=true
 calculate_bias=false
-zerogram_decoding=false
+zerogram_decoding=true
 
 # training options
 xent_regularize=0.025
@@ -267,7 +267,7 @@ if [ $zerogram_decoding = true ]; then
   for decode_set in dev eval; do
     (
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      steps/nnet3/decode.sh --stage 2 --num-threads 4 \
+      steps/nnet3/decode.sh --num-threads 4 \
         --acwt 1.0 --post-decode-acwt 10.0 \
         --nj $num_jobs --cmd "$decode_cmd --time 0-06" $iter_opts \
         --extra-left-context $extra_left_context  \

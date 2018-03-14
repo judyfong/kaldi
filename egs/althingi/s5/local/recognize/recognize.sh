@@ -7,7 +7,7 @@
 #
 # Usage: $0 <audiofile> [<metadata>]
 # Example (if want to save the time info as well):
-# { time local/recognize/recognize.sh /data/althingi/corpus_nov2016/audio/rad20160309T151154.flac data/local/corpus/metadata.csv; } &> recognize/chain/rad20160309T151154.log
+# local/recognize/recognize.sh /data/althingi/corpus_nov2016/audio/rad20160309T151154.flac recognize/chain/ data/local/corpus/metadata.csv &> recognize/chain/log/rad20160309T151154.log
 
 set -e
 set -o pipefail
@@ -32,18 +32,19 @@ speechname=$(basename "$speechfile")
 extension="${speechname##*.}"
 speechname="${speechname%.*}"
 
-datadir=recognize/notendaprof2/$speechname
-logdir=${datadir}/../log
+dir=$2 # Outdir
+datadir=$dir/$speechname
+logdir=${dir}/log
 mkdir -p ${datadir}
 mkdir -p ${logdir}
 
-if [ $# = 2 ]; then
-    speakerfile=$2  # A meta file containing the name of the speaker
-elif [ $# = 1 ]; then
+if [ $# = 3 ]; then
+    speakerfile=$3  # A meta file containing the name of the speaker
+elif [ $# = 2 ]; then
     echo -e "unknown",$speechname > ${datadir}/${speechname}_meta.tmp
     speakerfile=${datadir}/${speechname}_meta.tmp
 else
-    echo "Usage: local/recognize/recognize.sh [options] <audiofile> [<metadata>]"
+    echo "Usage: local/recognize/recognize.sh [options] <audiofile> <outputdir> [<metadata>]"
 fi
 
 # Dirs used #
@@ -85,7 +86,7 @@ if [ $stage -le 5 ]; then
     echo "Extracting iVectors"
     mkdir -p ${datadir}_segm_hires/ivectors_hires
     steps/online/nnet2/extract_ivectors_online.sh \
-	--cmd "$train_cmd" --nj $num_jobs \
+	--cmd "$train_cmd" --nj $num_jobs --ivector-period 5 \
         ${datadir}_segm_hires ${modeldir}/../extractor \
         ${datadir}_segm_hires/ivectors_hires || exit 1;
 fi
@@ -134,7 +135,7 @@ if [ $stage -le 8 ]; then
     echo "Denormalize the transcript"
     $train_cmd ${logdir}/${speechname}_denormalize.log local/recognize/denormalize.sh \
         ${rescoredir}/transcript.txt \
-        ${datadir}/../${speechname}.txt || exit 1;
+        ${dir}/${speechname}.txt || exit 1;
 fi
 
 end=$(date +%s)

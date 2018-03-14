@@ -76,3 +76,7 @@ pydoc () {
 if [ -n "${BASH-}" ] || [ -n "${ZSH_VERSION-}" ] ; then
     hash -r 2>/dev/null
 fi
+
+# Needed for denormalizing
+export PYTHONPATH=$PYTHONPATH:$_site_packages
+export PYTHONPATH=${PYTHONPATH}:~/.local/lib/python2.7/site-packages/:~/punctuator2/:~/punctuator2/local/

@@ -38,7 +38,7 @@ sed -re 's:\b(einn|einum|eins) ([0-9]{1,3})\.:1/\2:g' \
 
 echo "Uppercase first names when followed by family names (eftirnafn)." 
 #F.ex. in Ari trausti Guðmundsson and Unnur brá Konráðsdóttir
-sed -i -r "s:\b([^ ]+) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r))\b:\u\1 \2:g" ${dir}/text_w_ratios.tmp
+sed -r "s:\b([^ ]+) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\u\1 \2:g" <${dir}/text_w_ratios.tmp > ${dir}/text_propnames.tmp
 
 echo "Collapse acronyms pronounced as letters"
 # Collapse first the longest acronyms, in case they contain smaller ones.
@@ -46,10 +46,8 @@ IFS=$'\n'
 for var in $(cat text_norm/acronyms.txt | awk '{ print length, $0 }' | sort -nrs | cut -d" " -f2)
 do
     var1=$(echo $var | sed 's/./& /g' | sed -e 's/ +$//')
-    sed -i "s/ $var1/ \U$var /g" ${dir}/text_w_ratios.tmp
+    sed -i "s/ $var1/ \U$var /g" ${dir}/text_propnames.tmp
 done
-
-
 
 echo "Rewrite"
 # 1) Change spaces to one between words.
@@ -78,8 +76,8 @@ sed -re "s/[[:space:]]\+/ /g" \
     -e 's:(https?) w w w ([[:alnum:]]+) punktur (is|net|com):\1\://www\.\2.\3:g' -e 's:w w w ([[:alnum:]]+) punktur (is|net|com):www\.\1.\2:g' -e 's:([[:alnum:]]+) punktur (is|net|com):\1.\2:g' \
     -e 's:og eða:og/eða:g' \
     -e 's:(allsherjar|efnahags|stjórnskipunar|umhverfis)( og [^ ]+nefnd):\1-\2:g' \
-    -e 's:doktor ([A-ZÁÉÍÓÚÝÞÆÖ]):dr\. \1:g' \
-<${dir}/text_w_ratios.tmp > ${dir}/denorm1.tmp
+    -e 's:([Dd])oktor ([A-ZÁÉÍÓÚÝÞÆÖ]):\1r\. \2:g' \
+<${dir}/text_propnames.tmp > ${dir}/denorm1.tmp
 
 # Restore punctuations
 #export PYTHONPATH="${PYTHONPATH}:~/.local/lib/python2.7/site-packages/:~/punctuator2/:~/punctuator2/example/local/" <- added to .bashrc and kaldi/tools/env.sh
@@ -117,7 +115,10 @@ sed -re 's/ \.PERIOD/./g; s/ \?QUESTIONMARK/?/g; s/ !EXCLAMATIONMARK/!/g; s/ ,CO
 echo "Insert periods into abbreviations"
 fststringcompile ark:"sed 's:.*:1 &:' ${dir}/punctuator_out_wPuncts.tmp |" ark:- | fsttablecompose --match-side=left ark,t:- text_norm/INS_PERIODS.fst ark:- | fsts-to-transcripts ark:- ark,t:- | int2sym.pl -f 2- ${utf8syms} > ${dir}/punctuator_out_wPeriods.tmp
 
-cut -d" " -f2- ${dir}/punctuator_out_wPeriods.tmp | sed -re 's: ::g' -e 's:0x0020: :g' | tr "\n" " " | sed -r "s/[[:space:]]+/ /g" > $ofile  #${dir}/punctuator_out_wPeriods_words.tmp
+cut -d" " -f2- ${dir}/punctuator_out_wPeriods.tmp | sed -re 's: ::g' -e 's:0x0020: :g' | tr "\n" " " | sed -r "s/[[:space:]]+/ /g" > ${dir}/punctuator_out_wPeriods_words.tmp
+
+# Insert paragraph breaks before the appearance of  ". [herra|frú|virðulegur|hæstv] forseti."
+sed -r 's:\. ([^ ]+ forseti\.):\.\n\1:g' < ${dir}/punctuator_out_wPeriods_words.tmp > $ofile
 
 # # Abbreviate "háttvirtur", "hæstvirtur" and "þingmaður" in some cases
 # sed -re 's:([Hh])áttv[^ ]+ (þingm[^ .?:eö]+ [A-ZÁÐÉÍÓÚÝÞÆÖ]):\1v\. \2:g' -e 's:([Hh]v\. ([0-9]+\. )?)þingm[^ .?:eö]+ ([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1þm. \3:g' -e 's:([Hh]æstv)irtur forseti:\1\. forseti:g' < ${dir}/punctuator_out_wPeriods_words.tmp > $ofile

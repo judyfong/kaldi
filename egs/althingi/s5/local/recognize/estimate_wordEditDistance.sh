@@ -16,7 +16,7 @@ if [ $# -ne 3 ]; then
     echo "Usage: $0 [options] <textfile1> <textfile2> <output-dir>"
     echo "e.g.:  local/recognize/estimate_wordEditDistance.sh \\"
     echo "  recognize/notendaprof2/Lestur/rad20180219T150803.xml \\"
-    echo "  recognize/notendaprof2/ASR/rad20180219T150803.txt recognize/notendaprof2/edit_dist"
+    echo "  recognize/notendaprof2/ASR/rad20180219T150803.txt recognize/notendaprof2/edit_dist/rad20180219T150803_A_B"
     exit 1;
 fi
 
@@ -35,14 +35,11 @@ base="${base%.*}"
 n=0
 for file in $textfile1 $textfile2; do
     n=$[$n+1]
-    # check if the extension is xml
+    # check if the extension is xml 
     if [ "${file##*.}" = 'xml' ] ; then
-        tr "\n" " " < $file | sed -re 's:(.*)?<ræðutexti>(.*)</ræðutexti>(.*):\2:' \
+        tr "\n" " " < $file | sed -re 's:</mgr></ræðutexti></ræða> <ræðutexti><mgr>: :g' -e 's:(.*)?<ræðutexti>(.*)</ræðutexti>(.*):\2:' \
 	    -e 's:<mgr>//[^/<]*?//</mgr>|<!--[^>]*?-->|http[^<> )]*?|<[^>]*?>\:[^<]*?ritun[^<]*?</[^>]*?>|<mgr>[^/]*?//</mgr>|<ræðutexti> +<mgr>[^/]*?/</mgr>|<ræðutexti> +<mgr>til [0-9]+\.[0-9]+</mgr>|<truflun>[^<]*?</truflun>|<atburður>[^<]*?</atburður>|<málsheiti>[^<]*?</málsheiti>: :g' \
-            -e 's:\(+[^/()<>]*?\)+: :g' \
-            -e 's:\(+[^/()<>]*?\)+: :g' -e 's:\([^/<>)]*?/+: :g' -e 's:/[^/<>)]*?\)+/?: :g' -e 's:/+[^/<>)]*?/+: :g' \
-            -e 's:xx+::g' \
-	    -e 's:\(+[^/()<>]*?\)+: :g' -e 's:<[^<>]*?>: :g' \
+	    -e 's:<[^<>]*?>: :g' \
 	    -e 's:(.*):1 \1:' -e 's:[[:space:]]+: :g' \
         > $dir/text$n.tmp
     else
@@ -63,23 +60,20 @@ file1path=$(dirname "$textfile1")
 dir1="${file1path##*/}"
 file2path=$(dirname "$textfile2")
 dir2="${file2path##*/}"
-if [ $dir1 = "Lestur" ]; then
+if [ $dir1 = "Lestur" -a $dir2 = "notendaprof2" ]; then
     wc -w $dir/text1.tmp > $dir/wc_A
-elif [ $dir2 = "Lestur" ]; then
-    wc -w $dir/text2.tmp > $dir/wc_A
-elif [ $dir1 = "Vefur" ]; then
-    wc -w $dir/text1.tmp > $dir/wc_C
-elif [ $dir2 = "Vefur" ]; then
-    wc -w $dir/text2.tmp > $dir/wc_C
-elif [ $dir1 = "notendaprof2" ]; then
-    wc -w $dir/text1.tmp > $dir/wc_B
-elif [ $dir2 = "notendaprof2" ]; then
     wc -w $dir/text2.tmp > $dir/wc_B
-elif [ $dir1 = "ASR_Edit_Text_D" ]; then
+elif [ $dir1 = "ASR_Edit_Text_D" -a $dir2 = "notendaprof2" ]; then
     wc -w $dir/text1.tmp > $dir/wc_D
-elif [ $dir2 = "ASR_Edit_Text_D" ]; then
+    wc -w $dir/text2.tmp > $dir/wc_B
+elif [ $dir1 = "Vefur" -a $dir2 = "Lestur" ]; then
+    wc -w $dir/text1.tmp > $dir/wc_C
+    wc -w $dir/text2.tmp > $dir/wc_A
+else
+    wc -w $dir/text1.tmp > $dir/wc_C
     wc -w $dir/text2.tmp > $dir/wc_D
-    
+fi
+
 # Align the two texts
 align-text --special-symbol="'***'" ark:$dir/text1.tmp ark:$dir/text2.tmp ark,t:$dir/${base}_aligned$suffix.txt &>/dev/null
 
@@ -120,4 +114,4 @@ cat $dir/per_utt_$base$suffix | \
     utils/scoring/wer_ops_details.pl --special-symbol "'***'" | \
     sort -b -i -k 1,1 -k 4,4rn -k 2,2 -k 3,3 > $dir/ops_$base$suffix || exit 1;
 
-rm $dir/text{1,2}.tmp
+#rm $dir/text{1,2}.tmp

@@ -13,16 +13,16 @@ if ($file_handle = fopen($ifile, "r")) {
     while(!feof($file_handle)) {
         $line = fgets($file_handle);
         
-        # Split the line on tabs
+        // Split the line on tabs
         list($rad,$name,$mp3,$text) = preg_split('/\t+/', $line);
         $text = str_replace("\n", '', $text);
         //$rad=basename($text, ".xml");
 
 	    // Extract the text
 	    $ch = curl_init($text);
-	    $text_file_name = '/data/althingi/corpus_okt2017/AlthingiUploads/text_endanlegt/' . $rad . '.xml';
+	    $text_file_name = '/data/althingi/corpus_Des2016-March2018/text_endanlegt/' . $rad . '.xml';
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT ,0); 
-        curl_setopt($ch, CURLOPT_TIMEOUT, 500);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 600);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 1);
         //curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 1);
@@ -39,8 +39,10 @@ if ($file_handle = fopen($ifile, "r")) {
         }
         else
         {
-	        echo 'rad: ' . $rad . 'Status is what?! ' . $status . ' The output is a failure ' . $output . "\n";
-        }	
+            echo 'Text: rad: ' . $rad . "\n";
+	        echo 'status is what?! ' . $status . "\n";
+	        echo 'the output is a failure ' . $output . "\n";
+	    }	
     }
     fclose($file_handle);
 }

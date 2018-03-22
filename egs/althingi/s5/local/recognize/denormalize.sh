@@ -24,21 +24,9 @@ fststringcompile ark:$ifile ark:- | fsttablecompose --match-side=left ark,t:- te
 # Remove uttIDs and map to words
 cut -d" " -f2- ${dir}/thrax_out.tmp | sed -re 's: ::g' -e 's:0x0020: :g' | tr "\n" " " | sed -r "s/[[:space:]]+/ /g" > ${dir}/thrax_out_words.tmp
 
-# Fix ratios, f.ex. "einn 3." -> "1/3"
-sed -re 's:\b(einn|einum|eins) ([0-9]{1,3})\.:1/\2:g' \
-    -e 's:\b(tveir|tvo|tveimur) ([0-9]{1,3})\.:2/\2:g' \
-    -e 's:\b(þrír|þrjá|þrem(ur)?|þriggja) ([0-9]{1,3})\.:3/\3:g' \
-    -e 's:\b(fjórir|fjóra|fjórum|fjögurra) ([0-9]{1,3})\.:4/\2:g' \
-    -e 's:\bfimm ([0-9]{1,3})\.:5/\1:g' \
-    -e 's:\bsex ([0-9]{1,3})\.:6/\1:g' \
-    -e 's:\bsjö ([0-9]{1,3})\.:7/\1:g' \
-    -e 's:\bátta ([0-9]{1,3})\.:8/\1:g' \
-    -e 's:\bníu ([0-9]{1,3})\.:9/\1:g' \
-    <${dir}/thrax_out_words.tmp > ${dir}/text_w_ratios.tmp
-
-echo "Uppercase first names when followed by family names (eftirnafn)." 
-#F.ex. in Ari trausti Guðmundsson and Unnur brá Konráðsdóttir
-sed -r "s:\b([^ ]+) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\u\1 \2:g" <${dir}/text_w_ratios.tmp > ${dir}/text_propnames.tmp
+echo "Uppercase first names when followed by family names (eftirnafn) and capitalize abbreviated middle names" 
+#F.ex. in Ari trausti Guðmundsson, Unnur brá Konráðsdóttir, Sigríður á Andersen
+sed -re "s:\b([A-ZÁÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+) ([a-záðéíóúýþæö]) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\1 \u\2\. \3:g" -e "s:\b([^ ]+) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\u\1 \2:g" <${dir}/thrax_out_words.tmp > ${dir}/text_propnames.tmp
 
 echo "Collapse acronyms pronounced as letters"
 # Collapse first the longest acronyms, in case they contain smaller ones.
@@ -56,10 +44,11 @@ echo "Rewrite"
 # 5) Rewrite, f.ex. "2005 to 2007" as "2005—2007"
 # 6) Rewrite time, f.ex. "kl 13 35" to "kl 13:35"
 # 7-9) Rewrite decimal numbers
-# 10) Rewrite f.ex. "4 and half" to "4,5"
+# 10) Fix ratios
 # 11) Remove space in front of °, % and ‰
 # 12-13) Rewrite website names
 # 14) Rewrite "and or" as "and/or"
+# 15) Fix Rás 1 and Stöð 2
 # 15) Add a hyphen in f.ex. allsherjar- og menntamálanefnd
 # 16) Abbreviate "doktor" if followed by a proper name
 sed -re "s/[[:space:]]\+/ /g" \
@@ -70,17 +59,18 @@ sed -re "s/[[:space:]]\+/ /g" \
     -e 's:([0-9]+) komma ([0-9]+) ?([0-9]{1,2}):\1,\2\3:g' \
     -e 's:([0-9]+) komma ([0-9]+) ([^0-9]{2,}):\1,\2 \3:g' \
     -e 's:([0-9]+,[0-9]+) ([0-9]{1,2}[^,]):\1\2:g' \
-    -e 's:([0-9]+) og hálf[^ ]*:\1,5:g' \
+    -e 's:\b([0-9]) ([0-9])\.:\1/\2:g' \
     -e 's: ([°%‰]):\1:g' \
     -e 's:h t t p s:https:g' -e 's:h t t p:http:g' \
     -e 's:(https?) w w w ([[:alnum:]]+) punktur (is|net|com):\1\://www\.\2.\3:g' -e 's:w w w ([[:alnum:]]+) punktur (is|net|com):www\.\1.\2:g' -e 's:([[:alnum:]]+) punktur (is|net|com):\1.\2:g' \
     -e 's:og eða:og/eða:g' \
+    -e 's:\b([Rr]ás) eitt\b:\u\1 1:g' -e 's:\b([Ss]töð) tvö\b:\u\1 2:g' \
     -e 's:(allsherjar|efnahags|stjórnskipunar|umhverfis)( og [^ ]+nefnd):\1-\2:g' \
     -e 's:([Dd])oktor ([A-ZÁÉÍÓÚÝÞÆÖ]):\1r\. \2:g' \
 <${dir}/text_propnames.tmp > ${dir}/denorm1.tmp
 
 # Restore punctuations
-#export PYTHONPATH="${PYTHONPATH}:~/.local/lib/python2.7/site-packages/:~/punctuator2/:~/punctuator2/example/local/" <- added to .bashrc and kaldi/tools/env.sh
+#export PYTHONPATH="${PYTHONPATH}:~/.local/lib/python2.7/site-packages/:~/punctuator2/:~/punctuator2/example/local/" <- added to theano-env/bin/activate and kaldi/tools/env.sh
 
 #set +u # otherwise I have problems with unbound variables
 source punctuator2/theano-env/bin/activate
@@ -112,10 +102,10 @@ sed -re 's/ \.PERIOD/./g; s/ \?QUESTIONMARK/?/g; s/ !EXCLAMATIONMARK/!/g; s/ ,CO
     -e 's:([0-9]+) km á klukkustund:\1 km/klst.:g' -e 's:([0-9]+) kr á kíló[^m ]* ?:\1 kr./kg :g' \
     ${dir}/punctuator_out_wNumbers.tmp > ${dir}/punctuator_out_wPuncts.tmp
 
-echo "Insert periods into abbreviations"
+echo "Insert periods into abbreviations and put a period at the end of the speech"
 fststringcompile ark:"sed 's:.*:1 &:' ${dir}/punctuator_out_wPuncts.tmp |" ark:- | fsttablecompose --match-side=left ark,t:- text_norm/INS_PERIODS.fst ark:- | fsts-to-transcripts ark:- ark,t:- | int2sym.pl -f 2- ${utf8syms} > ${dir}/punctuator_out_wPeriods.tmp
 
-cut -d" " -f2- ${dir}/punctuator_out_wPeriods.tmp | sed -re 's: ::g' -e 's:0x0020: :g' | tr "\n" " " | sed -r "s/[[:space:]]+/ /g" > ${dir}/punctuator_out_wPeriods_words.tmp
+cut -d" " -f2- ${dir}/punctuator_out_wPeriods.tmp | sed -re 's: ::g' -e 's:0x0020: :g' | tr "\n" " " | sed -re "s/[[:space:]]+/ /g"  -e 's:$:.:' > ${dir}/punctuator_out_wPeriods_words.tmp
 
 # Insert paragraph breaks before the appearance of  ". [herra|frú|virðulegur|hæstv] forseti."
 sed -r 's:\. ([^ ]+ forseti\.):\.\n\1:g' < ${dir}/punctuator_out_wPeriods_words.tmp > $ofile

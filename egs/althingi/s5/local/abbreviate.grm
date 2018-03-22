@@ -27,59 +27,117 @@ delspace = c.space* : "".utf8;
 insspace = "".utf8 : " ".utf8;
 
 unitnames = n.units;
+neutralunitnames = n.neutral_units;
 numbernames_10plus_and_0 = n.NUMBERNAMES_10_to_999999_and_0; #n.NUMBERNAMES_10plus_and_0;
-ordinalnames = o.ORDINALNAMES2; # Does not expand 1. and 2.
+ordinalnames = o.ORDINALNAMES_to_abbreviate; # Does not expand 1. and 2.
 ordinal = Invert[ordinalnames];
 #namesnumber = f.NAMESNUMBER2;
 
 units = Invert[unitnames];
+neutralunits = Invert[neutralunitnames];
 #namesnumber = Invert[numbernames];
 namesnumber_10plus_and_0 = Invert[numbernames_10plus_and_0];
 
 # Abbreviations used in Alþingi paired with their expansions
 abbr = Optimize[StringFile['text_norm/lex/abbreviate_words.txt','utf8','utf8']];
-abbr2 =
-Optimize[StringFile['text_norm/lex/abbreviate_if_preceded_wNumber.txt','utf8','utf8']];
+abbr2 = Optimize[StringFile['text_norm/lex/abbreviate_if_preceded_wNumber.txt','utf8','utf8']];
 abbr3 = Optimize[StringFile['text_norm/lex/abbreviate_if_followed_byNumber.txt','utf8','utf8']];
+first_second_tenth = Optimize[StringFile['text_norm/lex/first_second_tenth.txt','utf8','utf8']];
+half_expand = Optimize[StringFile['text_norm/lex/half.txt','utf8','utf8']];
+half = Invert[half_expand];
 #kjordaemi = Optimize[StringFile['text_norm/lex/kjordaemi_abbr.txt','utf8','utf8']];
+
+ABBR_NUMBER_10plus_and_0 = Optimize[
+                     CDRewrite[namesnumber_10plus_and_0 delspace,
+                     ("[BOS]".utf8 | " ".utf8),
+                     ("[EOS]".utf8 | " ".utf8),
+                     c.whole_alphabet*,
+                     'ltr',
+                     'obl']];
+
+abbr_neutral_unit_CDbefore = Optimize[
+                     CDRewrite[neutralunits,
+                     ("númer ".utf8 | "til ".utf8),
+                     (" ".utf8 | "[EOS]".utf8),
+                     c.whole_alphabet*,
+                     'ltr',
+                     'obl']];
+
+abbr_neutral_unit_CDafter = Optimize[
+                     CDRewrite[neutralunits,
+                     ("[BOS]".utf8 | " ".utf8),
+                     ( " til ".utf8),
+                     c.whole_alphabet*,
+                     'ltr',
+                     'obl']];
 
 abbr_unit_CDbefore = Optimize[
                      CDRewrite[units,
-                     ("númer".utf8 " ".utf8 |
-                     "til".utf8 " ".utf8 | "komma".utf8 " ".utf8),
+                     ("komma ".utf8),
                      (" ".utf8 | "[EOS]".utf8),
                      c.whole_alphabet*,
                      'ltr',
                      'obl']];
 
 abbr_unit_CDafter = Optimize[
-                     CDRewrite[units,
-                     ("[BOS]".utf8 | " ".utf8),
-                     ( " ".utf8 "til ".utf8 | " ".utf8 "komma".utf8
-                     | " ".utf8 "og hálf".utf8 | " ".utf8 "prósent".utf8
-                     | " ".utf8 "prómill".utf8 | " ".utf8 "gráð".utf8),
-                     c.whole_alphabet*,
-                     'ltr',
-                     'obl']];
+                    CDRewrite[units,
+                    ("[BOS]".utf8 | " ".utf8),
+                    (" komma".utf8 | " og hálf".utf8
+                    | " prósent".utf8 | " prómill".utf8
+                    | " gráð".utf8),
+                    c.whole_alphabet*,
+                    'ltr',
+                    'obl']];
+
+abbr_half = Optimize[
+            CDRewrite[half delspace,
+            c.Digits,
+            (" ".utf8 | "[EOS]".utf8),
+            c.whole_alphabet*,
+            'ltr',
+            'obl']];
 
 # I'm thinking about the case when I have f.ex. "zero point one three
 # seven"
 abbr_unit_CDbefore2 = Optimize[
-                     CDRewrite[units,
-                     (c.Digits " ".utf8),
-                     (" ".utf8 | "[EOS]".utf8),
+                      CDRewrite[units,
+                      (c.Digits " ".utf8),
+                      (" ".utf8 | "[EOS]".utf8),
+                      c.whole_alphabet*,
+                      'ltr',
+                      'obl']];
+
+# Abbreviate "first" and "second" if a followed by any of the
+# following:
+abbr_first_second_tenth = Optimize[
+                     CDRewrite[first_second_tenth,
+                     (" ".utf8 | "[BOS]".utf8),
+                     ( " árgang".utf8 | " grein".utf8 | " málsgrein".utf8
+                     | " umræð".utf8 | " lið".utf8 | " minni hluta".utf8
+                     | " tölulið".utf8 | " viðauk".utf8
+                     | " varaþingm".utf8 | " þingm".utf8
+                     | " janúar".utf8 | " febrúar".utf8
+                     | " mars".utf8 | " apríl".utf8 | " maí".utf8
+                     | " júní".utf8 | " júlí".utf8 | " ágúst".utf8
+                     | " september".utf8 | " október".utf8
+                     | " nóvember".utf8 | " desember".utf8),
                      c.whole_alphabet*,
                      'ltr',
                      'obl']];
 
-# export NARROWNUMS_MAYBE = ArcSort[Optimize[Determinize[
-#                           CDRewrite[namesnumber insspace,
-#                                     ("[BOS]".utf8 | " ".utf8),
-#                                     ("[EOS]".utf8 | "".utf8),
-#                                     c.whole_alphabet*,
-#                                     'sim',
-#                                     'obl']]],
-#                                   'input'];
+abbr_ratio = Optimize[
+             CDRewrite[units,
+             ("[BOS]".utf8 | " ".utf8),
+             (" ".utf8 c.Digits ".".utf8),
+             c.whole_alphabet*,
+             'ltr',
+             'obl']];
+
+ABBR_NUMBER = Optimize[ABBR_NUMBER_10plus_and_0 @
+ abbr_neutral_unit_CDbefore @  abbr_unit_CDbefore @
+abbr_neutral_unit_CDafter @ abbr_unit_CDafter @
+abbr_unit_CDbefore2 @ abbr_first_second_tenth @ abbr_half @ abbr_ratio];
+
 
 # This abbreviates at least one rewritable word or number, per
 # senctence. But doesn't take in senctences containing numerals
@@ -94,17 +152,6 @@ ABBR_WORD = Optimize[
                      c.whole_alphabet*,
                      'ltr',
                      'obl']];
-
-ABBR_NUMBER_10plus_and_0 = Optimize[
-                     CDRewrite[namesnumber_10plus_and_0 delspace,
-                     ("[BOS]".utf8 | " ".utf8),
-                     ("[EOS]".utf8 | " ".utf8),
-                     c.whole_alphabet*,
-                     'ltr',
-                     'obl']];
-
-ABBR_NUMBER = Optimize[ABBR_NUMBER_10plus_and_0 @ abbr_unit_CDbefore @
-abbr_unit_CDafter @ abbr_unit_CDbefore2];
 
 ORDINAL = ArcSort[Optimize[Determinize[
                      CDRewrite[ordinal delspace,

@@ -50,11 +50,15 @@ ordinals = Optimize[
 #export ORDINALNAMES = Optimize[ordinals @ n.add_and];
 export ORDINALNAMES = ordinals;
 
+# Avoid rewriting to 1., 2. and 10., since not always appropriate.
+# f.ex. "fyrstu tölur sýna", "hver annar gæti það verið?", "mig langar að tíunda þau hér"
 ordUnits3to9 = Optimize[StringFile['text_norm/lex/ordinals_units_3-9.txt',
 'utf8', 'utf8']];
-export ORDINALNAMES2 = Optimize[
+ord11_to_19 = Optimize[StringFile['text_norm/lex/ordinals_11-19.txt', 'utf8', 'utf8']];
+
+export ORDINALNAMES_to_abbreviate = Optimize[
   (ordUnits3to9 <-0.5>) |
-  (ordTeens <-1>) |
+  (ord11_to_19 <-1>) |
   (ordinals_20_to_99 <-2>) |
   (ordinals_100_to_999 <-10>)]
 ;

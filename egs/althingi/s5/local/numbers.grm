@@ -16,7 +16,7 @@ insand = "".utf8 : " og ".utf8;
 units_notNeutral = Optimize[StringFile['text_norm/lex/units_notNeutral.txt', 'utf8', 'utf8']];
 one = "1".utf8 : "eitt".utf8;
 export neutral_units2to9 = Optimize[StringFile['text_norm/lex/neutral_units2to9.txt', 'utf8', 'utf8']];
-neutral_units = one | neutral_units2to9;
+export neutral_units = one | neutral_units2to9;
 export units = units_notNeutral | neutral_units;
 
 ten = "10".utf8 : "tíu".utf8;

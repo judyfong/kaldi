@@ -95,7 +95,6 @@ tmp
 !/egs/*/s*/text_norm/acronyms_as_words.txt
 !/egs/*/s*/text_norm/utf8.syms
 /egs/*/s*/recognize/*
-!/egs/*/s*/recognize/local
 /egs/*/s*/py3env
 /egs/*/s*/q
 /egs/*/s*/Makefile

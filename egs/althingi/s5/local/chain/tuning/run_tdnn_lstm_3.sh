@@ -11,8 +11,15 @@ stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-tdnn_lstm_affix=_2  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
-dir=exp/chain/tdnn_lstm${tdnn_lstm_affix} # Note: _sp will get added to this if $speed_perturb == true.
+
+# Put all output on scratch
+exp=/mnt/scratch/inga/exp
+data=/mnt/scratch/inga/data
+mfccdir=/mnt/scratch/inga/mfcc_hires
+
+tdnn_lstm_affix=_3  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
+dir=$exp/chain/tdnn_lstm${tdnn_lstm_affix} # Note: _sp will get added to this if $speed_perturb == true.
+
 decode_iter=
 generate_plots=false
 calculate_bias=false
@@ -68,34 +75,27 @@ fi
 
 dir=${dir}$suffix
 train_set=train_okt2017_fourth$suffix
-ali_dir=exp/tri5_ali_${train_set}_comb #exp/tri4_cs_ali$suffix
-treedir=exp/chain/tri5_tree$suffix # NOTE!
-lang=data/lang_chain
+ali_dir=$exp/tri5_ali_${train_set} #exp/tri4_cs_ali$suffix
+treedir=$exp/chain/tri5_tree$suffix # NOTE!
+lang=$data/lang_chain
 
-train_data_dir=data/${train_set}_hires_comb
-train_ivector_dir=exp/chain/ivectors_${train_set}_hires_comb
+train_data_dir=$data/${train_set}_hires
+train_ivector_dir=$exp/chain/ivectors_${train_set}_hires
 
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
-# # Original
-# local/nnet3/run_ivector_common.sh --stage $stage \
-#   --speed-perturb $speed_perturb \
-#   --generate-alignments $speed_perturb || exit 1;
-# From tdnn script:
-local/chain/run_ivector_common.sh --stage $stage \
-                                  --train-set train_okt2017_fourth \
-                                  --gmm tri5 || exit 1;
-# From older script:
-#local/nnet3/run_ivector_common_noSP.sh --stage $stage || exit 1;
+local/nnet3/run_ivector_common.sh --stage $stage \
+  --speed-perturb $speed_perturb \
+  --generate-alignments $speed_perturb || exit 1;
 
 if [ $stage -le 11 ]; then
   # Get the alignments as lattices (gives the CTC training more freedom).
   # use the same num-jobs as the alignments
   nj=$(cat ${ali_dir}/num_jobs) || exit 1;
-  steps/align_fmllr_lats.sh --nj $nj --cmd "$decode_cmd --time 2-00" data/$train_set \
-    data/lang exp/tri5 exp/tri5_lats$suffix
-  rm exp/tri5_lats$suffix/fsts.*.gz # save space
+  steps/align_fmllr_lats.sh --nj $nj --cmd "$decode_cmd --time 2-00" $data/$train_set \
+    data/lang exp/tri5 $exp/tri5_lats$suffix
+  rm $exp/tri5_lats$suffix/fsts.*.gz # save space
 fi
 
 if [ $stage -le 12 ]; then
@@ -115,7 +115,7 @@ if [ $stage -le 13 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
-      --cmd "$train_cmd --time 2-00" 11000 data/$train_set $lang $ali_dir $treedir
+      --cmd "$train_cmd --time 2-00" 11000 $data/$train_set $lang $ali_dir $treedir
 fi
 
 if [ $stage -le 14 ]; then
@@ -218,7 +218,7 @@ if [ $stage -le 15 ]; then
     --cleanup.remove-egs $remove_egs \
     --feat-dir $train_data_dir \
     --tree-dir $treedir \
-    --lat-dir exp/tri5_lats$suffix \
+    --lat-dir $exp/tri5_lats$suffix \
     --dir $dir  || exit 1;
 fi
 
@@ -226,10 +226,8 @@ if [ $stage -le 16 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  if [ $dir/graph_3gsmall/HCLG.fst -ot data/lang_3gsmall/G.fst ]; then
-    echo "Make a small 3-gram graph"
-    utils/mkgraph.sh --self-loop-scale 1.0 data/lang_3gsmall $dir $dir/graph_3gsmall
-  fi
+  echo "Make a small 3-gram graph"
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_3gsmall $dir $dir/graph_3gsmall
 fi
 
 graph_dir=$dir/graph_3gsmall
@@ -242,7 +240,7 @@ if [ $stage -le 17 ]; then
   rm $dir/.error 2>/dev/null || true
   for decode_set in dev eval; do
     (
-      num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+      num_jobs=`cat $data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       steps/nnet3/decode.sh --num-threads 4 \
         --acwt 1.0 --post-decode-acwt 10.0 \
         --nj $num_jobs --cmd "$decode_cmd --time 0-06" $iter_opts \
@@ -251,11 +249,11 @@ if [ $stage -le 17 ]; then
         --extra-left-context-initial 0 \
         --extra-right-context-final 0 \
         --frames-per-chunk "$frames_per_chunk_primary" \
-        --online-ivector-dir exp/chain/ivectors_${decode_set}_hires \
-        $graph_dir data/${decode_set}_hires \
+        --online-ivector-dir $exp/chain/ivectors_${decode_set}_hires \
+        $graph_dir $data/${decode_set}_hires \
         $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_3gsmall || exit 1;
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-        data/lang_{3gsmall,5g} data/${decode_set}_hires \
+        data/lang_{3gsmall,5g} $data/${decode_set}_hires \
         $dir/decode_${decode_set}_{3gsmall,5g} || exit 1;
     ) &
   done
@@ -269,22 +267,20 @@ fi
 if [ $generate_plots = true ]; then
     echo "Generating plots and compiling a latex report on the training"
     steps/nnet3/report/generate_plots.py \
-	--is-chain true $dir $dir/report_tdnn_lstm_2_sp
+	--is-chain true $dir $dir/report_tdnn_lstm${tdnn_lstm_affix}$suffix
 fi
 
 if [ $zerogram_decoding = true ]; then
   echo "Do zerogram decoding to check the effect of the LM"
   rm $dir/.error 2>/dev/null || true
 
-  if [ $dir/graph_zg/HCLG.fst -ot data/lang_zg/G.fst ]; then
-    echo "Make a zerogram graph"
-    utils/slurm.pl --mem 4G --time 0-06 $dir/log/mkgraph_zg.log utils/mkgraph.sh --self-loop-scale 1.0 data/lang_zg $dir $dir/graph_zg
-  fi
+  echo "Make a zerogram graph"
+  utils/slurm.pl --mem 4G --time 0-06 $dir/log/mkgraph_zg.log utils/mkgraph.sh --self-loop-scale 1.0 data/lang_zg $dir $dir/graph_zg
   
   for decode_set in dev eval; do
     (
-      num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      steps/nnet3/decode.sh --stage 2 --num-threads 4 \
+      num_jobs=`cat $data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+      steps/nnet3/decode.sh --num-threads 4 \
         --acwt 1.0 --post-decode-acwt 10.0 \
         --nj $num_jobs --cmd "$decode_cmd --time 0-06" $iter_opts \
         --extra-left-context $extra_left_context  \
@@ -292,14 +288,14 @@ if [ $zerogram_decoding = true ]; then
         --extra-left-context-initial 0 \
         --extra-right-context-final 0 \
         --frames-per-chunk "$frames_per_chunk_primary" \
-        --online-ivector-dir exp/chain/ivectors_${decode_set}_hires \
-        $dir/graph_zg data/${decode_set}_hires \
+        --online-ivector-dir $exp/chain/ivectors_${decode_set}_hires \
+        $dir/graph_zg $data/${decode_set}_hires \
         $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_zg || exit 1;
     ) &
   done
   wait
   if [ -f $dir/.error ]; then
-    echo "$0: something went wrong in decoding"
+    echo "$0: something went wrong in the zerogram decoding"
     exit 1
   fi
 fi
@@ -309,7 +305,7 @@ if [ $calculate_bias = true ]; then
   rm $dir/.error 2>/dev/null || true
   for decode_set in train-dev; do
     (
-      num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+      num_jobs=`cat $data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       steps/nnet3/decode.sh --num-threads 4 \
         --acwt 1.0 --post-decode-acwt 10.0 \
         --nj $num_jobs --cmd "$decode_cmd --time 0-06" $iter_opts \
@@ -318,14 +314,14 @@ if [ $calculate_bias = true ]; then
         --extra-left-context-initial 0 \
         --extra-right-context-final 0 \
         --frames-per-chunk "$frames_per_chunk_primary" \
-        --online-ivector-dir exp/chain/ivectors_${decode_set}_hires \
-        $graph_dir data/${decode_set}_hires \
+        --online-ivector-dir $exp/chain/ivectors_${decode_set}_hires \
+        $graph_dir $data/${decode_set}_hires \
         $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_3gsmall || exit 1;
     ) &
   done
   wait
   if [ -f $dir/.error ]; then
-    echo "$0: something went wrong in decoding"
+    echo "$0: something went wrong in the train-dev decoding"
     exit 1
   fi
 fi

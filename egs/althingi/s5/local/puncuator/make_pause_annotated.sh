@@ -1,4 +1,4 @@
-#!/bin/bash -e
+<#!/bin/bash -e
 
 # I have alignment files. Use the alignment information from there to extract the silences
 
@@ -17,7 +17,7 @@ sed -re "s:.*? ([^ ]+_I):\1:" -e "s:^[^ ]+ 1 (.*?) ([^ ]+_E):\2 \1:" exp/reseg_f
 cut -d" " -f1,4- merged_ctm_all_sym_edited.txt > merged_ctm_all_sym_edited_cut.txt
 
 # Extract information about position and duration of each silence in a segment
-python punctuator2/local/extract_silence.py exp/reseg_fmllr_ali/merged_ctm_all_sym_edited_cut.txt exp/reseg_fmllr_ali/sil_all.txt &
+python local/punctuator/extract_silence.py exp/reseg_fmllr_ali/merged_ctm_all_sym_edited_cut.txt exp/reseg_fmllr_ali/sil_all.txt &
 
 cut -d" " -f1 exp/reseg_fmllr_ali/sil_all.txt | sort -u > exp/reseg_fmllr_ali/sil_uttid.tmp
 join -j 1 exp/reseg_fmllr_ali/sil_uttid.tmp <(sort -u data/all_reseg_filtered_Sept2017_ID/text) > exp/reseg_fmllr_ali/text_newdata.txt
@@ -25,7 +25,7 @@ join -j 1 exp/reseg_fmllr_ali/sil_uttid.tmp <(sort -u data/all_reseg_filtered_Se
 join -j 1 <(cut -d" " -f1 exp/reseg_fmllr_ali/text_newdata.txt) <(sort -u exp/reseg_fmllr_ali/sil_all.txt) > exp/reseg_fmllr_ali/sil_newdata.txt
 
 # Weave together the silence and text info.
-python punctuator2/local/add_sil_to_segm.py exp/reseg_fmllr_ali/text_newdata.txt exp/reseg_fmllr_ali/sil_newdata.txt exp/reseg_fmllr_ali/pause_annotated_text_newdata.txt
+python local/punctuator/add_sil_to_segm.py exp/reseg_fmllr_ali/text_newdata.txt exp/reseg_fmllr_ali/sil_newdata.txt exp/reseg_fmllr_ali/pause_annotated_text_newdata.txt
 
 # Next I need to get the punctuation tokens as well. I need to make is such that it reads one speech and respective pause annotated segments at a time.
 source py3env/bin/activate
@@ -36,7 +36,7 @@ touch ${dir}/althingi.train_Sept2017_pause_punct.txt
 for speech in $(cat ${dir}/althingi.train_Sept2017_pause_simpleExp.txt); do
     uttid=$(echo $speech | cut -d" " -f1)
     grep $uttid exp/reseg_fmllr_ali/pause_annotated_text_newdata.txt > ${dir}/segments.tmp
-    python punctuator2/local/segment_matching.py "$speech" ${dir}/segments.tmp ${dir}/althingi.train_Sept2017_pause_punct.txt 
+    python local/punctuator/segment_matching.py "$speech" ${dir}/segments.tmp ${dir}/althingi.train_Sept2017_pause_punct.txt 
 done } &>> segment_matching_time.log
 deactivate
 

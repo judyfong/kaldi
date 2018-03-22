@@ -70,13 +70,13 @@ sed -re "s/[[:space:]]\+/ /g" \
 <${dir}/text_propnames.tmp > ${dir}/denorm1.tmp
 
 # Restore punctuations
-#export PYTHONPATH="${PYTHONPATH}:~/.local/lib/python2.7/site-packages/:~/punctuator2/:~/punctuator2/example/local/" <- added to theano-env/bin/activate and kaldi/tools/env.sh
+#export PYTHONPATH="${PYTHONPATH}:~/.local/lib/python2.7/site-packages/:~/punctuator2/" <- added to theano-env/bin/activate and kaldi/tools/env.sh
 
 #set +u # otherwise I have problems with unbound variables
 source punctuator2/theano-env/bin/activate
 
 echo "Extract the numbers before punctuation"
-python punctuator2/local/saving_numbers.py ${dir}/denorm1.tmp ${dir}/punctuator_in.tmp ${dir}/numlist.tmp
+python local/punctuator/saving_numbers.py ${dir}/denorm1.tmp ${dir}/punctuator_in.tmp ${dir}/numlist.tmp
 
 echo "Punctuate"
 cat ${dir}/punctuator_in.tmp | THEANO_FLAGS='device=cpu' python punctuator2/punctuator.py punctuator2/Model_althingi_noCOMMA_h256_lr0.02.pcl ${dir}/punctuator_out.tmp &>${dir}/punctuator.log
@@ -84,7 +84,7 @@ wait
 
 echo "Re-insert the numbers"
 if [ -s  ${dir}/numlist.tmp ]; then
-    python punctuator2/local/re-inserting-numbers.py ${dir}/punctuator_out.tmp ${dir}/numlist.tmp ${dir}/punctuator_out_wNumbers.tmp
+    python local/punctuator/re-inserting-numbers.py ${dir}/punctuator_out.tmp ${dir}/numlist.tmp ${dir}/punctuator_out_wNumbers.tmp
 else
     cp ${dir}/punctuator_out.tmp ${dir}/punctuator_out_wNumbers.tmp
 fi

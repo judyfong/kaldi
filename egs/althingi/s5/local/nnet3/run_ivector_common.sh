@@ -64,8 +64,8 @@ if [ $stage -le 3 ]; then
     # features; this helps make trained nnets more invariant to test data volume.
     utils/data/perturb_data_dir_volume.sh $data/${dataset}_hires
 
-    steps/make_mfcc.sh --nj 70 --mfcc-config conf/mfcc_hires.conf \
-        --cmd "$train_cmd" $data/${dataset}_hires $exp/make_hires/$dataset $mfccdir;
+    steps/make_mfcc.sh --nj 100 --mfcc-config conf/mfcc_hires.conf \
+        --cmd "$train_cmd --time 2-00" $data/${dataset}_hires $exp/make_hires/$dataset $mfccdir;
     steps/compute_cmvn_stats.sh $data/${dataset}_hires $exp/make_hires/${dataset} $mfccdir;
 
     # Remove the small number of utterances that couldn't be extracted for some
@@ -91,7 +91,7 @@ fi
 
 if [ $stage -le 5 ]; then
   echo "$0: computing a PCA transform from the hires data."
-  steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \
+  steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd --time 2-00" \
     --splice-opts "--left-context=3 --right-context=3" \
     --max-utts 10000 --subsample 2 \
     $data/${train_set}_35k_hires $exp/nnet3/pca

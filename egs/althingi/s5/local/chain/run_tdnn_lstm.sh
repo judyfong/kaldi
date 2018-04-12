@@ -4,6 +4,14 @@
 # trying the change of xent_regularize from 0.025 (which was an
 # unusual value) to the more usual 0.01.
 
+# %WER 10.40 [ 9780 / 94001, 2176 ins, 3241 del, 4363 sub ] exp/chain/tdnn_lstm_1_sp/decode_dev_3gsmall/wer_8_0.0
+# %WER 9.76 [ 9173 / 94001, 2132 ins, 3152 del, 3889 sub ] exp/chain/tdnn_lstm_1_sp/decode_dev_5g/wer_8_0.0
+# %WER 62.54 [ 58787 / 94001, 160 ins, 51250 del, 7377 sub ] exp/chain/tdnn_lstm_1_sp/decode_dev_zg/wer_8_0.0
+# %WER 10.26 [ 9634 / 93879, 1828 ins, 3517 del, 4289 sub ] exp/chain/tdnn_lstm_1_sp/decode_eval_3gsmall/wer_8_0.0
+# %WER 9.63 [ 9041 / 93879, 1732 ins, 3405 del, 3904 sub ] exp/chain/tdnn_lstm_1_sp/decode_eval_5g/wer_8_0.0
+# %WER 62.79 [ 58942 / 93879, 116 ins, 51404 del, 7422 sub ] exp/chain/tdnn_lstm_1_sp/decode_eval_zg/wer_8_0.0
+# %WER 12.79 [ 11501 / 89904, 4155 ins, 3199 del, 4147 sub ] exp/chain/tdnn_lstm_1_sp/decode_train-dev_3gsmall/wer_8_0.0
+
 set -e
 
 # configs for 'chain'
@@ -11,8 +19,19 @@ stage=15 #0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_lstm_1e # Note: _sp will get added to this if $speed_perturb == true.
+
+# Put all output on scratch
+exp=/mnt/scratch/inga/exp
+data=/mnt/scratch/inga/data
+mfccdir=/mnt/scratch/inga/mfcc_hires
+
+tdnn_lstm_affix=_1  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
+dir=${exp}/chain/tdnn_lstm${tdnn_lstm_affix} # Note: _sp will get added to this if $speed_perturb == true.
+
 decode_iter=
+generate_plots=false  # Generate plots showing how parameters were updated throughout training and log-probability changes 
+calculate_bias=false  # So can check for bias and variance 
+zerogram_decoding=false  # To see the effect of the LM
 
 # training options
 xent_regularize=0.01
@@ -63,34 +82,27 @@ fi
 
 dir=${dir}$suffix
 train_set=train_okt2017_fourth$suffix
-ali_dir=exp/tri5_ali_${train_set}_comb #exp/tri4_cs_ali$suffix
-treedir=exp/chain/tri5_tree$suffix # NOTE!
-lang=data/lang_chain
+ali_dir=$exp/tri5_ali_${train_set} #exp/tri4_cs_ali$suffix
+treedir=$exp/chain/tri5_tree$suffix # NOTE!
+lang=$data/lang_chain
 
-train_data_dir=data/${train_set}_hires_comb
-train_ivector_dir=exp/chain/ivectors_${train_set}_hires_comb
+train_data_dir=$data/${train_set}_hires
+train_ivector_dir=$exp/nnet3/ivectors_${train_set}
 
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
-# # Original
-# local/nnet3/run_ivector_common.sh --stage $stage \
-#   --speed-perturb $speed_perturb \
-#   --generate-alignments $speed_perturb || exit 1;
-# From tdnn script:
-local/chain/run_ivector_common.sh --stage $stage \
-                                  --train-set train_okt2017_fourth \
-                                  --gmm tri5 || exit 1;
-# From older script:
-#local/nnet3/run_ivector_common_noSP.sh --stage $stage || exit 1;
+local/nnet3/run_ivector_common.sh --stage $stage \
+  --speed-perturb $speed_perturb \
+  --generate-alignments $speed_perturb || exit 1;
 
 if [ $stage -le 11 ]; then
   # Get the alignments as lattices (gives the CTC training more freedom).
   # use the same num-jobs as the alignments
   nj=$(cat ${ali_dir}/num_jobs) || exit 1;
-  steps/align_fmllr_lats.sh --nj $nj --cmd "$decode_cmd --time 2-00" data/$train_set \
-    data/lang exp/tri5 exp/tri5_lats$suffix
-  rm exp/tri5_lats$suffix/fsts.*.gz # save space
+  steps/align_fmllr_lats.sh --nj $nj --cmd "$decode_cmd --time 2-00" $data/$train_set \
+    data/lang exp/tri5 $exp/tri5_lats$suffix
+  rm $exp/tri5_lats$suffix/fsts.*.gz # save space
 fi
 
 if [ $stage -le 12 ]; then
@@ -110,7 +122,7 @@ if [ $stage -le 13 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
-      --cmd "$train_cmd --time 2-00" 7000 data/$train_set $lang $ali_dir $treedir
+      --cmd "$train_cmd --time 2-00" 7000 $data/$train_set $lang $ali_dir $treedir
 fi
 
 if [ $stage -le 14 ]; then
@@ -197,7 +209,7 @@ if [ $stage -le 15 ]; then
     --cleanup.remove-egs $remove_egs \
     --feat-dir $train_data_dir \
     --tree-dir $treedir \
-    --lat-dir exp/tri5_lats$suffix \
+    --lat-dir $exp/tri5_lats$suffix \
     --dir $dir  || exit 1;
 fi
 
@@ -219,7 +231,7 @@ if [ $stage -le 17 ]; then
   rm $dir/.error 2>/dev/null || true
   for decode_set in dev eval; do
     (
-      num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+      num_jobs=`cat $data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       steps/nnet3/decode.sh --num-threads 4 \
         --acwt 1.0 --post-decode-acwt 10.0 \
         --nj $num_jobs --cmd "$decode_cmd --time 0-06" $iter_opts \
@@ -228,11 +240,11 @@ if [ $stage -le 17 ]; then
         --extra-left-context-initial 0 \
         --extra-right-context-final 0 \
         --frames-per-chunk "$frames_per_chunk_primary" \
-        --online-ivector-dir exp/chain/ivectors_${decode_set}_hires \
-        $graph_dir data/${decode_set}_hires \
+        --online-ivector-dir $exp/nnet3/ivectors_${decode_set} \
+        $graph_dir $data/${decode_set}_hires \
         $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_3gsmall || exit 1;
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-        data/lang_{3gsmall,5g} data/${decode_set}_hires \
+        data/lang_{3gsmall,5g} $data/${decode_set}_hires \
         $dir/decode_${decode_set}_{3gsmall,5g} || exit 1;
     ) &
   done

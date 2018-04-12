@@ -3,6 +3,13 @@
 # run_tdnn_lstm_2.sh is based on run_tdnn_lstm_1e.sh from the swbd recipe
 # and run_tdnn_lstm_1b.sh from the fisher_swbd recipe.
 
+# %WER 10.19 [ 9578 / 94001, 2170 ins, 3076 del, 4332 sub ] exp/chain/tdnn_lstm_2_sp/decode_dev_3gsmall/wer_8_0.0
+# %WER 9.48 [ 8913 / 94001, 2085 ins, 2968 del, 3860 sub ] exp/chain/tdnn_lstm_2_sp/decode_dev_5g/wer_8_0.0
+# %WER 58.66 [ 55140 / 94001, 188 ins, 47258 del, 7694 sub ] exp/chain/tdnn_lstm_2_sp/decode_dev_zg/wer_8_0.0
+# %WER 10.14 [ 9519 / 93879, 1905 ins, 3378 del, 4236 sub ] exp/chain/tdnn_lstm_2_sp/decode_eval_3gsmall/wer_8_0.0
+# %WER 9.48 [ 8899 / 93879, 1828 ins, 3196 del, 3875 sub ] exp/chain/tdnn_lstm_2_sp/decode_eval_5g/wer_8_0.0
+# %WER 58.84 [ 55242 / 93879, 144 ins, 47274 del, 7824 sub ] exp/chain/tdnn_lstm_2_sp/decode_eval_zg/wer_8_0.0
+
 set -e
 
 # configs for 'chain'
@@ -74,12 +81,12 @@ fi
 
 dir=${dir}$suffix
 train_set=train_okt2017_fourth$suffix
-ali_dir=${exp}/tri5_ali_${train_set}_comb #exp/tri4_cs_ali$suffix
+ali_dir=${exp}/tri5_ali_${train_set} #exp/tri4_cs_ali$suffix
 treedir=${exp}/chain/tri5_tree$suffix # NOTE!
 lang=${data}/lang_chain
 
-train_data_dir=${data}/${train_set}_hires_comb
-train_ivector_dir=${exp}/chain/ivectors_${train_set}_hires_comb
+train_data_dir=${data}/${train_set}_hires
+train_ivector_dir=${exp}/nnet3/ivectors_${train_set}
 
 
 # if we are using the speed-perturbed data we need to generate
@@ -235,7 +242,7 @@ if [ $stage -le 17 ]; then
         --extra-left-context-initial 0 \
         --extra-right-context-final 0 \
         --frames-per-chunk "$frames_per_chunk_primary" \
-        --online-ivector-dir ${exp}/chain/ivectors_${decode_set}_hires \
+        --online-ivector-dir ${exp}/nnet3/ivectors_${decode_set} \
         $graph_dir $data/${decode_set}_hires \
         $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_3gsmall || exit 1;
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
@@ -274,7 +281,7 @@ if [ $zerogram_decoding = true ]; then
         --extra-left-context-initial 0 \
         --extra-right-context-final 0 \
         --frames-per-chunk "$frames_per_chunk_primary" \
-        --online-ivector-dir ${exp}/chain/ivectors_${decode_set}_hires \
+        --online-ivector-dir ${exp}/nnet3/ivectors_${decode_set} \
         $dir/graph_zg $data/${decode_set}_hires \
         $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_zg || exit 1;
     ) &
@@ -300,7 +307,7 @@ if [ $calculate_bias = true ]; then
         --extra-left-context-initial 0 \
         --extra-right-context-final 0 \
         --frames-per-chunk "$frames_per_chunk_primary" \
-        --online-ivector-dir $exp/chain/ivectors_${decode_set}_hires \
+        --online-ivector-dir $exp/nnet3/ivectors_${decode_set} \
         $graph_dir $data/${decode_set}_hires \
         $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_3gsmall || exit 1;
     ) &

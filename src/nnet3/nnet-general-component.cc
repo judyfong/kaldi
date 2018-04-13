@@ -1414,7 +1414,7 @@ void* DropoutMaskComponent::Propagate(
   BaseFloat dropout_proportion = dropout_proportion_;
   KALDI_ASSERT(dropout_proportion >= 0.0 && dropout_proportion <= 1.0);
 
-  if (dropout_proportion_ == 0) {
+  if (dropout_proportion == 0) {
     out->Set(1.0);
     return NULL;
   }
@@ -1563,9 +1563,8 @@ void* GeneralDropoutComponent::Propagate(
     int32 num_rows = out->NumRows(),
         dim_multiple = dim_  / block_dim_,
         num_rows_reshaped = num_rows * dim_multiple;
-    CuSubMatrix<BaseFloat> out_reshaped(out->Data(), block_dim_,
-                                        num_rows_reshaped,
-                                        num_rows_reshaped);
+    CuSubMatrix<BaseFloat> out_reshaped(out->Data(), num_rows_reshaped,
+                                        block_dim_, block_dim_);
     out_reshaped.MulRows(*mask, indexes->indexes);
   } else {
     out->MulRows(*mask, indexes->indexes);
@@ -1602,9 +1601,9 @@ void GeneralDropoutComponent::Backprop(
     int32 num_rows = in_deriv->NumRows(),
         dim_multiple = dim_  / block_dim_,
         num_rows_reshaped = num_rows * dim_multiple;
-    CuSubMatrix<BaseFloat> in_deriv_reshaped(in_deriv->Data(), block_dim_,
+    CuSubMatrix<BaseFloat> in_deriv_reshaped(in_deriv->Data(),
                                              num_rows_reshaped,
-                                             num_rows_reshaped);
+                                             block_dim_, block_dim_);
     in_deriv_reshaped.MulRows(*mask, indexes->indexes);
   } else {
     in_deriv->MulRows(*mask, indexes->indexes);

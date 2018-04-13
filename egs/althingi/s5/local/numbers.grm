@@ -151,7 +151,7 @@ export NUMBERNAMES_10_to_999999_and_0 = Optimize[
   (numbers_100_to_999 <-3>) |
   (numbers_1000_to_9999 <-16>) |
   (numbers_10000_to_99999 <-32>) |
-  (numbers_100000_to_999999 <-64>) |
+  (numbers_100000_to_999999 <-128>) |
   (year <-30.0>) ]
 ;
 

@@ -207,12 +207,26 @@ export ABBREVIATE = ArcSort[
                     Optimize[abbreviate2 @ ABBR_WORD3],
                     'input'];
 
+# The following should be removed from here. Used when inserting
+# periods back after denormalization. I should solve that is a better
+# way
 ins_periods =
 Optimize[StringFile['text_norm/lex/abbr_periods.txt','utf8','utf8']];
 
 export INS_PERIODS = CDRewrite[ins_periods,
                      ("[BOS]".utf8 | " ".utf8),
                      ".".utf8? ("[EOS]".utf8 | " ".utf8),
+                     c.whole_alphabet*,
+                     'ltr',
+                     'obl'];
+
+# REMOVE_PERIODS if for removing periods from abbreviations, when
+# cleaning a new speech, before adding it to our language model texts
+# and any new words to the vocabulary.
+rm_periods = Invert[ins_periods];
+export REMOVE_PERIODS = CDRewrite[rm_periods,
+                     ("[BOS]".utf8 | " ".utf8),
+                     ("[EOS]".utf8 | " ".utf8),
                      c.whole_alphabet*,
                      'ltr',
                      'obl'];

@@ -64,9 +64,9 @@ sed -re "s/[[:space:]]\+/ /g" \
     -e 's:h t t p s:https:g' -e 's:h t t p:http:g' \
     -e 's:(https?) w w w ([[:alnum:]]+) punktur (is|net|com):\1\://www\.\2.\3:g' -e 's:w w w ([[:alnum:]]+) punktur (is|net|com):www\.\1.\2:g' -e 's:([[:alnum:]]+) punktur (is|net|com):\1.\2:g' \
     -e 's:og eða:og/eða:g' \
-    -e 's:\b([Rr]ás) eitt\b:\u\1 1:g' -e 's:\b([Ss]töð) tvö\b:\u\1 2:g' \
+    -e 's:\b([Rr]ás) eitt\b:\u\1 1:g' -e 's:\b([Rr]ás) tvö\b:\u\1 2:g' -e 's:\b([Ss]töð) tvö\b:\u\1 2:g' \
     -e 's:(allsherjar|efnahags|stjórnskipunar|umhverfis)( og [^ ]+nefnd):\1-\2:g' \
-    -e 's:([Dd])oktor ([A-ZÁÉÍÓÚÝÞÆÖ]):\1r\. \2:g' \
+    -e 's:([Dd])oktor ([A-ZÁÉÍÓÚÝÞÆÖ]):\1r \2:g' \
 <${dir}/text_propnames.tmp > ${dir}/denorm1.tmp
 
 # Restore punctuations
@@ -105,10 +105,16 @@ sed -re 's/ \.PERIOD/./g; s/ \?QUESTIONMARK/?/g; s/ !EXCLAMATIONMARK/!/g; s/ ,CO
 echo "Insert periods into abbreviations and put a period at the end of the speech"
 fststringcompile ark:"sed 's:.*:1 &:' ${dir}/punctuator_out_wPuncts.tmp |" ark:- | fsttablecompose --match-side=left ark,t:- text_norm/INS_PERIODS.fst ark:- | fsts-to-transcripts ark:- ark,t:- | int2sym.pl -f 2- ${utf8syms} > ${dir}/punctuator_out_wPeriods.tmp
 
-cut -d" " -f2- ${dir}/punctuator_out_wPeriods.tmp | sed -re 's: ::g' -e 's:0x0020: :g' | tr "\n" " " | sed -re "s/[[:space:]]+/ /g"  -e 's:$:.:' > ${dir}/punctuator_out_wPeriods_words.tmp
+cut -d" " -f2- ${dir}/punctuator_out_wPeriods.tmp | sed -re 's: ::g' -e 's:0x0020: :g' | tr "\n" " " | sed -re "s/[[:space:]]+/ /g" -e 's:$:.:' > ${dir}/punctuator_out_wPeriods_words.tmp
 
 # Insert paragraph breaks before the appearance of  ". [herra|frú|virðulegur|hæstv] forseti."
 sed -r 's:\. ([^ ]+ forseti\.):\.\n\1:g' < ${dir}/punctuator_out_wPeriods_words.tmp > $ofile
+
+# # Maybe fix the casing of prefixes?
+# cat /data/althingi/lists/forskeyti.txt /data/althingi/lists/forskeyti.txt | sort | awk 'ORS=NR%2?":":"\n"' | sed -re 's/^.*/s:&/' -e 's/$/:gI/g' > prefix_sed_pattern.tmp
+
+# # Fix the casing of known named entities
+# /bin/sed -f ${dir}/ner_sed_pattern.tmp file > file_out
 
 # # Abbreviate "háttvirtur", "hæstvirtur" and "þingmaður" in some cases
 # sed -re 's:([Hh])áttv[^ ]+ (þingm[^ .?:eö]+ [A-ZÁÐÉÍÓÚÝÞÆÖ]):\1v\. \2:g' -e 's:([Hh]v\. ([0-9]+\. )?)þingm[^ .?:eö]+ ([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1þm. \3:g' -e 's:([Hh]æstv)irtur forseti:\1\. forseti:g' < ${dir}/punctuator_out_wPeriods_words.tmp > $ofile

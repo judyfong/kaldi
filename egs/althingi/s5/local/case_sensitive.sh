@@ -13,10 +13,11 @@ if [ $# != 2 ]; then
    echo "e.g.: local/case_sensitive.sh ~/data/althingi/pronDict_LM data/all"
 fi
 
-# I went through capitalized words in the original Málföng's pron dict
-# and corrected words that were incorrectly capitalized. I used the resulting
-# list, as well as a list of capitalized words in BÍN and lists over countries
-# and capitals to capitalize my pron dict. Which in turn I used to capitalize my texts.
+# Extract word that are only used capitalized.
+comm -23 <(egrep '^[A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]' $pronDictdir/CaseSensitive_pron_dict_Fix19.txt \
+		  | cut -f1 | sed -r 's:.*:\L&:' | sort -u) \
+     <(cut -f1 $pronDictdir/CaseSensitive_pron_dict_Fix19.txt | sort -u) | sed -r 's:.*:\u&:' \
+     > CaseSensitive_pron_dict_propernouns.txt
 
 # Capitalize words in Althingi texts, that are capitalized in the pron dict
 
@@ -29,3 +30,4 @@ tr "\n" "|" < ${pronDictdir}/propernouns_althingi.txt | sed '$s/|$//' | perl -pe
 srun sed -r 's:(\b'$(cat ${pronDictdir}/propernouns_althingi_pattern.tmp)'\b):\u\1:g' ${datadir}/text > ${datadir}/text_CaseSens.txt
 
 #rm ${pronDictdir}/*.tmp
+

@@ -295,7 +295,7 @@ if [ $stage -le 5 ]; then
 	    -e 's:\bnk\b:næstkomandi:g' \
 	    -e 's:\bnr\b:númer:g' \
 	    -e 's:\bnúv\b:núverandi:g' \
-	    -e 's:\bo ?s ?frv\b:og svo framvegis:g' \
+	    -e 's:\bosfrv\b:og svo framvegis:g' \
 	    -e 's:\boþh\b:og þess háttar:g' \
 	    -e 's:\bpr\b:per:g' \
 	    -e 's:\bsbr\b:samanber:g' \

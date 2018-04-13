@@ -163,7 +163,7 @@ if [ $stage -le 7 ]; then
     # Make lang dir
     mkdir -p data/local/dict
     pronDictdir=~/data/althingi/pronDict_LM
-    frob=${pronDictdir}/CaseSensitive_pron_dict_Fix17.txt
+    frob=${pronDictdir}/CaseSensitive_pron_dict_Fix20.txt
     local/prep_lang.sh \
         $frob            \
         data/local/dict   \
@@ -176,6 +176,7 @@ if [ $stage -le 7 ]; then
 
     # Expanded LM training text and split on EOS:
     #/home/staff/inga/data/althingi/pronDict_LM/LMtext_w_t131_split_on_EOS_expanded.txt
+    # A newer one: /data/althingi/text_corpus/LMtext_2004-2018.txt
 
     # Expanded but not split on EOS:
     # LMtexts_expanded_CS.txt
@@ -190,7 +191,7 @@ if [ $stage -le 7 ]; then
     /opt/kenlm/build/bin/lmplz \
 	--skip_symbols \
 	-o 3 -S 70% --prune 0 3 5 \
-	--text ${pronDictdir}/LMtext_w_t131_split_on_EOS_expanded.txt \
+	--text /data/althingi/text_corpus/LMtext_2004-2018.txt \
 	--limit_vocab_file <(cat data/lang_3gsmall/words.txt | egrep -v "<eps>|<unk>" | cut -d' ' -f1) \
 	| gzip -c > data/lang_3gsmall/kenlm_3g_035pruned.arpa.gz
 
@@ -206,7 +207,7 @@ if [ $stage -le 7 ]; then
     /opt/kenlm/build/bin/lmplz \
 	--skip_symbols \
 	-o 3 -S 70% --prune 0 \
-	--text ${pronDictdir}/LMtext_w_t131_split_on_EOS_expanded.txt \
+	--text /data/althingi/text_corpus/LMtext_2004-2018.txt \
 	--limit_vocab_file <(cat data/lang_3glarge/words.txt | egrep -v "<eps>|<unk>" | cut -d' ' -f1) \
 	| gzip -c > data/lang_3glarge/kenlm_3g.arpa.gz
 
@@ -224,7 +225,7 @@ if [ $stage -le 7 ]; then
     /opt/kenlm/build/bin/lmplz \
 	--skip_symbols \
 	-o 5 -S 70% --prune 0 \
-	--text ${pronDictdir}/LMtext_w_t131_split_on_EOS_expanded.txt \
+	--text /data/althingi/text_corpus/LMtext_2004-2018.txt \
 	--limit_vocab_file <(cat data/lang_5g/words.txt | egrep -v "<eps>|<unk>" | cut -d' ' -f1) \
 	| gzip -c > data/lang_5g/kenlm_5g.arpa.gz
 
@@ -239,8 +240,15 @@ if [ $stage -le 7 ]; then
                             topo words.txt; do
 	[ ! -e data/lang_zg/$s ] && cp -r data/lang/$s data/lang_zg/$s
     done
-    estimate-ngram -order 1 -text <(cat data/lang_zg/words.txt | egrep -v "<eps>|<s>|</s>|#" | cut -d' ' -f1) -wl data/lang_zg/zerogram.arpa.gz
-    utils/slurm.pl data/lang_zg/format_lm.log utils/format_lm.sh data/lang data/lang_zg/zerogram.arpa.gz data/local/dict/lexicon.txt data/lang_zg &
+    
+    /opt/kenlm/build/bin/lmplz \
+	--skip_symbols \
+	-o 1 -S 70% --prune 0 \
+	--text /data/althingi/text_corpus/LMtext_2004-2018.txt \
+	--limit_vocab_file <(cat data/lang_zg/words.txt | egrep -v "<eps>|<unk>" | cut -d' ' -f1) \
+	| gzip -c > data/lang_zg/kenlm_zg.arpa.gz
+    
+    utils/slurm.pl data/lang_zg/format_lm.log utils/format_lm.sh data/lang data/lang_zg/kenlm_zg.arpa.gz data/local/dict/lexicon.txt data/lang_zg &
 
 fi
 

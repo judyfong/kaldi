@@ -11,6 +11,7 @@ set -o pipefail
 
 . ./path.sh
 . ./cmd.sh
+. ./utils/parse_options.sh
 
 ifile=$1
 ofile=$2
@@ -73,7 +74,8 @@ sed -re "s/[[:space:]]\+/ /g" \
 #export PYTHONPATH="${PYTHONPATH}:~/.local/lib/python2.7/site-packages/:~/punctuator2/" <- added to theano-env/bin/activate and kaldi/tools/env.sh
 
 #set +u # otherwise I have problems with unbound variables
-source punctuator2/theano-env/bin/activate
+#source punctuator2/theano-env/bin/activate
+source activate thenv
 
 echo "Extract the numbers before punctuation"
 python local/punctuator/saving_numbers.py ${dir}/denorm1.tmp ${dir}/punctuator_in.tmp ${dir}/numlist.tmp
@@ -89,26 +91,28 @@ else
     cp ${dir}/punctuator_out.tmp ${dir}/punctuator_out_wNumbers.tmp
 fi
 
-deactivate
-
 echo "Convert punctuation tokens back to actual punctuations and capitalize"
-# Convert punctuation tokens back to actual punctuations
+# Convert punctuation tokens back to actual punctuations and capitalize sentence beginnings
+# Capitalize the first word in the speech
+# Insert a period at the end of the speech
+# Fix km/klst and kr./kíló
 # Remove space before [°%‰] and in <unk>
-# Capitalize sentence beginnings and the first word in the speech
-# Fix kl/klst and kr./kíló
-sed -re 's/ \.PERIOD/./g; s/ \?QUESTIONMARK/?/g; s/ !EXCLAMATIONMARK/!/g; s/ ,COMMA/,/g; s/ :COLON/:/g' \
-    -e 's: ([°%‰]):\1:g' -e 's:< unk >:<unk>:g' \
-    -e 's/([^0-9]\.|\?|:|!) ([a-záðéíóúýþæö])/\1 \u\2/g' -e 's/([0-9]{4,}[\.:?!]) ([a-záðéíóúýþæö])/\1 \u\2/g' -e 's:^([a-záéíóúýþæö]):\u\1:' \
+sed -re 's/ \.PERIOD ([^ ])/. \u\1/g' -e 's/ \?QUESTIONMARK ([^ ])/? \u\1/g' -e 's/ !EXCLAMATIONMARK ([^ ])/! \u\1/g' -e 's/ :COLON ([^ ])/: \u\1/g' \
+    -e 's/ \.PERIOD/./g; s/ \?QUESTIONMARK/?/g; s/ !EXCLAMATIONMARK/!/g; s/ ,COMMA/,/g; s/ :COLON/:/g; s/ ;SEMICOLON/;/g' \
+    -e 's:^([a-záéíóúýþæö]):\u\1:' \
     -e 's:([0-9]+) km á klukkustund:\1 km/klst.:g' -e 's:([0-9]+) kr á kíló[^m ]* ?:\1 kr./kg :g' \
+    -e 's: ([°%‰]):\1:g' -e 's:< unk >:<unk>:g' \
     ${dir}/punctuator_out_wNumbers.tmp > ${dir}/punctuator_out_wPuncts.tmp
 
-echo "Insert periods into abbreviations and put a period at the end of the speech"
-fststringcompile ark:"sed 's:.*:1 &:' ${dir}/punctuator_out_wPuncts.tmp |" ark:- | fsttablecompose --match-side=left ark,t:- text_norm/INS_PERIODS.fst ark:- | fsts-to-transcripts ark:- ark,t:- | int2sym.pl -f 2- ${utf8syms} > ${dir}/punctuator_out_wPeriods.tmp
+echo "Insert periods into abbreviations and insert period at the end of the speech"
+fststringcompile ark:"sed 's:.*:1 &:' ${dir}/punctuator_out_wPuncts.tmp |" ark:- | fsttablecompose --match-side=left ark,t:- text_norm/INS_PERIODS.fst ark:- | fsts-to-transcripts ark:- ark,t:- | int2sym.pl -f 2- ${utf8syms} | cut -d" " -f2- | sed -re 's: ::g' -e 's:0x0020: :g' | tr "\n" " " | sed -re "s/ +/ /g" -e 's:\s*$:.:' > ${dir}/punctuator_out_wPeriods.tmp
 
-cut -d" " -f2- ${dir}/punctuator_out_wPeriods.tmp | sed -re 's: ::g' -e 's:0x0020: :g' | tr "\n" " " | sed -re "s/[[:space:]]+/ /g" -e 's:$:.:' > ${dir}/punctuator_out_wPeriods_words.tmp
+# # Insert paragraph breaks using a paragraph model and before the appearance of ". [herra|frú|virðulegur|hæstv] forseti."
+cat ${dir}/punctuator_out_wPeriods.tmp | THEANO_FLAGS='device=cpu' python paragraph/paragrapher.py paragraph/Model_althingi_paragraph_may18_h256_lr0.02.pcl ${dir}/paragraphed_tokens.tmp
+sed -re "s: EOP :\n:g"  -e 's:\. ([^ ]+ forseti\.):\.\n\1:g' ${dir}/paragraphed_tokens.tmp > $ofile
 
 # Insert paragraph breaks before the appearance of  ". [herra|frú|virðulegur|hæstv] forseti."
-sed -r 's:\. ([^ ]+ forseti\.):\.\n\1:g' < ${dir}/punctuator_out_wPeriods_words.tmp > $ofile
+#sed -r 's:\. ([^ ]+ forseti\.):\.\n\1:g' < ${dir}/punctuator_out_wPeriods.tmp > $ofile
 
 # # Maybe fix the casing of prefixes?
 # cat /data/althingi/lists/forskeyti.txt /data/althingi/lists/forskeyti.txt | sort | awk 'ORS=NR%2?":":"\n"' | sed -re 's/^.*/s:&/' -e 's/$/:gI/g' > prefix_sed_pattern.tmp
@@ -119,3 +123,5 @@ sed -r 's:\. ([^ ]+ forseti\.):\.\n\1:g' < ${dir}/punctuator_out_wPeriods_words.
 # # Abbreviate "háttvirtur", "hæstvirtur" and "þingmaður" in some cases
 # sed -re 's:([Hh])áttv[^ ]+ (þingm[^ .?:eö]+ [A-ZÁÐÉÍÓÚÝÞÆÖ]):\1v\. \2:g' -e 's:([Hh]v\. ([0-9]+\. )?)þingm[^ .?:eö]+ ([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1þm. \3:g' -e 's:([Hh]æstv)irtur forseti:\1\. forseti:g' < ${dir}/punctuator_out_wPeriods_words.tmp > $ofile
 
+#deactivate
+source deactivate

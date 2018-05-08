@@ -311,6 +311,9 @@ if [ $stage -le 11 ]; then
     echo "Run the swbd chain tdnn_lstm recipe with sp"
     local/chain/run_tdnn_lstm.sh >>tdnn_lstm.log 2>&1 &
 
-    echo "Run the swbd chain tdnn_lstm recipe without sp"
-    local/chain/run_tdnn_lstm_noSP.sh >>tdnn_lstm_noSP.log 2>&1 &
+    echo "Run the swbd chain tdnn recipe with sp"
+    local/chain/run_tdnn.sh >>tdnn.log 2>&1 &
 fi
+
+# Train and rescore with an RNN LM
+local/rnnlm/run_tdnn_lstm_1e.sh >>rnnlm_tdnn_lstm.log 2>&1 &

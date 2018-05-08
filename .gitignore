@@ -102,6 +102,9 @@ tmp
 /egs/*/s*/punctuator2/example
 egs/*/s*/punctuator2/libgpuarray
 egs/*/s*/punctuator2/log
+egs/*/s*/local/auxiliary
+egs/*/s*/local/recognize/auxiliary
+egs/althingi/s5/ivector_clustering/
 
 # /tools/
 /tools/ATLAS/

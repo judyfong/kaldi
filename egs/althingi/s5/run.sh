@@ -74,6 +74,9 @@ if [ $stage -le 1 ]; then
 	echo "  If so, delete the text_norm dir and then rerun this part"
 	exit 1;
     fi
+    echo "Compile the fsts"
+    local/compile_grammar.sh
+    
     echo "Text normalization: Expansion of abbreviations and numbers"
     # train a language model for expansion
     ./local/train_expansionLM.sh text_norm ${outdir}

@@ -19,7 +19,7 @@ MAX_EPOCHS = 50
 MINIBATCH_SIZE = 128
 L2_REG = 0.0
 CLIPPING_THRESHOLD = 2.0
-PATIENCE_EPOCHS = 1
+PATIENCE_EPOCHS = 3
 
 """
 Bi-directional RNN with attention
@@ -68,6 +68,7 @@ def get_minibatch(file_name, batch_size, shuffle, with_pauses=False):
             Y_batch = []
             if with_pauses:
                 P_batch = []
+          
 
 if __name__ == "__main__":
     
@@ -82,13 +83,13 @@ if __name__ == "__main__":
         sys.exit("'Hidden layer size' argument missing!")
 
     if len(sys.argv) > 3:
-        learning_rate = float(sys.argv[3])
+        initial_learning_rate = float(sys.argv[3])
     else:
         sys.exit("'Learning rate' argument missing!")
 
-    model_file_name = "Model_%s_h%d_lr%s.pcl" % (model_name, num_hidden, learning_rate)
+    model_file_name = "Model_%s_h%d_lr%s.pcl" % (model_name, num_hidden, initial_learning_rate)
 
-    print num_hidden, learning_rate, model_file_name
+    print num_hidden, initial_learning_rate, model_file_name
 
     word_vocabulary = data.read_vocabulary(data.WORD_VOCAB_FILE)
     punctuation_vocabulary = data.iterable_to_dict(data.PUNCTUATION_VOCABULARY)
@@ -110,7 +111,7 @@ if __name__ == "__main__":
             elif resp == 'c':
                 continue_with_previous = True
             break
-
+    
     if continue_with_previous:
         print "Loading previous model state" 
 
@@ -175,7 +176,11 @@ if __name__ == "__main__":
         t0 = time()
         total_neg_log_likelihood = 0
         total_num_output_samples = 0
-        iteration = 0 
+        iteration = 0
+        k = 0.8
+        learning_rate = np.float32(initial_learning_rate * np.exp(-k*epoch))
+        print "Learning rate is %s" % np.round(learning_rate, 5)
+        
         for X, Y in get_minibatch(data.TRAIN_FILE, MINIBATCH_SIZE, shuffle=True):
             total_neg_log_likelihood += train_model(X, Y, learning_rate)
             total_num_output_samples += np.prod(Y.shape)
@@ -184,7 +189,7 @@ if __name__ == "__main__":
                 sys.stdout.write("PPL: %.4f; Speed: %.2f sps\n" % (np.exp(total_neg_log_likelihood / total_num_output_samples), total_num_output_samples / max(time() - t0, 1e-100)))
                 sys.stdout.flush()
         print "Total number of training labels: %d" % total_num_output_samples
-
+        
         total_neg_log_likelihood = 0
         total_num_output_samples = 0
         for X, Y in get_minibatch(data.DEV_FILE, MINIBATCH_SIZE, shuffle=False):

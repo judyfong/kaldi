@@ -12,9 +12,9 @@ import sys
 
 NUM = '<NUM>'
 
-EOS_PUNCTS = {".": ".PERIOD", "?": "?QUESTIONMARK", "!": "!EXCLAMATIONMARK"}
+EOS_PUNCTS = {".": ".PERIOD", "?": "?QUESTIONMARK", "!": "!EXCLAMATIONMARK", ":": ":COLON"}
+INS_PUNCTS = {",": ",COMMA", ";": ";SEMICOLON"}
 #INS_PUNCTS = {",": ",COMMA", ";": ";SEMICOLON", ":": ":COLON", "-": "-DASH"}
-INS_PUNCTS = {",": ",COMMA", ";": ";SEMICOLON", ":": ":COLON"}
 
 forbidden_symbols = re.compile(r"[\[\]\(\)\\\>\<\=\+\_\*]")
 numbers = re.compile(r"\d")
@@ -42,36 +42,41 @@ def process_line(line):
 
     tokens = word_tokenize(line)
     output_tokens = []
-
+    num_list = []
+    
     for token in tokens:
-
         if token in INS_PUNCTS:
             output_tokens.append(INS_PUNCTS[token])
         elif token in EOS_PUNCTS:
             output_tokens.append(EOS_PUNCTS[token])
         elif is_number(token):
             output_tokens.append(NUM)
+            num_list.append(token)
         else:
             output_tokens.append(token)
 
-    return untokenize(" ".join(output_tokens) + " ")
+    return [untokenize(" ".join(output_tokens) + " "), '\n'.join(num_list)]
 
 skipped = 0
 
-with codecs.open(sys.argv[2], 'w', encoding='utf-8') as out_txt:
-    with codecs.open(sys.argv[1], 'r', encoding='utf-8') as text:
+with codecs.open(sys.argv[3], 'w', 'utf-8') as num_txt:
+    with codecs.open(sys.argv[2], 'w', 'utf-8') as out_txt:
+        with codecs.open(sys.argv[1], 'r', 'utf-8') as text:
 
-        for line in text:
+            
+            for line in text:
 
-            line = line.replace("\"", "").strip()
-            line = multiple_punct.sub(r"\g<1>", line)
+                line = line.replace("\"", "").strip()
+                line = multiple_punct.sub(r"\g<1>", line)
+                
+                if skip(line):
+                    skipped += 1
+                    continue
 
-            if skip(line):
-                skipped += 1
-                continue
+                line, num = process_line(line)
 
-            line = process_line(line)
-
-            out_txt.write(line + '\n')
-
+                out_txt.write(line + '\n')
+                if len(num) > 0:
+                    num_txt.write(num + '\n')
+                
 print "Skipped %d lines" % skipped

@@ -32,11 +32,14 @@ speechname=$(basename "$speechfile")
 extension="${speechname##*.}"
 speechname="${speechname%.*}"
 
-dir=$2 # Outdir
-datadir=$dir/$speechname
+dir=$2
+outdir=$dir/${speechname} # Outdir
+
+datadir=$dir/${speechname}_temp
 logdir=${dir}/log
 mkdir -p ${datadir}
 mkdir -p ${logdir}
+mkdir -p $outdir/{intermediate,log}
 
 if [ $# = 3 ]; then
   speakerfile=$3  # A meta file containing the name of the speaker
@@ -126,7 +129,7 @@ if [ $stage -le 7 ]; then
     "ark:zcat ${rescoredir}/lat.1.gz |" ark,t:- &> ${rescoredir}/extract_transcript.log || exit 1;
 
   # Extract the best path text (tac - concatenate and print files in reverse)
-  tac ${rescoredir}/extract_transcript.log | grep -e '^[^ ]\+rad' | sort -u -t" " -k1,1 > ${rescoredir}/transcript.txt || exit 1;
+  tac ${rescoredir}/extract_transcript.log | grep -e '^[^ ]\+rad' | sort -u -t" " -k1,1 > ${rescoredir}/ASRtranscript.txt || exit 1;
 
 fi
 
@@ -134,8 +137,8 @@ if [ $stage -le 8 ]; then
 
   echo "Denormalize the transcript"
   $train_cmd ${logdir}/${speechname}_denormalize.log local/recognize/denormalize.sh \
-    ${rescoredir}/transcript.txt \
-    ${dir}/${speechname}.txt || exit 1;
+    ${rescoredir}/ASRtranscript.txt \
+    ${outdir}/${speechname}.txt || exit 1;
 fi
 
 end=$(date +%s)
@@ -150,6 +153,8 @@ if [ $score = true ] ; then
 	--cmd "$train_cmd" $speechname ${oldLMdir} ${datadir}/.. || exit 1;
 fi
 
+mv -t $outdir/intermediate ${datadir}_segm/*silence.txt ${datadir}_segm_hires/decode_5g*/*.{tmp,txt}
+mv -t $outdir/log ${datadir}_segm_hires/decode*/log/*
 #rm -r ${datadir} ${datadir}_segm ${datadir}_segm_hires
 
 

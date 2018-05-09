@@ -19,15 +19,12 @@ dir=$(dirname $(readlink -f $ifile))
 utf8syms=text_norm/utf8.syms
 
 echo "Abbreviate"
-# Numbers are not in the words.txt file. Hence I can't compose with an utf8-to-words.fst file.
-fststringcompile ark:$ifile ark:- | fsttablecompose --match-side=left ark,t:- text_norm/ABBREVIATE.fst ark:- | fsts-to-transcripts ark:- ark,t:- | int2sym.pl -f 2- ${utf8syms} > ${dir}/thrax_out.tmp
-
-# Remove uttIDs and map to words
-cut -d" " -f2- ${dir}/thrax_out.tmp | sed -re 's: ::g' -e 's:0x0020: :g' | tr "\n" " " | sed -r "s/[[:space:]]+/ /g" > ${dir}/thrax_out_words.tmp
+# Numbers are not in the words.txt file. Hence I can't compose with an utf8-to-words.fst file. Also, remove uttIDs
+fststringcompile ark:$ifile ark:- | fsttablecompose --match-side=left ark,t:- text_norm/ABBREVIATE.fst ark:- | fsts-to-transcripts ark:- ark,t:- | int2sym.pl -f 2- ${utf8syms} | cut -d" " -f2- | sed -re 's: ::g' -e 's:0x0020: :g' | tr "\n" " " | sed -r "s/[[:space:]]+/ /g" > ${dir}/thrax_out.tmp
 
 echo "Uppercase first names when followed by family names (eftirnafn) and capitalize abbreviated middle names" 
 #F.ex. in Ari trausti Guðmundsson, Unnur brá Konráðsdóttir, Sigríður á Andersen
-sed -re "s:\b([A-ZÁÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+) ([a-záðéíóúýþæö]) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\1 \u\2\. \3:g" -e "s:\b([^ ]+) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\u\1 \2:g" <${dir}/thrax_out_words.tmp > ${dir}/text_propnames.tmp
+sed -re "s:\b([A-ZÁÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+) ([a-záðéíóúýþæö]) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\1 \u\2\. \3:g" -e "s:\b([^ ]+) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\u\1 \2:g" <${dir}/thrax_out.tmp > ${dir}/text_propnames.tmp
 
 echo "Collapse acronyms pronounced as letters"
 # Collapse first the longest acronyms, in case they contain smaller ones.
@@ -68,7 +65,7 @@ sed -re "s/[[:space:]]\+/ /g" \
     -e 's:\b([Rr]ás) eitt\b:\u\1 1:g' -e 's:\b([Rr]ás) tvö\b:\u\1 2:g' -e 's:\b([Ss]töð) tvö\b:\u\1 2:g' \
     -e 's:(allsherjar|efnahags|stjórnskipunar|umhverfis)( og [^ ]+nefnd):\1-\2:g' \
     -e 's:([Dd])oktor ([A-ZÁÉÍÓÚÝÞÆÖ]):\1r \2:g' \
-<${dir}/text_propnames.tmp > ${dir}/denorm1.tmp
+<${dir}/text_propnames.tmp > ${dir}/denorm.tmp
 
 # Restore punctuations
 #export PYTHONPATH="${PYTHONPATH}:~/.local/lib/python2.7/site-packages/:~/punctuator2/" <- added to theano-env/bin/activate and kaldi/tools/env.sh
@@ -78,10 +75,10 @@ sed -re "s/[[:space:]]\+/ /g" \
 source activate thenv
 
 echo "Extract the numbers before punctuation"
-python local/punctuator/saving_numbers.py ${dir}/denorm1.tmp ${dir}/punctuator_in.tmp ${dir}/numlist.tmp
+python local/punctuator/saving_numbers.py ${dir}/denorm.tmp ${dir}/punctuator_in.tmp ${dir}/numlist.tmp
 
 echo "Punctuate"
-cat ${dir}/punctuator_in.tmp | THEANO_FLAGS='device=cpu' python punctuator2/punctuator.py punctuator2/Model_althingi_noCOMMA_h256_lr0.02.pcl ${dir}/punctuator_out.tmp &>${dir}/punctuator.log
+cat ${dir}/punctuator_in.tmp | THEANO_FLAGS='device=cpu' python punctuator2/punctuator.py punctuator2/Model_althingi_noCOMMA_h256_lr0.02.pcl ${dir}/punctuator_out.tmp
 wait
 
 echo "Re-insert the numbers"

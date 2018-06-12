@@ -1,0 +1,187 @@
+árg	árgangi
+árg	árgangur
+bls	blaðsíða
+bls	blaðsíðu
+bls	blaðsíður
+cm²	fersentímetra
+cm²	fersentímetrar
+cm³	rúmsentímetra
+cm³	rúmsentímetrar
+cm	sentímetra
+cm	sentímetrar
+cm	sentímetrum
+dkr	danskar krónur
+efnismgr	efnismálsgrein
+efnismgr	efnismálsgreinar
+flm	flutningsmaður
+flm	flutningsmann
+flm	flutningsmanni
+flm	flutningsmanns
+flm	flutningsmenn
+flm	flutningsmönnum
+frh	framhald
+frsm	framsögumaður
+frsm	framsögumenn
+frv	frumvarp
+frv	frumvarpi
+frv	frumvarpinu
+frv	frumvarps
+frv	frumvarpsins
+fskj	fylgiskjal
+fskj	fylgiskjali
+gr	grein
+gr	greinar
+gwst	gígavattstund
+gwst	gígavattstundir
+hæstv	hæstvirt
+hæstv	hæstvirta
+hæstv	hæstvirtan
+hæstv	hæstvirti
+hæstv	hæstvirtir
+hæstv	hæstvirtra
+hæstv	hæstvirtrar
+hæstv	hæstvirtri
+hæstv	hæstvirts
+hæstv	hæstvirtu
+hæstv	hæstvirtum
+hæstv	hæstvirtur
+hrl	hæstaréttarlögmaður
+hrl	hæstaréttarlögmann
+hrl	hæstaréttarlögmanni
+hrl	hæstaréttarlögmanns
+hv	háttvirt
+hv	háttvirta
+hv	háttvirtan
+hv	háttvirti
+hv	háttvirtir
+hv	háttvirtra
+hv	háttvirtrar
+hv	háttvirtri
+hv	háttvirts
+hv	háttvirtu
+hv	háttvirtum
+hv	háttvirtur
+ísl	íslenskar
+ísl	íslenskum
+kg	kílógramm
+kg	kílógramma
+kg	kílógrammi
+kg	kílógrömm
+kg	kílógrömmum
+kl	klukkan
+klst	klukkustund
+klst	klukkustundir
+km²	ferkílómetra
+km²	ferkílómetrar
+km	kílómetra
+km	kílómetrar
+km	kílómetri
+km	kílómetrum
+kr	króna
+kr	krónu
+kr	krónum
+kr	krónur
+kw	kílóvatt
+kw	kílóvatta
+kw	kílóvatti
+kw	kílóvött
+kw	kílóvöttum
+kwst	kílóvattstund
+kwst	kílóvattstunda
+kwst	kílóvattstundir
+lokamálsgr	lokamálsgrein
+lokamálsgr	lokamálsgreinar
+m²	fermetra
+m²	fermetrar
+m³	rúmmetra
+m³	rúmmetrar
+málsgr	málsgrein
+málsgr	málsgreinar
+málsl	málslið
+málsl	málsliður
+mgr	málsgrein
+mgr	málsgreinar
+millj	milljón
+millj	milljóna
+millj	milljónir
+millj	milljónum
+mw	megavatt
+mw	megavatta
+mw	megavatti
+mw	megavött
+mw	megavöttum
+nkr	norskar krónur
+norðaust	norðausturkjördæmi
+Norðaust	Norðausturkjördæmi
+norðaust	norðausturkjördæmis
+Norðaust	Norðausturkjördæmis
+norðvest	norðvesturkjördæmi
+Norðvest	Norðvesturkjördæmi
+norðvest	norðvesturkjördæmis
+Norðvest	Norðvesturkjördæmis
+nr	númer
+ofl	og fleira
+ofl	og fleiri
+reykv n	reykjavíkurkjördæmi norður
+Reykv n	Reykjavíkurkjördæmi norður
+reykv n	reykjavíkurkjördæmis norður
+Reykv n	Reykjavíkurkjördæmis norður
+reykv s	reykjavíkurkjördæmis suður
+Reykv s	Reykjavíkurkjördæmis suður
+reykv s	reykjavíkurkjördæmi suður
+Reykv s	Reykjavíkurkjördæmi suður
+rvík n	reykjavíkurkjördæmi norður
+rvík n	reykjavíkurkjördæmis norður
+rvík s	reykjavíkurkjördæmis suður
+rvík s	reykjavíkurkjördæmi suður
+skr	sænskar krónur
+sl	síðastliðið
+sl	síðastliðinn
+sl	síðastliðnum
+stjfrv	stjórnarfrumvarp
+suðurk	suðurkjördæmi
+Suðurk	Suðurkjördæmi
+suðurk	suðurkjördæmis
+Suðurk	Suðurkjördæmis
+suðvest	suðvesturkjördæmi
+Suðvest	Suðvesturkjördæmi
+suðvest	suðvesturkjördæmis
+Suðvest	Suðvesturkjördæmis
+sþ	sameinuðu þjóðanna
+SÞ	Sameinuðu þjóðanna
+sþ	sameinuðu þjóðirnar
+SÞ	Sameinuðu þjóðirnar
+sþ	sameinuðu þjóðunum
+SÞ	Sameinuðu þjóðunum
+tbl	tölublað
+tbl	tölublaðs
+tölul	tölulið
+tölul	töluliðar
+tölul	töluliður
+twh	teravattstund
+twh	teravattstunda
+twh	teravattstundir
+twh	teravattstundum
+umr	umræða
+umr	umræðu
+varaform	varaformaður
+vlf	verg landsframleiðsla
+vlf	vergra landsframleiðslu
+vlf	vergri landsframleiðslu
+þáltill	þingsályktunartillaga
+þáltill	þingsályktunartillögu
+þe	það er
+þe	það er að segja
+þmt	þar með talið
+þmt	þar með talin
+þmt	þar með talinn
+þm	þingmaður
+þm	þingmann
+þm	þingmanna
+þm	þingmanni
+þm	þingmanns
+þm	þingmenn
+þm	þingmönnum
+þskj	þingskjal
+þskj	þingskjali
+þskj	þingskjölum

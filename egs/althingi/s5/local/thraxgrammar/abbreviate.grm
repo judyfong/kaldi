@@ -17,9 +17,9 @@
 # og tveir" The NARROWNUMS_MAYBE transducer requires that a space
 # follows the number
 
-import 'local/common.grm' as c;
-import 'local/numbers.grm' as n;
-import 'local/ordinals.grm' as o;
+import 'local/thraxgrammar/common.grm' as c;
+import 'local/thraxgrammar/numbers.grm' as n;
+import 'local/thraxgrammar/ordinals.grm' as o;
 
 # This transducer deletes a sequence of zero or more spaces:
 delspace = c.space* : "".utf8;
@@ -39,13 +39,13 @@ neutralunits = Invert[neutralunitnames];
 namesnumber_10plus_and_0 = Invert[numbernames_10plus_and_0];
 
 # Abbreviations used in Alþingi paired with their expansions
-abbr = Optimize[StringFile['text_norm/lex/abbreviate_words.txt','utf8','utf8']];
-abbr2 = Optimize[StringFile['text_norm/lex/abbreviate_if_preceded_wNumber.txt','utf8','utf8']];
-abbr3 = Optimize[StringFile['text_norm/lex/abbreviate_if_followed_byNumber.txt','utf8','utf8']];
-first_second_tenth = Optimize[StringFile['text_norm/lex/first_second_tenth.txt','utf8','utf8']];
-half_expand = Optimize[StringFile['text_norm/lex/half.txt','utf8','utf8']];
+abbr = Optimize[StringFile['local/thraxgrammar/lex/abbreviate_words.txt','utf8','utf8']];
+abbr2 = Optimize[StringFile['local/thraxgrammar/lex/abbreviate_if_preceded_wNumber.txt','utf8','utf8']];
+abbr3 = Optimize[StringFile['local/thraxgrammar/lex/abbreviate_if_followed_byNumber.txt','utf8','utf8']];
+first_second_tenth = Optimize[StringFile['local/thraxgrammar/lex/first_second_tenth.txt','utf8','utf8']];
+half_expand = Optimize[StringFile['local/thraxgrammar/lex/half.txt','utf8','utf8']];
 half = Invert[half_expand];
-#kjordaemi = Optimize[StringFile['text_norm/lex/kjordaemi_abbr.txt','utf8','utf8']];
+#kjordaemi = Optimize[StringFile['local/thraxgrammar/lex/kjordaemi_abbr.txt','utf8','utf8']];
 
 ABBR_NUMBER_10plus_and_0 = Optimize[
                      CDRewrite[namesnumber_10plus_and_0 delspace,
@@ -211,7 +211,7 @@ export ABBREVIATE = ArcSort[
 # periods back after denormalization. I should solve that is a better
 # way
 ins_periods =
-Optimize[StringFile['text_norm/lex/abbr_periods.txt','utf8','utf8']];
+Optimize[StringFile['local/thraxgrammar/lex/abbr_periods.txt','utf8','utf8']];
 
 export INS_PERIODS = CDRewrite[ins_periods,
                      ("[BOS]".utf8 | " ".utf8),

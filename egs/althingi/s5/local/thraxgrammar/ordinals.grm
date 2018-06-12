@@ -3,8 +3,8 @@
 # Copyright 2017  Reykjavik University (Author: Inga Rún Helgadóttir)
 # Apache 2.0
 
-import 'local/common.grm' as c;
-import 'local/numbers.grm' as n;
+import 'local/thraxgrammar/common.grm' as c;
+import 'local/thraxgrammar/numbers.grm' as n;
 
 insspace = "".utf8 : " ".utf8;
 
@@ -13,12 +13,12 @@ delone  = "1".utf8 : "".utf8;
 delperiod = ".".utf8 : "".utf8;
 insand = "".utf8 : " og ".utf8;
 
-ordUnits = Optimize[StringFile['text_norm/lex/ordinals_units_lexicon.txt',
+ordUnits = Optimize[StringFile['local/thraxgrammar/lex/ordinals_units_lexicon.txt',
 'utf8', 'utf8']];
 
-ordTeens = Optimize[StringFile['text_norm/lex/ordinals_teens_lexicon.txt', 'utf8', 'utf8']];
+ordTeens = Optimize[StringFile['local/thraxgrammar/lex/ordinals_teens_lexicon.txt', 'utf8', 'utf8']];
 
-ordDecades = Optimize[StringFile['text_norm/lex/ordinals_decades_lexicon.txt', 'utf8', 'utf8']];
+ordDecades = Optimize[StringFile['local/thraxgrammar/lex/ordinals_decades_lexicon.txt', 'utf8', 'utf8']];
 
 ordinals_20_to_99 = ordDecades delzero delperiod | (ordDecades insand
 ordUnits <-3>);
@@ -52,9 +52,9 @@ export ORDINALNAMES = ordinals;
 
 # Avoid rewriting to 1., 2. and 10., since not always appropriate.
 # f.ex. "fyrstu tölur sýna", "hver annar gæti það verið?", "mig langar að tíunda þau hér"
-ordUnits3to9 = Optimize[StringFile['text_norm/lex/ordinals_units_3-9.txt',
+ordUnits3to9 = Optimize[StringFile['local/thraxgrammar/lex/ordinals_units_3-9.txt',
 'utf8', 'utf8']];
-ord11_to_19 = Optimize[StringFile['text_norm/lex/ordinals_11-19.txt', 'utf8', 'utf8']];
+ord11_to_19 = Optimize[StringFile['local/thraxgrammar/lex/ordinals_11-19.txt', 'utf8', 'utf8']];
 
 export ORDINALNAMES_to_abbreviate = Optimize[
   (ordUnits3to9 <-0.5>) |

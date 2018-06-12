@@ -1,0 +1,14 @@
+fyrsti	1.
+fyrsta	1.
+fyrstu	1.
+annar	2.
+annan	2.
+öðrum	2.
+annars	2.
+önnur	2.
+aðra	2.
+annarri	2.
+annarrar	2.
+tíundi	10.
+tíunda	10.
+tíundu	10.

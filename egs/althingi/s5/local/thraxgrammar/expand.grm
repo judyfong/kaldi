@@ -7,9 +7,9 @@
 #
 # thraxrewrite-tester --far=local/expand.far --rules=EXPAND_UTT --noutput=3 --input_mode=utf8 --output_mode=utf8
 
-import 'local/common.grm' as c;
-import 'local/numbers.grm' as n;
-import 'local/ordinals.grm' as o;
+import 'local/thraxgrammar/common.grm' as c;
+import 'local/thraxgrammar/numbers.grm' as n;
+import 'local/thraxgrammar/ordinals.grm' as o;
 
 # This transducer inserts a space
 insspace = "".utf8 : " ".utf8;
@@ -33,9 +33,8 @@ anyword = c.NotSpace+;
 
 #perc = "%".utf8 : (("%".utf8 <15>) | " prósent".utf8 | " prósenti".utf8 |
 #" prósents".utf8 | " prósentum".utf8 | " prósenta".utf8 );
-perc = Optimize[StringFile['text_norm/lex/perc.txt', 'utf8', 'utf8']];
-permille = Optimize[StringFile['text_norm/lex/permille.txt', 'utf8', 'utf8']];
-per = perc | permille;
+
+per = Optimize[StringFile['local/thraxgrammar/lex/percent_permille.txt', 'utf8', 'utf8']];
 # Expand according to context dependent rules. Default is an
 # obligatory rewrite
 expandper = CDRewrite[
@@ -44,9 +43,9 @@ expandper = CDRewrite[
   "".utf8,
   c.whole_alphabet*];
 
-# In the althingi data they write nb,5 when people say "nb and half"
-half05 = Optimize[StringFile['text_norm/lex/half05.txt', 'utf8', 'utf8']];
-half1 = Optimize[StringFile['text_norm/lex/half.txt', 'utf8', 'utf8']];
+# In the althingi data they write <num>,5 when people say "<num> and half"
+half05 = Optimize[StringFile['local/thraxgrammar/lex/half05.txt', 'utf8', 'utf8']];
+half1 = Optimize[StringFile['local/thraxgrammar/lex/half.txt', 'utf8', 'utf8']];
 
 rewrite_half05 = CDRewrite[
   half05,
@@ -99,7 +98,7 @@ ordinalnames = o.ORDINALNAMES;
 
 # Abbreviations used in Alþingi paired with their expansions
 #abbr_expansion = Optimize[StringFile['text_norm/lex/abbr_lexicon.txt','utf8','utf8']];
-abbr_lex = Optimize[StringFile['text_norm/lex/abbr_lexicon.txt','utf8','utf8']];
+abbr_lex = Optimize[StringFile['local/thraxgrammar/lex/abbr_lexicon.txt','utf8','utf8']];
 
 # Optional expansion
 nal = "nál".utf8 : "nefndarálit".utf8;
@@ -148,7 +147,7 @@ export EXPAND_WORD = Optimize[
 # sentence ended with an abbreviation.
 remove_period = CDRewrite[
   ".".utf8 : "".utf8,
-  (c.alphabet+ | " ".utf8),
+  c.alphabet+,
   (c.u8_punct | " ".utf8 | "[EOS]".utf8),
   c.whole_alphabet*];
 
@@ -170,17 +169,20 @@ export EXPAND_UTT = ArcSort[Optimize[
 #
 ##########
 
-perc_rev = Invert[perc];
+perc_perm_rev = Invert[per];
 half_rev = Invert[half];
+deg_rev = Invert[deg];
 abbr_word = Invert[word];
 
 # This fst only rewrites sentences which include at least
 # one rewritable words. But it abbreviates word parts that
 # shouldn't be abbreviated
+# It can not be used to get out sensible text, just to identify
+# expanded numbers and abbreviations
 export ABBREVIATE_forExpansion = ArcSort[Optimize[
                       delspace
                       (anyword reduce_spaces)*
-                      (abbr_word half_rev? perc_rev?
+                      (abbr_word half_rev? perc_perm_rev? deg_rev?
                       delspace? insspace
                       (anyword reduce_spaces)*)+
                       anyword?

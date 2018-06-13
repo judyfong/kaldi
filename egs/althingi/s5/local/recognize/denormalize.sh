@@ -13,26 +13,58 @@ set -o pipefail
 . ./cmd.sh
 . ./utils/parse_options.sh
 
-ifile=$1
-ofile=$2
-dir=$(dirname $(readlink -f $ifile))
-utf8syms=text_norm/utf8.syms
+if [ $# != 3 ]; then
+  echo "This scripts handles the denormalization of an ASR transcript"
+  echo "Usually called from the transcription script, recognize.sh"
+  echo ""
+  echo "Usage: $0 <model-dir> <ASR-transcript> <out-file>"
+  echo " e.g.: $0 ~/models/latest output/radXXX/ASRtranscript.txt output/radXXX/radXXX.txt"
+fi
+
+bundle=$1
+ifile=$2
+ofile=$3
+dir=$(dirname $(readlink -f $ofile))
+intermediate=$dir/intermediate
+mkdir -p $intermediate
+
+utf8syms=$bundle/utf8.syms
+normdir=$bundle/text_norm
+abbr_acro_list=$bundle/initialisms
+personal_names=$bundle/latest/ambiguous_personal_names
+punctuation_model=punctuator2/Model_althingi_noCOMMA_h256_lr0.02.pcl
+paragraph_model=paragraph/Model_althingi_paragraph_may18_h256_lr0.02.pcl
+
+for f in $ifile $utf8syms $normdir/ABBREVIATE.fst $normdir/INS_PERIODS.fst \\
+  $abbr_acro_list $punctuation_model $paragraph_model; do
+  [ ! -f $f ] && echo "$0: expected $f to exist" && exit 1;
+done  
 
 echo "Abbreviate"
 # Numbers are not in the words.txt file. Hence I can't compose with an utf8-to-words.fst file. Also, remove uttIDs
-fststringcompile ark:$ifile ark:- | fsttablecompose --match-side=left ark,t:- text_norm/ABBREVIATE.fst ark:- | fsts-to-transcripts ark:- ark,t:- | int2sym.pl -f 2- ${utf8syms} | cut -d" " -f2- | sed -re 's: ::g' -e 's:0x0020: :g' | tr "\n" " " | sed -r "s/[[:space:]]+/ /g" > ${dir}/thrax_out.tmp
+fststringcompile ark:$ifile ark:- | fsttablecompose --match-side=left ark,t:- $normdir/ABBREVIATE.fst ark:- | fsts-to-transcripts ark:- ark,t:- | int2sym.pl -f 2- ${utf8syms} | cut -d" " -f2- | sed -re 's: ::g' -e 's:0x0020: :g' | tr "\n" " " | sed -r "s/ +/ /g" > ${intermediate}/thrax_out.tmp || exit 1
 
-echo "Uppercase first names when followed by family names (eftirnafn) and capitalize abbreviated middle names" 
-#F.ex. in Ari trausti Guðmundsson, Unnur brá Konráðsdóttir, Sigríður á Andersen
-sed -re "s:\b([A-ZÁÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+) ([a-záðéíóúýþæö]) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\1 \u\2\. \3:g" -e "s:\b([^ ]+) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\u\1 \2:g" <${dir}/thrax_out.tmp > ${dir}/text_propnames.tmp
+echo "Uppercase first names when followed by family names (eftirnafn) and capitalize abbreviated middle names"
+tr "\n" "|" < $personal_names | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > $intermediate/personal_names_pattern.tmp
+#F.ex. in Ari trausti Guðmundsson, unni brá Konráðsdóttur, Sigríður á Andersen
+sed -re "s:\b([A-ZÁÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+) ([a-záðéíóúýþæö]) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\1 \u\2\. \3:g" \
+    -e "s:(\b$(cat ${intermediate}/personal_names_pattern.tmp)\b) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+?(s[oy]ni?|dótt[iu]r|sen))\b:\u\1 \2:g" \
+    -e "s:(\b$(cat ${intermediate}/personal_names_pattern.tmp)\b) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]*) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+?(s[oy]ni?|dótt[iu]r|sen))\b:\u\1 \2 \3:g" \
+    <${intermediate}/thrax_out.tmp > ${intermediate}/text_propnames.tmp
 
 echo "Collapse acronyms pronounced as letters"
 # Collapse first the longest acronyms, in case they contain smaller ones.
 IFS=$'\n'
-for var in $(cat text_norm/acronyms.txt | awk '{ print length, $0 }' | sort -nrs | cut -d" " -f2)
+for var in $(cat $abbr_acro_list | awk '{ print length, $0 }' | sort -nrs | cut -d" " -f2 | egrep -v "(e|o)?hf|https?")
 do
     var1=$(echo $var | sed 's/./& /g' | sed -e 's/ +$//')
-    sed -i "s/ $var1/ \U$var /g" ${dir}/text_propnames.tmp
+    sed -i "s/ $var1/ \U$var /g" ${intermediate}/text_propnames.tmp
+done
+
+# I don't want to uppercase the following
+for var in https http ehf ohf hf; do
+  var1=$(echo $var | sed 's/./& /g' | sed -e 's/ +$//')
+  sed -i "s/ $var1/ $var /g" ${intermediate}/text_propnames.tmp
 done
 
 echo "Rewrite"
@@ -65,7 +97,7 @@ sed -re "s/[[:space:]]\+/ /g" \
     -e 's:\b([Rr]ás) eitt\b:\u\1 1:g' -e 's:\b([Rr]ás) tvö\b:\u\1 2:g' -e 's:\b([Ss]töð) tvö\b:\u\1 2:g' \
     -e 's:(allsherjar|efnahags|stjórnskipunar|umhverfis)( og [^ ]+nefnd):\1-\2:g' \
     -e 's:([Dd])oktor ([A-ZÁÉÍÓÚÝÞÆÖ]):\1r \2:g' \
-<${dir}/text_propnames.tmp > ${dir}/denorm.tmp
+<${intermediate}/text_propnames.tmp > ${intermediate}/denorm.tmp
 
 # Restore punctuations
 #export PYTHONPATH="${PYTHONPATH}:~/.local/lib/python2.7/site-packages/:~/punctuator2/" <- added to theano-env/bin/activate and kaldi/tools/env.sh
@@ -75,17 +107,17 @@ sed -re "s/[[:space:]]\+/ /g" \
 source activate thenv
 
 echo "Extract the numbers before punctuation"
-python local/punctuator/saving_numbers.py ${dir}/denorm.tmp ${dir}/punctuator_in.tmp ${dir}/numlist.tmp
+python local/punctuator/saving_numbers.py ${intermediate}/denorm.tmp ${intermediate}/punctuator_in.tmp ${intermediate}/numlist.tmp
 
 echo "Punctuate"
-cat ${dir}/punctuator_in.tmp | THEANO_FLAGS='device=cpu' python punctuator2/punctuator.py punctuator2/Model_althingi_noCOMMA_h256_lr0.02.pcl ${dir}/punctuator_out.tmp
+cat ${intermediate}/punctuator_in.tmp | THEANO_FLAGS='device=cpu' python punctuator2/punctuator.py $punctmodel ${intermediate}/punctuator_out.tmp
 wait
 
 echo "Re-insert the numbers"
-if [ -s  ${dir}/numlist.tmp ]; then
-    python local/punctuator/re-inserting-numbers.py ${dir}/punctuator_out.tmp ${dir}/numlist.tmp ${dir}/punctuator_out_wNumbers.tmp
+if [ -s  ${intermediate}/numlist.tmp ]; then
+    python local/punctuator/re-inserting-numbers.py ${intermediate}/punctuator_out.tmp ${intermediate}/numlist.tmp ${intermediate}/punctuator_out_wNumbers.tmp
 else
-    cp ${dir}/punctuator_out.tmp ${dir}/punctuator_out_wNumbers.tmp
+    cp ${intermediate}/punctuator_out.tmp ${intermediate}/punctuator_out_wNumbers.tmp
 fi
 
 echo "Convert punctuation tokens back to actual punctuations and capitalize"
@@ -99,26 +131,28 @@ sed -re 's/ \.PERIOD ([^ ])/. \u\1/g' -e 's/ \?QUESTIONMARK ([^ ])/? \u\1/g' -e 
     -e 's:^([a-záéíóúýþæö]):\u\1:' \
     -e 's:([0-9]+) km á klukkustund:\1 km/klst.:g' -e 's:([0-9]+) kr á kíló[^m ]* ?:\1 kr./kg :g' \
     -e 's: ([°%‰]):\1:g' -e 's:< unk >:<unk>:g' \
-    ${dir}/punctuator_out_wNumbers.tmp > ${dir}/punctuator_out_wPuncts.tmp
+    ${intermediate}/punctuator_out_wNumbers.tmp > ${intermediate}/punctuator_out_wPuncts.tmp
 
 echo "Insert periods into abbreviations and insert period at the end of the speech"
-fststringcompile ark:"sed 's:.*:1 &:' ${dir}/punctuator_out_wPuncts.tmp |" ark:- | fsttablecompose --match-side=left ark,t:- text_norm/INS_PERIODS.fst ark:- | fsts-to-transcripts ark:- ark,t:- | int2sym.pl -f 2- ${utf8syms} | cut -d" " -f2- | sed -re 's: ::g' -e 's:0x0020: :g' | tr "\n" " " | sed -re "s/ +/ /g" -e 's:\s*$:.:' > ${dir}/punctuator_out_wPeriods.tmp
+fststringcompile ark:"sed 's:.*:1 &:' ${intermediate}/punctuator_out_wPuncts.tmp |" ark:- | fsttablecompose --match-side=left ark,t:- $normdir/INS_PERIODS.fst ark:- | fsts-to-transcripts ark:- ark,t:- | int2sym.pl -f 2- ${utf8syms} | cut -d" " -f2- | sed -re 's: ::g' -e 's:0x0020: :g' | tr "\n" " " | sed -re "s/ +/ /g" -e 's:\s*$:.:' > ${intermediate}/punctuator_out_wPeriods.tmp
 
 # # Insert paragraph breaks using a paragraph model and before the appearance of ". [herra|frú|virðulegur|hæstv] forseti."
-cat ${dir}/punctuator_out_wPeriods.tmp | THEANO_FLAGS='device=cpu' python paragraph/paragrapher.py paragraph/Model_althingi_paragraph_may18_h256_lr0.02.pcl ${dir}/paragraphed_tokens.tmp
-sed -re "s: EOP :\n:g"  -e 's:\. ([^ ]+ forseti\.):\.\n\1:g' ${dir}/paragraphed_tokens.tmp > $ofile
+cat ${intermediate}/punctuator_out_wPeriods.tmp | THEANO_FLAGS='device=cpu' python paragraph/paragrapher.py $paragraph_model ${intermediate}/paragraphed_tokens.tmp
+sed -re "s: EOP :\n:g"  -e 's:\. ([^ ]+ forseti\.):\.\n\1:g' ${intermediate}/paragraphed_tokens.tmp > $ofile
 
 # Insert paragraph breaks before the appearance of  ". [herra|frú|virðulegur|hæstv] forseti."
-#sed -r 's:\. ([^ ]+ forseti\.):\.\n\1:g' < ${dir}/punctuator_out_wPeriods.tmp > $ofile
+#sed -r 's:\. ([^ ]+ forseti\.):\.\n\1:g' < ${intermediate}/punctuator_out_wPeriods.tmp > $ofile
 
 # # Maybe fix the casing of prefixes?
 # cat /data/althingi/lists/forskeyti.txt /data/althingi/lists/forskeyti.txt | sort | awk 'ORS=NR%2?":":"\n"' | sed -re 's/^.*/s:&/' -e 's/$/:gI/g' > prefix_sed_pattern.tmp
 
 # # Fix the casing of known named entities
-# /bin/sed -f ${dir}/ner_sed_pattern.tmp file > file_out
+# /bin/sed -f ${intermediate}/ner_sed_pattern.tmp file > file_out
 
 # # Abbreviate "háttvirtur", "hæstvirtur" and "þingmaður" in some cases
-# sed -re 's:([Hh])áttv[^ ]+ (þingm[^ .?:eö]+ [A-ZÁÐÉÍÓÚÝÞÆÖ]):\1v\. \2:g' -e 's:([Hh]v\. ([0-9]+\. )?)þingm[^ .?:eö]+ ([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1þm. \3:g' -e 's:([Hh]æstv)irtur forseti:\1\. forseti:g' < ${dir}/punctuator_out_wPeriods_words.tmp > $ofile
+# sed -re 's:([Hh])áttv[^ ]+ (þingm[^ .?:eö]+ [A-ZÁÐÉÍÓÚÝÞÆÖ]):\1v\. \2:g' -e 's:([Hh]v\. ([0-9]+\. )?)þingm[^ .?:eö]+ ([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1þm. \3:g' -e 's:([Hh]æstv)irtur forseti:\1\. forseti:g' < ${intermediate}/punctuator_out_wPeriods_words.tmp > $ofile
 
 #deactivate
 source deactivate
+
+exit 0;

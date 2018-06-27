@@ -127,7 +127,9 @@ for line in $(cat frablastursord_4to8_uniq_frab_removed.txt); do
     phon_rest=$(echo $phonemes | cut -d" " -f2-);
     sed -r -i "s:([^skpt]${word}[a-záðéíóúýþæö]*)\t(([^ ]+ )*?${phon1}) (${phon_rest})\b:\1\t\2ʰ \4:" CaseSensitive_pron_dict_Fix11_frab_inside_words.txt
 done
-	
+
+# I did a lot of manual fixing of shorter words. F.ex. fixing word with different prefixes.
+
 # Add transcribed country and city names + foreign words (companies, contries, names of parliament memebers)
 cat ${dir}/CaseSensitive_pron_dict_Fix4.txt NotInPronDict_ice_transcribed.txt NotInPronDict_foreign.txt | sort > ${dir}/CaseSensitive_pron_dict_Fix5.txt
 
@@ -140,5 +142,13 @@ sed -r 's:^(hv[^    ]+)     k v:\1  kʰ v:' ~/data/althingi/pronDict_LM/CaseSens
 # Make a case sensitive dictionary which I will use to train g2p models on:
 tr '\t' ' ' < ${dir}/CaseSensitive_pron_dict_Fix4.txt | tr -s " " | sed 's/ /\t/1' | sed -e 's/[ \t]*$//' > ${dir}/g2p_pron_dict.txt
 
-# Find incomplete transcriptions
+# Missing a step where I fix compound words where the first part ends with an s and the second one starts with an l or an n. F.ex. heimilislæknir
+
+# Find incomplete transcriptions based on a proportion of letters in word vs hljóðritun
 sed 's: ::g' ~/data/althingi/pronDict_LM/CaseSensitive_pron_dict_Fix17.txt | awk '{print $0"\t"length($1)"\t"length($2)}' | awk '{$5=($3)/($4)}1' | awk '{if ($5 > 1.4) print;}' > incomplete_transcriptions.tmp &
+
+# Cleaned my training set without lowercasing. Added to the pronunciation dictionary the missing case of words that appear in both cases.
+
+# There are often errors in compound words where the first word ends with an r and the second one starts with an s. Then the r is often incorrectly written as r̥
+
+# I have foreign words within the prondict, but I try to have them in a list as well, erlend_ord.txt, so that I can remove them from my g2p training set.

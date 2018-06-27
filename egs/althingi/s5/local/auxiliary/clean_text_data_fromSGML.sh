@@ -150,6 +150,15 @@ sed -re 's:\bamk\b:að minnsta kosti:g' \
     -e 's:\bþeas\b:það er að segja:g' \
     < ${datadir}/text_noAbbrPeriods.tmp > ${datadir}/text_exp1.tmp
 
+# Add spaces into acronyms pronounced as letters
+IFS=$'\n'
+for var in $(cat text_norm/abbr_acro_as_letters.txt | awk '{ print length, $0 }' | sort -nrs | cut -d" " -f2)
+do
+  var1=$(echo $var | sed 's/./& /g')
+  sed -i "s/\b$var\b/$var1/g" ${datadir}/text_exp1.tmp
+done
+sed -r -i 's/[[:space:]]+/ /g' ${datadir}/text_exp1.tmp
+	
 echo "Capitalize words in the Althingi texts, that are capitalized in the pron dict"
 comm -12 <(sed -r 's:.*:\L&:' ${prondir}/CaseSensitive_pron_dict_propernouns_plus.txt | sort) <(tr " " "\n" < ${datadir}/text_exp1.tmp | sed -re 's/[^a-záðéíóúýþæö]+//g'| egrep -v "^\s*$" | sort -u) > ${datadir}/propernouns_althingi_texts.tmp
 # Make the regex pattern
@@ -165,12 +174,6 @@ tr "\n" "|" < text_norm/acronyms_as_words.txt | sed '$s/|$//' | perl -pe "s:\|:\
 # Capitalize 
 srun sed -r 's:(\b'$(cat text_norm/acronyms_as_words_pattern.tmp)'\b):\U\1:g' ${datadir}/Cap1.tmp > ${datadir}/Cap2.tmp
 
-# Capitalize acronyms pronounced as letters
-IFS=$'\n'
-for var in $(cat text_norm/acronyms.txt | awk '{ print length, $0 }' | sort -nrs | cut -d" " -f2)
-do
-    sed -i "s/\b$var\b/\U$var/g" ${datadir}/Cap2.tmp
-done
 
 # Use Anna's code to expand many instances of hv, þm og hæstv
 python3 local/althingi_replace_plain_text.py ${datadir}/Cap2.tmp ${datadir}/${out}

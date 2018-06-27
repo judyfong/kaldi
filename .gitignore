@@ -46,9 +46,6 @@ GRTAGS
 GPATH
 GSYMS
 
-# python compiled sources
-*.pyc
-
 # Make dependencies
 .depend.mk
 
@@ -98,6 +95,11 @@ tmp
 /egs/*/s*/punctuator/example
 egs/*/s*/punctuator/libgpuarray
 egs/*/s*/punctuator/log
+egs/*/s*/punctuator/processed_data
+egs/*/s*/punctuator/Miniconda2-latest-Linux-x86_64.sh
+egs/*/s*/punctuator/theano-env.tar.gz
+egs/*/s*/paragraph/log
+egs/*/s*/paragraph/processed_data
 egs/*/s*/local/auxiliary
 egs/*/s*/local/handling_new_speeches
 egs/*/s*/local/recognize/auxiliary

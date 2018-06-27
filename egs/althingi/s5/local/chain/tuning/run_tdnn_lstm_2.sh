@@ -18,16 +18,19 @@ train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
 
-# Put all output on scratch
-exp=/mnt/scratch/inga/exp
-data=/mnt/scratch/inga/data
-mfccdir=/mnt/scratch/inga/mfcc_hires
+# Defined in conf/path.conf, default to /mnt/scratch/inga/{exp,data,mfcc_hires}
+exp=
+data=
+mfccdir=
 
-tdnn_lstm_affix=_2  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
-dir=${exp}/chain/tdnn_lstm${tdnn_lstm_affix} # Note: _sp will get added to this if $speed_perturb == true.
+affix=_2  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
+dir=${exp}/chain/tdnn_lstm${affix} # Note: _sp will get added to this if $speed_perturb == true.
+
+# GMM to use for alignments
+gmm=tri5
 
 decode_iter=
-generate_plots=false
+generate_plots=false # Generate plots showing how parameters were updated throughout training and log-probability changes
 calculate_bias=false
 zerogram_decoding=false
 
@@ -35,7 +38,7 @@ zerogram_decoding=false
 xent_regularize=0.025
 self_repair_scale=0.00001
 label_delay=5
-dropout_schedule='0,0@0.20,0.2@0.50,0'
+dropout_schedule=
 
 chunk_left_context=40
 chunk_right_context=0
@@ -61,6 +64,35 @@ echo "$0 $@"  # Print the command line for logging
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
+. ./conf/path.conf
+
+# # LMs
+lmdir=$(ls -td $root_lm_modeldir/20* | head -n1)
+decoding_lang=$lmdir/lang_3gsmall
+rescoring_lang=$lmdir/lang_5g
+langdir=$lmdir/lang
+
+if [ ! $# = 2 ]; then
+  echo "This script trains a deep neural network with both time-delay feed forward layers"
+  echo "and long-short-time-memory recurrent layers."
+  echo "The new model is also tested on a development set"
+  echo ""
+  echo "Usage: $0 [options] <input-training-data> <test-data-dir>"
+  echo " e.g.: $0 data/train data"
+  echo ""
+  echo "Options:"
+  echo "    --speed_perturb <bool>       # apply speed perturbations, default: true"
+  echo "    --affix <affix>              # idendifier for the model, e.g. _1b"
+  echo "    --decode-iter <iter>         # iteration of model to test"
+  echo "    --generate-plots <bool>      # generate a report on the training"
+  echo "    --calculate-bias <bool>      # estimate the bias by decoding a subset of the training set"
+  echo "    --zerogram-decoding <bool>   # check the effect of the LM on the decoding results"
+  #echo "    --bundle <bundle>            # which model bundle to use, default: latest"
+  exit 1;
+fi
+
+inputdata=$1
+testdatadir=$2
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -80,29 +112,26 @@ if [ "$speed_perturb" == "true" ]; then
 fi
 
 dir=${dir}$suffix
-train_set=train_okt2017_fourth$suffix
-ali_dir=${exp}/tri5_ali_${train_set} #exp/tri4_cs_ali$suffix
-treedir=${exp}/chain/tri5_tree$suffix # NOTE!
+train_set=$(basename $inputdata)$suffix
+ali_dir=${exp}/${gmm}_ali_${train_set} #exp/tri4_cs_ali$suffix
+treedir=${exp}/chain/${gmm}_tree$suffix # NOTE!
 lang=${data}/lang_chain
-
-train_data_dir=${data}/${train_set}_hires
-train_ivector_dir=${exp}/nnet3/ivectors_${train_set}
-
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
 # # Original
 local/nnet3/run_ivector_common.sh --stage $stage \
   --speed-perturb $speed_perturb \
-  --generate-alignments $speed_perturb || exit 1;
+  --generate-alignments $speed_perturb \
+  $inputdata $testdatadir $langdir $gmm || exit 1;
 
 if [ $stage -le 11 ]; then
   # Get the alignments as lattices (gives the CTC training more freedom).
   # use the same num-jobs as the alignments
   nj=$(cat ${ali_dir}/num_jobs) || exit 1;
   steps/align_fmllr_lats.sh --nj $nj --cmd "$decode_cmd --time 2-00" $data/$train_set \
-    data/lang exp/tri5 ${exp}/tri5_lats$suffix
-  rm ${exp}/tri5_lats$suffix/fsts.*.gz # save space
+    $langdir $exp/${gmm} $exp/${gmm}_lats$suffix
+  rm ${exp}/${gmm}_lats$suffix/fsts.*.gz # save space
 fi
 
 if [ $stage -le 12 ]; then
@@ -110,7 +139,7 @@ if [ $stage -le 12 ]; then
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
   rm -rf $lang
-  cp -r data/lang $lang
+  cp -r $langdir $lang
   silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
   nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
   # Use our special topology... note that later on may have to tune this
@@ -132,7 +161,7 @@ if [ $stage -le 14 ]; then
   [ -z $num_targets ] && { echo "$0: error getting num-targets"; exit 1; }
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
-  lstm_opts="decay-time=20 dropout-proportion=0.0"
+  lstm_opts="decay-time=20"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -181,7 +210,7 @@ if [ $stage -le 15 ]; then
 
   steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$decode_cmd --time 3-12" \
-    --feat.online-ivector-dir $train_ivector_dir \
+    --feat.online-ivector-dir $exp/nnet3/ivectors_${train_set} \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
@@ -209,9 +238,9 @@ if [ $stage -le 15 ]; then
     --egs.chunk-right-context-final 0 \
     --egs.dir "$common_egs_dir" \
     --cleanup.remove-egs $remove_egs \
-    --feat-dir $train_data_dir \
+    --feat-dir $data/${train_set}_hires \
     --tree-dir $treedir \
-    --lat-dir ${exp}/tri5_lats$suffix \
+    --lat-dir ${exp}/${gmm}_lats$suffix \
     --dir $dir  || exit 1;
 fi
 
@@ -220,7 +249,7 @@ if [ $stage -le 16 ]; then
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
   echo "Make a small 3-gram graph"
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_3gsmall $dir $dir/graph_3gsmall
+  utils/mkgraph.sh --self-loop-scale 1.0 $decoding_lang $dir $dir/graph_3gsmall
 fi
 
 graph_dir=$dir/graph_3gsmall
@@ -246,7 +275,7 @@ if [ $stage -le 17 ]; then
         $graph_dir $data/${decode_set}_hires \
         $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_3gsmall || exit 1;
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-        data/lang_{3gsmall,5g} $data/${decode_set}_hires \
+        $decoding_lang $rescoring_lang $data/${decode_set}_hires \
         $dir/decode_${decode_set}_{3gsmall,5g} || exit 1;
     ) &
   done
@@ -260,15 +289,21 @@ fi
 if [ $generate_plots = true ]; then
     echo "Generating plots and compiling a latex report on the training"
     steps/nnet3/report/generate_plots.py \
-	--is-chain true $dir $dir/report_tdnn_lstm${tdnn_lstm_affix}$suffix
+	--is-chain true $dir $dir/report_tdnn_lstm${affix}$suffix
 fi
 
 if [ $zerogram_decoding = true ]; then
   echo "Do zerogram decoding to check the effect of the LM"
   rm $dir/.error 2>/dev/null || true
 
+  if [ ! -d $data/lang_zg ] ; then
+    echo "A zerogram language model doesn't exist";
+    echo "You need to create it first"
+    exit 1;
+  fi
+    
   echo "Make a zerogram graph"
-  utils/slurm.pl --mem 4G --time 0-06 $dir/log/mkgraph_zg.log utils/mkgraph.sh --self-loop-scale 1.0 data/lang_zg $dir $dir/graph_zg
+  utils/slurm.pl --mem 4G --time 0-06 $dir/log/mkgraph_zg.log utils/mkgraph.sh --self-loop-scale 1.0 $data/lang_zg $dir $dir/graph_zg
     
   for decode_set in dev eval; do
     (

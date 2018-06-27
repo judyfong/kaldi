@@ -6,23 +6,47 @@ set -e
 # preparation and iVector-related parts of the script. See those scripts for examples of usage.
 
 stage=1
-generate_alignments=false # false if doing chain training What???
+generate_alignments=false # Depends on whether we are doing speech perturbations
 speed_perturb=true
+suffix=
+$speed_perturb && suffix=_sp
+
+# Defined in conf/path.conf, default to /mnt/scratch/inga/{exp,data,mfcc_hires}
+exp=
+data=
+mfccdir=
 
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
+. ./conf/path.conf
 
-# Put all output on /mnt/scratch 
-data=/mnt/scratch/inga/data
-exp=/mnt/scratch/inga/exp
-mfccdir=/mnt/scratch/inga/mfcc_hires
+if [ ! $# = 4 ]; then
+  echo "This script creates high-resolution MFCC features for the training data,"
+  echo "which is either speed perturbed or not. If we speed perturb, then new alignments"
+  echo "are also obtained. An ivector extractor is also trained and ivectors extracted"
+  echo "for both training and test sets."
+  echo ""
+  echo "Usage: $0 [options] <input-training-data-dir> <dir-with-test-sets> <lang-dir> <gmm-name>"
+  echo " e.g.: $0 data/train data data/lang tri5"
+  echo ""
+  echo "Options:"
+  echo "    --speed_perturb         # apply speed perturbations, default: true"
+  echo "    --generate_alignments   # obtain the alignments of the perturbed data"
+  exit 1;
+fi
+
+inputdata=$1
+testdatadir=$2
+langdir=$3
+gmm=$4
 
 # perturbed data preparation
-train_set=train_okt2017_fourth
+train_set=$(basename $inputdata)
+#train_set=train_okt2017_fourth
 
-gmm_dir=exp/tri5
-ali_dir=$exp/tri5_ali_${train_set}_sp
+gmm_dir=$exp/${gmm}
+ali_dir=$exp/${gmm}_ali_${train_set}$suffix
 
 
 if [ "$speed_perturb" == "true" ]; then
@@ -30,20 +54,20 @@ if [ "$speed_perturb" == "true" ]; then
     #Although the nnet will be trained by high resolution data, we still have to perturbe the normal data to get the alignment
     # _sp stands for speed-perturbed
     echo "$0: preparing directory for low-resolution speed-perturbed data (for alignment)"
-    utils/data/perturb_data_dir_speed_3way.sh data/${train_set} $data/${train_set}_sp
+    utils/data/perturb_data_dir_speed_3way.sh $inputdata $data/${train_set}${suffix}
     echo "$0: making MFCC features for low-resolution speed-perturbed data" 
     steps/make_mfcc.sh --nj 100 --cmd "$train_cmd --time 2-00" \
-      $data/${train_set}_sp || exit 1
-    steps/compute_cmvn_stats.sh $data/${train_set}_sp || exit 1
-    utils/fix_data_dir.sh $data/${train_set}_sp || exit 1
+      $data/${train_set}${suffix} || exit 1
+    steps/compute_cmvn_stats.sh $data/${train_set}${suffix} || exit 1
+    utils/fix_data_dir.sh $data/${train_set}${suffix} || exit 1
   fi
 
   if [ $stage -le 2 ] && [ "$generate_alignments" == "true" ]; then
     #obtain the alignment of the perturbed data
     steps/align_fmllr.sh --nj 100 --cmd "$train_cmd --time 2-12" \
-      $data/${train_set}_sp data/lang $gmm_dir $ali_dir || exit 1
+      $data/${train_set}${suffix} $langdir $gmm_dir $ali_dir || exit 1
   fi
-  train_set=${train_set}_sp
+  train_set=${train_set}${suffix}
 fi
 
 if [ $stage -le 3 ]; then
@@ -57,27 +81,33 @@ if [ $stage -le 3 ]; then
   # the 100k_nodup directory is copied seperately, as
   # we want to use exp/tri1b_ali_100k_nodup for ivector extractor training
   # the main train directory might be speed_perturbed
-  for dataset in $train_set; do
-    utils/copy_data_dir.sh $data/$dataset $data/${dataset}_hires
+  if [ "$speed_perturb" == "true" ]; then
+    utils/copy_data_dir.sh $data/$train_set $data/${train_set}_hires
+  else
+    utils/copy_data_dir.sh $inputdata $data/${train_set}_hires
+  fi
+  
+  # do volume-perturbation on the training data prior to extracting hires
+  # features; this helps make trained nnets more invariant to test data volume.
+  utils/data/perturb_data_dir_volume.sh $data/${train_set}_hires
 
-    # do volume-perturbation on the training data prior to extracting hires
-    # features; this helps make trained nnets more invariant to test data volume.
-    utils/data/perturb_data_dir_volume.sh $data/${dataset}_hires
+  steps/make_mfcc.sh \
+    --nj 100 --mfcc-config conf/mfcc_hires.conf \
+    --cmd "$train_cmd --time 2-00" \
+    $data/${train_set}_hires \
+    $exp/make_hires/$train_set $mfccdir;
+  
+  steps/compute_cmvn_stats.sh $data/${train_set}_hires $exp/make_hires/${train_set} $mfccdir;
 
-    steps/make_mfcc.sh --nj 100 --mfcc-config conf/mfcc_hires.conf \
-        --cmd "$train_cmd --time 2-00" $data/${dataset}_hires $exp/make_hires/$dataset $mfccdir;
-    steps/compute_cmvn_stats.sh $data/${dataset}_hires $exp/make_hires/${dataset} $mfccdir;
-
-    # Remove the small number of utterances that couldn't be extracted for some
-    # reason (e.g. too short; no such file).
-    utils/fix_data_dir.sh $data/${dataset}_hires;
-  done
+  # Remove the small number of utterances that couldn't be extracted for some
+  # reason (e.g. too short; no such file).
+  utils/fix_data_dir.sh $data/${train_set}_hires;
 
   for dataset in dev eval; do
     # Create MFCCs for the dev/eval sets
-    utils/copy_data_dir.sh data/$dataset $data/${dataset}_hires
+    utils/copy_data_dir.sh $testdatadir/$dataset $data/${dataset}_hires
     steps/make_mfcc.sh --cmd "$train_cmd" --nj 30 --mfcc-config conf/mfcc_hires.conf \
-        $data/${dataset}_hires $exp/make_hires/$dataset $mfccdir;
+      $data/${dataset}_hires $exp/make_hires/$dataset $mfccdir;
     steps/compute_cmvn_stats.sh $data/${dataset}_hires $exp/make_hires/$dataset $mfccdir;
     utils/fix_data_dir.sh $data/${dataset}_hires  # remove segments with problems
   done

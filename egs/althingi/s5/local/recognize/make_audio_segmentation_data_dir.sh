@@ -35,12 +35,8 @@ silence_file=$1
 old_data_dir=$2
 new_data_dir=$3
 
-for f in $silfile $old_data_dir/utt2spk \
-  $old_data_dir/wav.scp; do
-  if [ ! -f $f ]; then
-    echo "$0: expected $f to exist"
-    exit 1;
-  fi
+for f in $silfile $old_data_dir/utt2spk $old_data_dir/wav.scp; do
+  [ ! -f $f ] && echo "$0: expected $f to exist" && exit 1;
 done
 
 mkdir -p $new_data_dir
@@ -51,7 +47,7 @@ echo "Create the segmentation."
 local/recognize/create_segments_from_silence.pl \
   --min-seg-length $min_seg_length \
   --min-sil-length $min_sil_length \
-  $silence_file $new_data_dir/segments
+  $silence_file $new_data_dir/segments || exit 1;
 
 echo "Create the new utt2spk and spk2utt files."
 cat $old_data_dir/utt2spk | perl -e '

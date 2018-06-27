@@ -21,15 +21,23 @@ if [ $# -ne 2 ]; then
   echo "Usage: $0 [options] <old-data-dir> <new-data-dir>"
   echo " e.g.: $0 data/recognize/radXXX data/recognize/radXXX_segm"
   echo ""
-#  echo "Options:"
-#  echo "    --min-seg-length        # minimum length of segments"
-#  echo "    --min-sil-length        # minimum length of silence as split point"
+  echo "Options:"
+  echo "    --min-seg-length        # minimum length of segments"
+  echo "    --min-sil-length        # minimum length of silence as split point"
   exit 1;
 fi
 
 datadir=$1
 outdir=$2
 mkdir -p $outdir
+
+tmp=$(mktemp -d)
+cleanup () {
+    rm -rf "$tmp"
+}
+trap cleanup EXIT
+
+[ ! -f $datadir/wav.scp ] && echo "segment_audio.sh: no such file $datadir/wav.scp" && exit 1;
 
 # Separate on new lines
 IFS=$'\n'
@@ -38,32 +46,19 @@ for line in $(cat $datadir/wav.scp); do
     uttID=$(echo $line | cut -d" " -f1)
     audio=$(echo $line | awk '{print $(NF-1)}')
     filename=$(basename "$audio")
-    extension="${filename##*.}"
     filename="${filename%.*}"
 
     echo "Extract the timestamps of silences in the audio and let each silence occupy one line in the file"
-#     python3 -c "import shlex
-# import subprocess
-# process = subprocess.Popen(shlex.split('ffmpeg -i data/local/corpus/audio/rad20100216T155102.flac -af silencedetect=noise=-15dB:d=$min_sil_length -f null -'), stdout=subprocess.PIPE)
-# ffmpegout=[]
-# while True:
-#     output = process.stdout.readline()
-#     if output == '' and process.poll() is not None:
-#         break
-#     if output:
-#         ffmpegout.append(output.strip())
-# print('\n'.join(ffmpegout), file=ffmpeg.tmp)
-# "
-    ffmpeg -nostdin -i $audio -af silencedetect=noise=-15dB:d=$min_sil_length -f null - &>${outdir}/ffmpeg_out.tmp
+    ffmpeg -nostdin -i $audio -af silencedetect=noise=-15dB:d=$min_sil_length -f null - &>${tmp}/ffmpeg_out.tmp
 
-    if grep -q "silencedetect" ${outdir}/ffmpeg_out.tmp; then
-        sed -re $'s/\[/\\\n\[/g' ${outdir}/ffmpeg_out.tmp | grep "silence_start\|silence_end" | awk 'ORS=NR%2?" ":"\n"' | sed -r 's:^.*(\[silencedetect.*silence_start):\1:g' | cut -d" " -f4,5,9,10,12,13 > ${outdir}/${filename}_silence.txt
+    if grep -q "silencedetect" ${tmp}/ffmpeg_out.tmp; then
+        sed -re $'s/\[/\\\n\[/g' ${tmp}/ffmpeg_out.tmp | grep "silence_start\|silence_end" | awk 'ORS=NR%2?" ":"\n"' | sed -r 's:^.*(\[silencedetect.*silence_start):\1:g' | cut -d" " -f4,5,9,10,12,13 > ${outdir}/${filename}_silence.txt
 		
     	# Get total recording length, with 3 digits
     	total_dur=$(printf %.3f $(echo $(soxi -D $audio) | bc -l))
 	
     	# Add uttID and total duration of the recording to the silence info file
-    	awk -v id="$uttID" -v dur="$total_dur" '{print id, dur, $0}' ${outdir}/${filename}_silence.txt > ${outdir}/${filename}_silence2.tmp && mv ${outdir}/${filename}_silence2.tmp ${outdir}/${filename}_silence.txt
+    	awk -v id="$uttID" -v dur="$total_dur" '{print id, dur, $0}' ${outdir}/${filename}_silence.txt > ${tmp}/${filename}_silence2.tmp && mv ${tmp}/${filename}_silence2.tmp ${outdir}/${filename}_silence.txt
     	# When the audio ends in silence, the last line only contains the time when the silence starts.
     	# I fill out that line, so all lines contain 8 columns
     	num_col_last=$(tail -n1 ${outdir}/${filename}_silence.txt | wc -w)
@@ -85,5 +80,6 @@ for line in $(cat $datadir/wav.scp); do
     	cp -r $datadir/* $outdir
     fi
     
-    rm ${outdir}/ffmpeg_out.tmp
 done
+
+exit 0;

@@ -32,51 +32,38 @@ mkdir -p $dir
 abbr_list=~/kaldi/egs/althingi/s5/text_norm/lex/abbr_lex_pattern.txt
 
 base=$(basename "$textfile1")
-extension1="${text1##*.}"
 base="${base%.*}"
 
 # If the text files are xml files I first need to extract the text
 n=0
 for file in $textfile1 $textfile2; do
   n=$[$n+1]
-  # check if the extension is xml 
-  if [ "${file##*.}" = 'xml' ] ; then
-    # 1) Remove newlines and xml tags
-    # 2) Rewrite weird invisible dashes and underscore to a space and add space around the other ones
-    # 3) Remove the period after abbreviated middle names
-    # 4) For a few abbreviations that often stand at the end of sentences, add a space between the abbr and the period
-    # 5) Remove periods inside abbreviations
-    # 6) Move EOS punctuation away from the previous word and lowercase what comes after, if the previous word is a number or it is the last word.
-    # 7) Move INS punctuations away from the previous word
-    # 8) Remove the abbreviation periods
-    # 9) Move EOS punctuation away from the previous word and lowercase what comes after
-    # 10) Insert a utt ID att the beginning and change spaces to one
-    tr "\n" " " < $file | sed -re 's:</mgr></ræðutexti></ræða> <ræðutexti><mgr>: :g' -e 's:(.*)?<ræðutexti>(.*)</ræðutexti>(.*):\2:' \
-      -e 's:<mgr>//[^/<]*?//</mgr>|<!--[^>]*?-->|http[^<> )]*?|<[^>]*?>\:[^<]*?ritun[^<]*?</[^>]*?>|<mgr>[^/]*?//</mgr>|<ræðutexti> +<mgr>[^/]*?/</mgr>|<ræðutexti> +<mgr>til [0-9]+\.[0-9]+</mgr>|<truflun>[^<]*?</truflun>|<atburður>[^<]*?</atburður>|<málsheiti>[^<]*?</málsheiti>: :g' \
-      -e 's:<[^<>]*?>: :g' \
-      -e 's:­| |_: :g' -e 's:([—-]): \1 :g' \
-      -e 's:([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+) ([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]?)\. ([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+):\1 \2 \3:g' \
-      -e 's: (gr|umr|sl|millj|nk|mgr)([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \2 \3:g' \
-      -e 's:\.([a-záðéíóúýþæö]):\1:g' \
-      -e 's:([0-9,.]{3,})([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \2 \3:g' -e 's:([0-9]%)([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \2 \3:g' -e 's:([0-9.,]{3,})([.:?!]+) :\1 \2 :g' -e 's:([0-9]%)([.:?!]+) :\1 \2 :g' -e 's:([.:?!]+)\s*$: \1 :g' \
-      -e 's:([,;]) : \1 :g' \
-      -e "s:(\b$(cat $abbr_list))\.:\1:g" \
-      -e 's:([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \2:g' \
-      -e 's:(.*):1 \1:' -e 's: +: :g' \
-      > $dir/text$n.tmp
-    if [ $remove_comments = true ]; then
-      # Remove both comments in parentheses and brackets
-      sed -i -re 's:\([^()]*?\): :g' -e 's:\[[^]]*?\]: :g' -e 's: +: :g' $dir/text$n.tmp
-    fi
-  else
-    sed -re 's:([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+) ([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]?)\. ([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+):\1 \2 \3:g' \
-      -e 's: (gr|umr|sl|millj|nk|mgr)([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \2 \3:g' \
-      -e 's:\.([a-záðéíóúýþæö]):\1:g' \
-      -e 's:([0-9,.]{3,})([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \2 \3:g' -e 's:([0-9]%)([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \2 \3:g' -e 's:([0-9.,]{3,})([.:?!]+) :\1 \2 :g' -e 's:([0-9]%)([.:?!]+) :\1 \2 :g' -e 's:([.:?!]+)\s*$: \1 :g' \
-      -e 's:([,;]) : \1 :g' \
-      -e "s:(\b$(cat $abbr_list))\.:\1:g" \
-      -e 's:([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \2:g' \
-      -e 's:(.*):1 \1:' -e 's: +: :g' < $file > $dir/text$n.tmp
+  # 1) Remove newlines and xml tags
+  # 2) Rewrite weird invisible dashes and underscore to a space and add space around the other ones
+  # 3) Remove the period after abbreviated middle names
+  # 4) For a few abbreviations that often stand at the end of sentences, add a space between the abbr and the period
+  # 5) Remove periods inside abbreviations
+  # 6) Move EOS punctuation away from the previous word and lowercase what comes after, if the previous word is a number or it is the last word.
+  # 7) Move INS punctuations away from the previous word
+  # 8) Remove the abbreviation periods
+  # 9) Move EOS punctuation away from the previous word and lowercase what comes after
+  # 10) Insert a utt ID att the beginning and change spaces to one
+  tr "\n" " " < $file | sed -re 's:</mgr></ræðutexti></ræða> <ræðutexti><mgr>: :g' -e 's:(.*)?<ræðutexti>(.*)</ræðutexti>(.*):\2:' \
+    -e 's:<mgr>//[^/<]*?//</mgr>|<!--[^>]*?-->|http[^<> )]*?|<[^>]*?>\:[^<]*?ritun[^<]*?</[^>]*?>|<mgr>[^/]*?//</mgr>|<ræðutexti> +<mgr>[^/]*?/</mgr>|<ræðutexti> +<mgr>til [0-9]+\.[0-9]+</mgr>|<truflun>[^<]*?</truflun>|<atburður>[^<]*?</atburður>|<málsheiti>[^<]*?</málsheiti>: :g' \
+    -e 's:<[^<>]*?>: :g' \
+    -e 's:­| |_: :g' -e 's:([—-]): \1 :g' \
+    -e 's:([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+) ([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]?)\. ([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+):\1 \2 \3:g' \
+    -e 's: (gr|umr|sl|millj|nk|mgr)([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \2 \3:g' \
+    -e 's:\.([a-záðéíóúýþæö]):\1:g' \
+    -e 's:([0-9,.]{3,})([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \2 \3:g' -e 's:([0-9]%)([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \2 \3:g' -e 's:([0-9.,]{4,})([.:?!]+) :\1 \2 :g' -e 's:([0-9]%)([.:?!]+) :\1 \2 :g' -e 's:([.:?!]+)\s*$: \1 :g' \
+    -e 's:([,;]) : \1 :g' \
+    -e "s:(\b$(cat $abbr_list))\.:\1:g" \
+    -e 's:([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \2:g' \
+    -e 's:(.*):1 \1:' -e 's: +: :g' \
+    > $dir/text$n.tmp
+  if [ $remove_comments = true ]; then
+    # Remove both comments in parentheses and brackets
+    sed -i -re 's:\([^()]*?\): :g' -e 's:\[[^]]*?\]: :g' -e 's: +: :g' $dir/text$n.tmp
   fi
 done
 

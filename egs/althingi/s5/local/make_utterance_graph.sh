@@ -10,7 +10,6 @@ tscale=1.0      # transition scale.
 loopscale=0.1   # scale for self-loops.
 cleanup=true
 ngram_order=1
-srilm_options="-wbdiscount"   # By default, use Witten-Bell discounting in SRILM
 # By default, use modified Kneser-Ney smoothing in MITLM
 # End configuration section.
 
@@ -36,7 +35,6 @@ if [ $# -ne 4 ]; then
   echo ""
   echo "Options:"
   echo "    --ngram-order           # order of n-gram language model"
-  echo "    --srilm-options         # options for ngram-count in SRILM tool"
   echo "    --tscale                # transition scale"
   echo "    --loopscale             # scale for self-loops"
   echo "    --cleanup               # if true, removes the intermediate files"
@@ -110,7 +108,7 @@ cat $text | utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt | \
      echo $words | \
      perl -ane '@A = split; for ($n=0;$n<@A;$n++) { print "$A[$n] "; if(($n+1)%30000 == 0 || $n+1==@A) {print "\n";} }' \
 	  > $wdir/text
-     ngram-count -text $wdir/text -order $ngram_order "$srilm_options" -lm - | \
+     estimate-ngram -text $wdir/text -order $ngram_order -write-lm - | \
      arpa2fst --disambig-symbol=#0 \
              --read-symbol-table=$lang/words.txt - $wdir/G.fst || exit 1;
   fi

@@ -134,7 +134,7 @@ abbr_ratio = Optimize[
              'obl']];
 
 ABBR_NUMBER = Optimize[ABBR_NUMBER_10plus_and_0 @
- abbr_neutral_unit_CDbefore @  abbr_unit_CDbefore @
+abbr_neutral_unit_CDbefore @  abbr_unit_CDbefore @
 abbr_neutral_unit_CDafter @ abbr_unit_CDafter @
 abbr_unit_CDbefore2 @ abbr_first_second_tenth @ abbr_half @ abbr_ratio];
 
@@ -207,18 +207,207 @@ export ABBREVIATE = ArcSort[
                     Optimize[abbreviate2 @ ABBR_WORD3],
                     'input'];
 
-# The following should be removed from here. Used when inserting
-# periods back after denormalization. I should solve that is a better
-# way
+# Denormalization
+middle_name_abbr_lex = Optimize[StringFile['local/thraxgrammar/lex/alphabet.lex','utf8','utf8']];
+middle_name_abbr = Optimize[
+                      CDRewrite[middle_name_abbr_lex delspace,
+                      ("[BOS]".utf8 | " ".utf8) c.ALPHABET
+                      c.alphabet+ " ".utf8,
+                      (c.alphabet " ".utf8)? " ".utf8 c.ALPHABET
+                      c.alphabet+ ("son".utf8 | "syni".utf8 |
+                      "dóttur".utf8 | "dóttir".utf8 | "sen".utf8)
+                      c.u8_punct? ("[EOS]".utf8 | " ".utf8),
+                      c.whole_alphabet*,
+                      'ltr',
+                      'obl']];
+
+personal_names = Optimize[StringFile['local/thraxgrammar/lex/ambiguous_personal_names.lex','utf8','utf8']];
+amb_pers_names1 = Optimize[
+                      CDRewrite[personal_names delspace,
+                      ("[BOS]".utf8 | " ".utf8),
+                      " ".utf8 c.ALPHABET c.alphabet+ ("son".utf8 | "syni".utf8 |
+                      "dóttur".utf8 | "dóttir".utf8 | "sen".utf8)
+                      c.u8_punct? ("[EOS]".utf8 | " ".utf8),
+                      c.whole_alphabet*,
+                      'ltr',
+                      'obl']];
+
+amb_pers_names2 = Optimize[
+                      CDRewrite[personal_names delspace,
+                      ("[BOS]".utf8 | " ".utf8),
+                      " ".utf8 c.ALPHABET c.alphabet+
+                      " ".utf8 c.ALPHABET c.alphabet+
+                      ("son".utf8 | "syni".utf8 |
+                      "dóttur".utf8 | "dóttir".utf8 | "sen".utf8)
+                      c.u8_punct? ("[EOS]".utf8 | " ".utf8),
+                      c.whole_alphabet*,
+                      'ltr',
+                      'obl']];
+
+name_casing = Optimize[middle_name_abbr @ amb_pers_names1 @
+amb_pers_names2];
+
+acro_denorm_lex = Optimize[StringFile['local/thraxgrammar/lex/acro_denormalize.lex','utf8','utf8']];
+acro_denorm = CDRewrite[acro_denorm_lex,
+                     ("[BOS]".utf8 | " ".utf8),
+                     ("[EOS]".utf8 | " ".utf8),
+                     c.whole_alphabet*,
+                     'ltr',
+                     'obl'];
+
+law_nr1 = CDRewrite[(" ".utf8 : "/".utf8),
+                c.Digits+,
+                ("EBE".utf8 | "EB".utf8 | "ESB".utf8),
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
+
+law_nr2 = CDRewrite[(" ".utf8 : "/".utf8) | (" frá ".utf8 : "/".utf8),
+                c.Digits+,
+                c.Digits+ "/".utf8 ("EBE".utf8 | "EB".utf8 | "ESB".utf8),
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
+
+law_nr3 = CDRewrite[(" ".utf8 : "/".utf8) | (" frá ".utf8 : "/".utf8),
+                "nr ".utf8 c.Digits+,
+                c.Digits+,
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
+
+law_nr = Optimize[law_nr1 @ law_nr2 @ law_nr3];
+
+dash = CDRewrite[(" til ".utf8 : "–".utf8),
+                c.Digits+,
+                c.Digits+,
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
+
+kl = CDRewrite[(" ".utf8 : ":".utf8),
+                "kl ".utf8 c.Digits+,
+                c.Digits+,
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
+
+decimal1 = CDRewrite[(" komma ".utf8 : ",".utf8),
+                c.Digits+,
+                c.Digits+,
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
+
+decimal2 = CDRewrite[delspace,
+                c.Digits+ ",".utf8 c.Digits+,
+                c.Digits c.Digits? ("[EOS]".utf8 | " ".utf8),
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
+
+ratio1 = CDRewrite[(" ".utf8 : "/".utf8),
+                ("[BOS]".utf8 | " ".utf8) c.Digits,
+                c.Digits ".".utf8,
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
+
+ratio2 = CDRewrite[(".".utf8 : "".utf8),
+                ("[BOS]".utf8 | " ".utf8) c.Digits "/".utf8 c.Digits,
+                ("[EOS]".utf8 | " ".utf8),
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
+
+rm_space_bf_punct = CDRewrite[delspace,
+                c.Digits,
+                ("°".utf8 | "%".utf8 | "‰".utf8),
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
+
+url1 = CDRewrite[(" ".utf8 : "://".utf8),
+                "http".utf8 "s".utf8?,
+                "www".utf8,
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
+
+url2 = CDRewrite[(" ".utf8 : ".".utf8),
+                "www".utf8,
+                c.Alnum+,
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
+
+url3 = CDRewrite[(" punktur ".utf8 : ".".utf8),
+                c.Alnum+,
+                ("is".utf8 | "net".utf8 | "com".utf8),
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
+
+ogeda = CDRewrite[(" ".utf8 : "/".utf8),
+                "og".utf8,
+                "eða".utf8,
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
+
+committee = CDRewrite[("".utf8 : "-".utf8),
+                ("allsherjar".utf8 | "efnahags".utf8 | "stjórnskipunar".utf8 | "umhverfis".utf8),
+                " og ".utf8 c.alphabet+ "nefnd".utf8,
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
+
+minister = CDRewrite[("".utf8 : "-".utf8),
+                ("dóms".utf8 | "EES".utf8 | "efnahags".utf8
+                | "félagsmála".utf8 | "félags".utf8 | "ferðamála".utf8
+                | "fjármála".utf8 | "heilbrigðis".utf8
+                | "iðnaðar".utf8 | "jafnréttis".utf8 | "landbúnaðar".utf8
+                | "mennta".utf8 | "nýsköpunar".utf8 | "samgöngu".utf8
+                | "sjávarútvegs".utf8 | "umhverfis".utf8 | "viðskipta".utf8),
+                " og ".utf8 c.alphabet+ "ráðherra".utf8,
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
+
+dr = CDRewrite[("doktor".utf8 : "dr".utf8),
+                " ".utf8,
+                " ".utf8 c.ALPHABET c.alphabet+,
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
+
+DENORM = Optimize[name_casing @ acro_denorm @ law_nr @ dash @ kl @ decimal1 @ decimal2 @
+decimal2 @ decimal2 @ ratio1 @ ratio2 @ rm_space_bf_punct @ url1 @
+url2 @ url3 @ ogeda @ committee @ minister @ dr];
+
+export ABBR_AND_DENORM = ArcSort[
+                    Optimize[ABBREVIATE @ DENORM],
+                    'input'];
+
+# The following happens after the punctuation model is applied
+delspace_in_tags = CDRewrite[("< ".utf8 : "<".utf8) | (" >".utf8 : ">".utf8),
+                "".utf8,
+                "".utf8,
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
+
 ins_periods =
 Optimize[StringFile['local/thraxgrammar/lex/abbr_periods.txt','utf8','utf8']];
 
-export INS_PERIODS = CDRewrite[ins_periods,
+INS_PERIODS = CDRewrite[ins_periods,
                      ("[BOS]".utf8 | " ".utf8),
                      ".".utf8? ("[EOS]".utf8 | " ".utf8),
                      c.whole_alphabet*,
                      'ltr',
                      'obl'];
+
+export INSERT_PERIODS = Optimize[rm_space_bf_punct @ delspace_in_tags @ INS_PERIODS];
 
 # REMOVE_PERIODS if for removing periods from abbreviations, when
 # cleaning a new speech, before adding it to our language model texts

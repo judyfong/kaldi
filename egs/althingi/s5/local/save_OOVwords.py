@@ -5,7 +5,7 @@
 # Apache 2.0
 
 from nltk.tokenize import word_tokenize
-
+    
 import codecs
 import re
 import sys

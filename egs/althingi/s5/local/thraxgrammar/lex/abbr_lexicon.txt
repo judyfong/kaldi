@@ -139,6 +139,8 @@ sl	síðastliðið
 sl	síðastliðinn
 sl	síðastliðnum
 stjfrv	stjórnarfrumvarp
+stjtill	stjórnartillaga
+stjtill	stjórnartillögu
 suðurk	suðurkjördæmi
 Suðurk	Suðurkjördæmi
 suðurk	suðurkjördæmis

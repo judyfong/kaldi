@@ -5,9 +5,9 @@ Author: Judy Fong, Inga Rún, Háskólinn í Reykjavík;
 Description: The script extracts info on where to find audio file segments and corresponding
 xml files on the althingi website and saves it to the AlthingiUploads dir using cURL;
 */
-for($i = 147; $i < 149; $i++){
+for($i = 148; $i < 149; $i++){
     $ch = curl_init('http://www.althingi.is/altext/xml/raedulisti/?lthing=' . $i);
-    $info_file_name = '/data/althingi/data_extraction/althingi_info/thing' . $i . '.txt';
+    $info_file_name = 'data/scraped/thing' . $i . '.txt';
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
     //curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 1);
     //curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 1);

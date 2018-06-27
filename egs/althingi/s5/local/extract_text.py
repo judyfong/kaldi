@@ -20,6 +20,5 @@ with codecs.open(sys.argv[2],'w',encoding='utf-8') as fout:
                 print(file_base, file=fout)
             else:
                 body_txt = re.search('<ræðutexti>(.*)</ræðutexti>',data).group()
-                #text = ' '.join([file_base, speech]).strip().replace('\n', ' ')
                 text = ' '.join([file_base, body_txt]).strip().replace('\n', ' ')
                 print(text, file=fout)

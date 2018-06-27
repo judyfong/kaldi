@@ -9,13 +9,6 @@
 
 # Begin configuration section.
 
-# Run on scratch
-exp=/mnt/scratch/inga/exp
-data=/mnt/scratch/inga/data
-
-data_dir=$data/rnnlm
-dir=$exp/rnnlm_lstm_1e
-
 embedding_dim=1024
 lstm_rpd=256
 lstm_nrpd=256
@@ -24,21 +17,28 @@ train_stage=-10
 
 # variables for lattice rescoring
 run_lat_rescore=true
-run_nbest_rescore=false
-ac_model_dir=$exp/chain/tdnn_lstm_2_sp      #tdnn_sp
 decode_dir_suffix=rnnlm_1e
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
               # if it's set, it merges histories in the lattice if they share
               # the same ngram history and this prevents the lattice from 
               # exploding exponentially
 pruned_rescore=true
+LM=5g # using the 5-gram const arpa file as old lm
 
 . ./path.sh
 . ./cmd.sh
 . ./utils/parse_options.sh
+. ./conf/path.conf # Here $data, $exp and $mfcc are defined, default to /mnt/scratch/inga/
 
+
+ac_model_dir=$exp/chain/tdnn_lstm_2_sp      #tdnn_sp
 text=/data/althingi/text_corpus/LMtext_2004-2018.txt # excluding text in test sets for the acoustic training
-lexicon=data/local/dict/lexiconp.txt
+lexicon=$root_localdict/lexiconp.txt #$data/local/dict/lexiconp.txt
+ngram_lmdir=$(ls -td $root_lm_modeldir/20* | head -n1)
+
+data_dir=$data/rnnlm
+dir=$exp/rnnlm_lstm_1e
+
 text_dir=$data_dir/text_1e
 mkdir -p $dir/config
 set -e
@@ -121,7 +121,6 @@ fi
 # Calculate the lattice-rescoring time
 begin=$(date +%s)
 
-LM=5g # using the 5-gram const arpa file as old lm
 if [ $stage -le 4 ] && $run_lat_rescore; then
   echo "$0: Perform lattice-rescoring on $ac_model_dir"
 #  LM=sw1_tg # if using the original 3-gram G.fst as old lm
@@ -137,7 +136,7 @@ if [ $stage -le 4 ] && $run_lat_rescore; then
     rnnlm/lmrescore$pruned.sh \
       --cmd "$decode_cmd" \
       --weight 0.5 --max-ngram-order $ngram_order \
-      data/lang_$LM $dir \
+      $ngram_lmdir/lang_$LM $dir \
       $data/${decode_set}_hires ${decode_dir} \
       ${decode_dir}_${decode_dir_suffix}
     ) &
@@ -147,20 +146,5 @@ fi
 end=$(date +%s)
 tottime=$(expr $end - $begin)
 echo "total time: $tottime seconds"
-
-# # The following is way too slow! And gives only half as good results!
-if [ $stage -le 5 ] && $run_nbest_rescore; then
-  echo "$0: Perform nbest-rescoring on $ac_model_dir"
-  for decode_set in dev eval; do
-    decode_dir=${ac_model_dir}/decode_${decode_set}_${LM}
-
-    # Lattice rescoring
-    rnnlm/lmrescore_nbest.sh \
-      --cmd "$decode_cmd --mem 4G" --N 20 \
-      0.8 data/lang_$LM $dir \
-      $data/${decode_set}_hires ${decode_dir} \
-      ${decode_dir}_${decode_dir_suffix}_nbest
-  done
-fi
 
 exit 0

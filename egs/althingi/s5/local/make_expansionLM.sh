@@ -11,7 +11,7 @@ set -o pipefail
 nj=60
 stage=-1
 corpus=/data/leipzig/isl_sentences_10M.txt
-utf8syms=/data/althingi/utf8.syms
+utf8syms=/data/althingi/lists/utf8.syms
 #dir=text_norm
 #althdir=data/all
 
@@ -82,8 +82,8 @@ if [ $stage -le 2 ]; then
     nohup awk '$2 ~ /[[:print:]]/ { if($1 > 29) print $2 }' \
         ${dir}/words.cnt | LC_ALL=C sort -u > ${dir}/wordlist30.txt
 
-    # Get the althingi vocabulary
-    cut -d" " -f2- ${althdir}/text_bb_SpellingFixed.txt | tr " " "\n" | sed -e 's/\b[0-9]\+[^ ]*/<num>/g' | grep -v "^\s*$" | sort -u > ${dir}/words_althingi.txt
+    # # Get the althingi vocabulary
+    # cut -d" " -f2- ${althdir}/text_bb_SpellingFixed.txt | tr " " "\n" | sed -e 's/\b[0-9]\+[^ ]*/<num>/g' | grep -v "^\s*$" | sort -u > ${dir}/words_althingi.txt
     # I manually fixed most of the erraneous expansions in the first 100 hours of data I got.
     # Add if there are any words there that are not in the other dataset.
     comm -23 <(cut -d" " -f2- ${althdir}100/text | tr " " "\n" | egrep -v "^\s*$" | sort -u) <(sort ${dir}/words_althingi.txt) >> ${dir}/words_althingi.txt

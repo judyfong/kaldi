@@ -38,7 +38,8 @@ timestamp () {
 }
 
 error () {
-  message "error" "$@" && exit 1
+  local code=$1; shift
+  message "error" "$@" && exit $code
 }
 info () {
   message "info" "$@"

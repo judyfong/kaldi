@@ -91,20 +91,17 @@ tmp
 /egs/*/s*/data
 /egs/*/s*/exp100
 /egs/*/s*/text_norm/*
-!/egs/*/s*/text_norm/acronyms.txt
-!/egs/*/s*/text_norm/abbr_acro_as_letters.txt
-!/egs/*/s*/text_norm/acronyms_as_words.txt
-!/egs/*/s*/text_norm/utf8.syms
 /egs/*/s*/recognize/*
 /egs/*/s*/py3env
 /egs/*/s*/q
 /egs/*/s*/Makefile
-/egs/*/s*/punctuator2/example
-egs/*/s*/punctuator2/libgpuarray
-egs/*/s*/punctuator2/log
+/egs/*/s*/punctuator/example
+egs/*/s*/punctuator/libgpuarray
+egs/*/s*/punctuator/log
 egs/*/s*/local/auxiliary
+egs/*/s*/local/handling_new_speeches
 egs/*/s*/local/recognize/auxiliary
-egs/althingi/s5/ivector_clustering/
+egs/althingi/s5/ivector_clustering
 
 # /tools/
 /tools/ATLAS/

@@ -39,9 +39,10 @@ EOF
     exit 1
 fi
 
-model_dir=$1 ; shift
+#model_dir=$1 ; shift
+model=$1; shift
 wordlist=$1     ; shift
-model=$model_dir/g2p.mdl
+#model=$model_dir/g2p.mdl
 
 
 

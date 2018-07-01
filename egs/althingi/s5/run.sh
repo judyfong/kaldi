@@ -65,9 +65,10 @@ prondict=$(ls -t $root_lexicon/prondict.*.txt | head -n1)
 tri2=$root_gmm/tri2_cleaned 
 
 # Directories for punctuation, language and acoustic model training data, respectively
+am_datadir=$root_am_datadir/$d
 punct_datadir=$root_punctuation_datadir/$d
 lm_datadir=$root_lm_datadir/$d
-am_datadir=$root_am_datadir/$d
+rnnlm_datadir=$root_lm_datadir/rnn/$d
 
 # Directories for punctuation, language and acoustic models, respectively
 punct_modeldir=$root_punctuation_modeldir/$d
@@ -369,5 +370,12 @@ if [ $stage -le 11 ]; then
     local/chain/run_tdnn.sh data/train data >>tdnn.log 2>&1 &
 fi
 
-# Train and rescore with an RNN LM
-local/rnnlm/run_tdnn_lstm_1e.sh >>rnnlm_tdnn_lstm.log 2>&1 &
+# Here I need to create the bundles
+
+if [ $stage -le 12 ]; then
+  # Train and rescore with an RNN LM
+  local/rnnlm/run_tdnn_lstm.sh --run-lat-rescore true >>rnnlm_tdnn_lstm.log 2>&1 &
+fi
+
+# Here I can have exemples of how to recognize new speeches
+

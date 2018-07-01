@@ -5,7 +5,8 @@
 #           2017  Hainan Xu
 #           2017  Xiaohui Zhang
 
-# This script trains LMs on the swbd LM-training data.
+# This script is a copy of the swbd rnn_tdnn_lstm.sh script (affix=1e)
+# It trains a LMs on the Althingi LM-training data.
 
 # Begin configuration section.
 
@@ -14,36 +15,46 @@ lstm_rpd=256
 lstm_nrpd=256
 stage=-10
 train_stage=-10
+affix=_1e
 
 # variables for lattice rescoring
-run_lat_rescore=true
-decode_dir_suffix=rnnlm_1e
+run_lat_rescore=false
+decode_dir_suffix=rnnlm${affix}
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
               # if it's set, it merges histories in the lattice if they share
               # the same ngram history and this prevents the lattice from 
               # exploding exponentially
 pruned_rescore=true
-LM=5g # using the 5-gram const arpa file as old lm
+
+# Which model bundle to use when testing the RNN LN
+bundle=latest
 
 . ./path.sh
 . ./cmd.sh
 . ./utils/parse_options.sh
 . ./conf/path.conf # Here $data, $exp and $mfcc are defined, default to /mnt/scratch/inga/
 
-
-ac_model_dir=$exp/chain/tdnn_lstm_2_sp      #tdnn_sp
 text=/data/althingi/text_corpus/LMtext_2004-2018.txt # excluding text in test sets for the acoustic training
-lexicon=$root_localdict/lexiconp.txt #$data/local/dict/lexiconp.txt
-ngram_lmdir=$(ls -td $root_lm_modeldir/20* | head -n1)
+bundle=$root_bundle/$bundle
+langdir=$bundle/lang
+
+# Used when applying the new rnnlm
+ac_model_dir=$bundle/acoustic_model #$exp/chain/tdnn_lstm_2_sp      #tdnn_sp
+ngram_lm=$bundle/decoding_lang #$(ls -td $root_lm_modeldir/20* | head -n1)
+if [ $ngram_lm = $bundle/decoding_lang ]; then
+  LM=3gsmall # if using the small 3-gram G.fst file as old lm
+else
+  LM=5g  # if using the 5-gram carpa file as old lm
+fi
 
 data_dir=$data/rnnlm
-dir=$exp/rnnlm_lstm_1e
+dir=$exp/rnnlm_lstm${affix}
 
-text_dir=$data_dir/text_1e
+text_dir=$data_dir/text${affix}
 mkdir -p $dir/config
 set -e
 
-for f in $text $lexicon; do
+for f in $text $langdir/words.txt; do
   [ ! -f $f ] && \
     echo "$0: expected file $f to exist" && exit 1
 done
@@ -56,7 +67,7 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  cp data/lang/words.txt $dir/config/
+  cp $langdir/words.txt $dir/config/
   n=`cat $dir/config/words.txt | wc -l`
   echo "<brk> $n" >> $dir/config/words.txt
 
@@ -123,7 +134,6 @@ begin=$(date +%s)
 
 if [ $stage -le 4 ] && $run_lat_rescore; then
   echo "$0: Perform lattice-rescoring on $ac_model_dir"
-#  LM=sw1_tg # if using the original 3-gram G.fst as old lm
   pruned=
   if $pruned_rescore; then
     pruned=_pruned
@@ -136,7 +146,7 @@ if [ $stage -le 4 ] && $run_lat_rescore; then
     rnnlm/lmrescore$pruned.sh \
       --cmd "$decode_cmd" \
       --weight 0.5 --max-ngram-order $ngram_order \
-      $ngram_lmdir/lang_$LM $dir \
+      $ngram_lm $dir \
       $data/${decode_set}_hires ${decode_dir} \
       ${decode_dir}_${decode_dir_suffix}
     ) &

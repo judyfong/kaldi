@@ -17,6 +17,7 @@ iter=final
 echo "$0 $@"  # Print the command line for logging
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
+. ./conf.path.conf # defines $data
 
 if [ $# -ne 3 ]; then
     echo "Usage: local/recognize/score_recognize.sh [--cmd (run.pl|queue.pl...)] <speechname> <lang-dir|graph-dir> <decode-dir>"
@@ -34,14 +35,14 @@ dir=$3
 
 symtab=$lang_or_graph/words.txt
 
-for f in $symtab $dir/lat.1.gz data/dev_hires/text data/eval_hires/text; do
+for f in $symtab $dir/lat.1.gz $data/dev_hires/text $data/eval_hires/text; do
     [ ! -f $f ] && echo "score_recognize.sh: no such file $f" && exit 1;
 done
 
 echo "$0: scoring with word insertion penalty=$word_ins_penalty"
 
 mkdir -p $dir/scoring_kaldi
-grep $speechname data/dev_hires/text data/eval_hires/text | cut -d":" -f2- | sort | cut -d" " -f2- | tr "\n" " " | sed 's/.*/'$speechname' &/' > $dir/scoring_$speechname/test_filt.txt || exit 1
+grep $speechname $data/dev_hires/text $data/eval_hires/text | cut -d":" -f2- | sort | cut -d" " -f2- | tr "\n" " " | sed 's/.*/'$speechname' &/' > $dir/scoring_$speechname/test_filt.txt || exit 1
 
 if [ $stage -le 0 ]; then
 

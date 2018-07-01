@@ -48,8 +48,9 @@ if $rnnlm -o $ngram_rnnlm ; then
 fi
 
 if [ $# -lt 2 ]; then
-  echo "This script transcribes Althingi speeches using the current Althingi ASR,"
-  echo "i.e. a factorized TDNN acoustic model and an ngram language model"
+  echo "This script transcribes Althingi speeches using an Althingi ASR,"
+  echo "i.e. consisting of a factorized TDNN acoustic model and by default an ngram language model,"
+  echo "with the option of rescoring with a RNN language model."
   echo ""
   echo "Usage: $0 [options] <audiofile> <outputdir> [<metadata>]"
   echo " e.g.: $0 audio/radXXX.mp3 output/radXXX"
@@ -71,7 +72,7 @@ extension="${speechname##*.}"
 speechname="${speechname%.*}"
 
 dir=$2
-outdir=$dir/${speechname} # Outdir
+outdir=$dir/${speechname}
 
 wdir=$dir/${speechname}_inprocess # I want to keep intermediate files in case of a crash
 mkdir -p $wdir
@@ -226,10 +227,10 @@ if [ $score = true ] ; then
     echo "Estimate the WER"
     # NOTE! Correct for the mismatch in the beginning and end of recordings.
     local/recognize/score_recognize.sh \
-	--cmd "$train_cmd" $speechname $oldLMdir $rescoredir || exit 1;
+	--cmd "$train_cmd" $speechname $oldLMdir $outdir || exit 1;
 fi
 
 mv -t $outdir/log ${wdir}_segm_hires/decode*/log/*
-#rm -r ${wdir}*
+rm -r ${wdir}*
 
 exit 0

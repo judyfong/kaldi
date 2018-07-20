@@ -68,7 +68,7 @@ echo "Make the text approximately case sensitive"
 
   # Now I need to make a case insensitive matching of these patterns, but replace it with the correct casing.
   # Create a sed command file
-  cat $named_entities $named_entities | sort | awk 'ORS=NR%2?":":"\n"' | sed -re 's/^.*/s:&/' -e 's/$/:gI/g' > $intermediate/ner_sed_pattern.tmp
+  cat $named_entities $named_entities | sort | awk 'ORS=NR%2?":":"\n"' | sed -re 's/^.*/s:\\b&/' -e 's/$/:gI/g' > $intermediate/ner_sed_pattern.tmp
 
   # Fix the casing of known named entities
   /bin/sed -f $intermediate/ner_sed_pattern.tmp $intermediate/texts_CaseSens_fix.tmp > $textout

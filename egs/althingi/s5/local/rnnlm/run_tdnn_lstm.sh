@@ -34,7 +34,6 @@ bundle=latest
 . ./utils/parse_options.sh
 . ./conf/path.conf # Here $data, $exp and $mfcc are defined, default to /mnt/scratch/inga/
 
-text=/data/althingi/text_corpus/LMtext_2004-2018.txt # excluding text in test sets for the acoustic training
 bundle=$root_bundle/$bundle
 langdir=$bundle/lang
 
@@ -46,6 +45,16 @@ if [ $ngram_lm = $bundle/decoding_lang ]; then
 else
   LM=5g  # if using the 5-gram carpa file as old lm
 fi
+
+if [ $# -ne 1 ]; then
+  echo "This script trains a RNN language model and uses it to performe lattice rescoring"
+  echo ""
+  echo "Usage: $0 [options] <text-set>" >&2
+  echo "e.g.: $0 /data/althingi/text_corpora/LMtext_2004-2018.txt" >&2
+  exit 1;
+fi
+
+text=$1 #/data/althingi/text_corpora/LMtext_2004-2018.txt # excluding text in test sets for the acoustic training
 
 data_dir=$data/rnnlm
 dir=$exp/rnnlm_lstm${affix}

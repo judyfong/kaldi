@@ -30,7 +30,7 @@ datadir_2nd_stage=$root_punctuation_datadir/$d/second_stage$id
 mkdir -p $datadir/log $modeldir/log
 $two_stage && mkdir -p $datadir_2nd_stage/log
 
-source activate thenv || error 11 ${error_array[11]};
+source activate $CONDAPATH/thenv || error 11 ${error_array[11]};
 
 if [ $stage -le -1 ]; then
   

@@ -8,11 +8,13 @@ Running the script:
 php local/data_extraction/scrape_althingi_xml_mp3.php /data/althingi/corpus_okt2017/AlthingiUploads/thing132_mp3_xml.txt &
 */
 set_time_limit(0);// allows infinite time execution of the php script itself
-$ifile = $argv[1]; 
+$ifile = $argv[1];
+$audiopath = $argv[2];
+$textpath = $argv[3];
 if ($file_handle = fopen($ifile, "r")) {
     while(!feof($file_handle)) {
         $line = fgets($file_handle);
-        
+
         // Split the line on tabs
         list($rad,$name,$mp3,$text) = preg_split('/\t+/', $line);
         $text = str_replace("\n", '', $text);
@@ -20,7 +22,7 @@ if ($file_handle = fopen($ifile, "r")) {
 
         // Extract the audio
         $ch = curl_init($mp3);
-	    $audio_file_name = '/data/althingi/corpus_jun2018/audio/' . $rad . '.mp3';
+	    $audio_file_name = $audiopath . $rad . '.mp3';
 	    curl_setopt($ch, CURLOPT_HEADER, 0);
         curl_setopt($ch, CURLOPT_NOBODY, 0);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT ,0); 
@@ -28,7 +30,8 @@ if ($file_handle = fopen($ifile, "r")) {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 1);
         //curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 1);
-	    curl_setopt($ch, CURLOPT_USERAGENT, 'HR_Althingi');
+	    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (compatible; Chrome/22.0.1216.0)');
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 	    $output = curl_exec($ch);
 	    if(curl_exec($ch) == false)
         {
@@ -49,13 +52,14 @@ if ($file_handle = fopen($ifile, "r")) {
         
 	    // Extract the text
 	    $ch = curl_init($text);
-	    $text_file_name = '/data/althingi/corpus_jun2018/text_endanlegt/' . $rad . '.xml';
+	    $text_file_name = $textpath . $rad . '.xml';
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT ,0); 
         curl_setopt($ch, CURLOPT_TIMEOUT, 600);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 1);
         //curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 1);
-	    curl_setopt($ch, CURLOPT_USERAGENT, 'HR_Althingi');
+        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (compatible; Chrome/22.0.1216.0)');
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 	    $output = curl_exec($ch);
 	    if(curl_exec($ch) == false)
         {

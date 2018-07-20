@@ -9,7 +9,7 @@ corpusdir=/data/althingi/text_corpus/AlthingiUploads
 srun --nodelist=terra sh -c "php local/data_extraction/scrape_althingi_info.php &> data/althingiUploads/log/scraping_althingi_info.log" &
 
 #Parse the info
-source py3env/bin/activate
+source venv3/bin/activate
 for session in $(seq 120 130); do
     python3 local/data_extraction/parsing_xml_forSGML.py ${datadir}/thing${session}.txt ${datadir}/thing${session}_sgml.txt
     sort -u ${datadir}/thing${session}_sgml.txt > tmp && mv tmp ${datadir}/thing${session}_sgml.txt

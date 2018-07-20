@@ -2,16 +2,20 @@
 
 set -o pipefail
 
-datadir=/data/althingi/data_extraction/althingi_info
-corpusdir=/data/althingi/corpus_Des2016-March2018
+. ./path.sh
+. ./conf/path.conf
+
+# $data is defined in path.conf
+datadir=$data/data_extraction/althingi_info
+corpusdir=/data/althingi/corpus_jun2018
 start=146
 stop=148
 
 # Extract info about the speeches from althingi.is
-srun --nodelist=terra sh -c "php local/data_extraction/scrape_althingi_info.php &> $datadir/log/scraping_althingi_info.log" &
+srun --nodelist=terra sh -c "php local/data_extraction/scrape_althingi_info.php $datadir/thing $start $stop &> $datadir/log/scraping_althingi_info.log" &
 
 #Parse the info
-source py3env/bin/activate
+source venv3/bin/activate
 for session in $(seq $start $stop); do
     if [ $session -gt 146 ]; then
         python local/data_extraction/parsing_xml_new.py ${datadir}/thing${session}.txt ${datadir}/thing${session}_mp3_xml_all.txt
@@ -57,7 +61,7 @@ done
 for session in $(seq $start $stop); do
     # Make sure all the files contain xml files
     awk -F $'\t' 'NF==4{print}{}' ${datadir}/thing${session}_mp3_xml_new.txt > tmp && mv tmp ${datadir}/thing${session}_mp3_xml_new.txt
-    srun --time=0-12 --nodelist=terra sh -c "php local/data_extraction/scrape_althingi_xml_mp3.php ${datadir}/thing${session}_mp3_xml_new.txt &> ${datadir}/log/extraction_thing${session}.log" &
+    srun --time=0-12 --nodelist=terra sh -c "php local/data_extraction/scrape_althingi_xml_mp3.php ${datadir}/thing${session}_mp3_xml_new.txt /data/althingi/corpus_jun2018/audio/ /data/althingi/corpus_jun2018/text_endanlegt/ &> ${datadir}/log/extraction_thing${session}.log" &
 done
 
 # # Since I got almost 12000 errors of the form: <html><body>Það hefur komið upp villa. Reyndu aftur síðar.</body></html>, error status 403, I try fetching them again
@@ -82,4 +86,4 @@ done
 # srun --time=0-12 --nodelist=terra sh -c "php local/data_extraction/scrape_althingi_xml.php /home/staff/inga/kaldi/egs/althingi/s5/data/althingiUploads/only_audio_mp3_xml.txt &> data/althingiUploads/log/extract_xml_to_only_audio.log" &
 
 # Extract the text and put in one file. Each line is utterance ID and the utterance itself
-utils/slurm.pl --time 0-06:00 $corpusdir/extract_text_endanlegt.log python3 local/extract_text.py $corpusdir/text_endanlegt $corpusdir/text_orig_endanlegt.txt &
+# utils/slurm.pl --time 0-06:00 $corpusdir/extract_text_endanlegt.log python3 local/extract_text.py $corpusdir/text_endanlegt $corpusdir/text_orig_endanlegt.txt &

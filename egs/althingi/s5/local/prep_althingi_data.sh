@@ -10,7 +10,7 @@ set -o pipefail
 # NOTE! Talk to Judy about the format of the input before continuing
 
 stage=-1
-nj=10
+nj=24
 
 . ./path.sh # Needed for KALDI_ROOT and ASSET_ROOT
 . ./cmd.sh
@@ -29,7 +29,7 @@ prondict=$(ls -t $root_lexicon/prondict.*.txt | head -n1)
 if [ $# -ne 2 ]; then
   echo "This script cleans Icelandic parliamentary data, as obtained from the parliament."
   echo "It is assumed that the text data provided consists of two sets of files,"
-  echo "the intermediate text and the final text. The texts in cleaned and normalized and"
+  echo "the initial text and the final text. The texts in cleaned and normalized and"
   echo "Kaldi directories are created, containing the following files:"
   echo "utt2spk, spk2utt, wav.scp and text"
   echo ""
@@ -54,10 +54,6 @@ for f in $abbr_acro_as_letters $acronyms_as_words; do
   [ ! -f $f ] && echo "$0: expected $f to exist" && exit 1;
 done
 
-meta=${corpusdir}/metadata.csv
-name_id_file=${corpusdir}/name_id.tsv # created
-if [ -e $name_id_file ]; then rm $name_id_file; fi
-
 audiofile=$(ls ${corpusdir}/audio/ | head -n1)
 extension="${audiofile##*.}"
 
@@ -65,16 +61,6 @@ extension="${audiofile##*.}"
 samplerate=16000
 # SoX converts all audio files to an internal uncompressed format before performing any audio processing
 wav_cmd="sox -t$extension - -c1 -esigned -r$samplerate -G -twav - "
-#wav_cmd="sox -tflac - -c1 -esigned -twav - " # I had also files converted to flac that were already downsampled
-
-# Make a name-id file (remember to remove the carriage return):
-cut -d"," -f1 $meta | sort -u > $tmp/name.tmp
-IFS=$'\n'
-for name in $(cat ${tmp}/name.tmp); do
-  speech=$(grep -m 1 $name $meta | cut -d"," -f6 | tr -d '\r')
-  id=$(perl -ne 'print "$1\n" if /\bskst=\"([^\"]+)/' ${corpusdir}/text_endanlegt/${speech}.xml)
-  echo -e $name'\t'$(echo $id | cut -d" " -f1) >> $name_id_file
-done
 
 if [ $stage -le 0 ]; then
   
@@ -85,11 +71,10 @@ if [ $stage -le 0 ]; then
   done
 
   IFS=$'\n' # Want to separate on new lines
-  for line in $(LC_ALL=C sort ${meta})
+  for file in $(ls ${corpusdir}/audio/*.$extension)
   do
-    filename=$(echo $line | cut -d"," -f6)
-    spkname=$(echo $line | cut -d"," -f1)
-    spkID=$(grep $spkname ${name_id_file} | cut -f2)
+    filename=$(basename $file | cut -d"." -f1)
+    spkID=$(perl -ne 'print "$1\n" if /\bskst=\"([^\"]+)/' ${corpusdir}/text_endanlegt/${filename}.xml | head -n1) # Two ignore the IDs of those that shout something at the speaker
 
     # Print to utt2spk
     printf "%s %s\n" ${spkID}-${filename} ${spkID} | tr -d $'\r' >> ${outdir}/utt2spk
@@ -98,9 +83,13 @@ if [ $stage -le 0 ]; then
     echo -e ${filename} ${spkID}-${filename} | tr -d $'\r' | LC_ALL=C sort -n >> ${outdir}/filename_uttID.txt
     
     #Print to wav.scp
-    echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f ${corpusdir}/audio/${filename}".$extension")" |" | tr -d $'\r' >> ${outdir}/wav.scp
+    echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f $file)" |" | tr -d $'\r' >> ${outdir}/wav.scp
   done
 
+  for f in utt2spk filename_uttID.txt wav.scp; do
+    sort -u $outdir/$f > $tmp/tmp && mv $tmp/tmp $outdir/$f
+  done
+  
   echo "c) spk2utt"
   utils/utt2spk_to_spk2utt.pl < ${outdir}/utt2spk > ${outdir}/spk2utt
 fi
@@ -108,7 +97,7 @@ fi
 if [ $stage -le 1 ]; then
 
   echo "d) text" # Each line is utterance ID and the utterance itself
-  for n in bb endanlegt; do
+  for n in upphaflegt endanlegt; do
     utils/slurm.pl --time 0-06:00 $outdir/log/extract_text_${n}.log python3 local/extract_text.py $corpusdir/text_${n} $outdir/text_orig_${n}.txt &
   done
   
@@ -138,7 +127,7 @@ if [ $stage -le 2 ]; then
       -e 's:/?([0-9]+)/([0-9]+): \1 \2:g' -e 's:([0-9]+)/([A-Z]{2,}):\1 \2:g' -e 's:([0-9])/ ([0-9]):\1 \2:g' \
       -e 's:\([^/<>)]*?/+: :g' -e 's:/[^/<>)]*?\)+/?: :g' -e 's:/+[^/<>)]*?/+: :g' \
       -e 's:xx+::g' \
-      -e 's:<[^<>]*?>: :g' -e 's:[[:space:]]+: :g' <${outdir}/text_orig_bb.txt > ${outdir}/text_noXML_bb.txt	
+      -e 's:<[^<>]*?>: :g' -e 's:[[:space:]]+: :g' <${outdir}/text_orig_upphaflegt.txt > ${outdir}/text_noXML_upphaflegt.txt	
 
   sed -re 's:<!--[^>]*?-->|<truflun>[^<]*?</truflun>|<atburður>[^<]*?</atburður>|<málsheiti>[^<]*?</málsheiti>|<[^>]*?>: :g' \
       -e 's:\([^/()<>]*?\)+: :g' \
@@ -148,11 +137,11 @@ if [ $stage -le 2 ]; then
 
   # Sometimes some of the intermediatary text files are empty.
   # I remove the empty files and add corresponding final-text-files in the end
-  egrep -v "rad[0-9][^ ]+ *$" ${outdir}/text_noXML_bb.txt > $tmp/tmp && mv $tmp/tmp ${outdir}/text_noXML_bb.txt
+  egrep -v "rad[0-9][^ ]+ *$" ${outdir}/text_noXML_upphaflegt.txt > $tmp/tmp && mv $tmp/tmp ${outdir}/text_noXML_upphaflegt.txt
 
-  # Remove files that exist only in the intermediate text
-  comm -12 <(cut -d" " -f1 ${outdir}/text_noXML_bb.txt | sort -u) <(cut -d" " -f1 ${outdir}/text_noXML_endanlegt.txt | sort -u) > ${tmp}/common_ids.tmp
-  join -j1 ${tmp}/common_ids.tmp ${outdir}/text_noXML_bb.txt > $tmp/tmp && mv $tmp/tmp ${outdir}/text_noXML_bb.txt
+  # Remove files that exist only in the initial text
+  comm -12 <(cut -d" " -f1 ${outdir}/text_noXML_upphaflegt.txt | sort -u) <(cut -d" " -f1 ${outdir}/text_noXML_endanlegt.txt | sort -u) > ${tmp}/common_ids.tmp
+  join -j1 ${tmp}/common_ids.tmp ${outdir}/text_noXML_upphaflegt.txt > $tmp/tmp && mv $tmp/tmp ${outdir}/text_noXML_upphaflegt.txt
 
 fi
 
@@ -161,7 +150,7 @@ if [ $stage -le 3 ]; then
   
   echo "Rewrite roman numerals before lowercasing" # Enough to rewrite X,V and I based numbers. L=50 is used once and C, D and M never.
   # Might clash with someones middle name. # The module roman comes from Dive into Python
-  for n in bb endanlegt; do
+  for n in upphaflegt endanlegt; do
     sed -i -r 's/([A-Z]\.?)–([A-Z])/\1 til \2/g' ${outdir}/text_noXML_${n}.txt
     python3 -c "
 import re
@@ -231,7 +220,7 @@ if [ $stage -le 4 ]; then
   # 27) Fix spacing around % and degrees celsius and add space in a number starting with a zero
   # 28) Remove "lauk á fyrri spólu"
   # 29) Remove punctuations that we don't want to learn, map remaining weird words to <unk> and fix spacing
-  for n in bb endanlegt; do
+  for n in upphaflegt endanlegt; do
     sed -re 's:\[[^]]*?\]: :g' \
 	-e 's/([0-9]):([0-9][0-9])/\1 \2/g' \
 	-e 's/&amp;/og/g' \
@@ -270,7 +259,7 @@ fi
 
 if [ $stage -le 5 ]; then
   echo "Expand some abbreviations, incl. 'hv.' and 'þm.' in certain circumstances"
-  for n in bb endanlegt; do
+  for n in upphaflegt endanlegt; do
     # Start with expanding some abbreviations using regex
     sed -re 's:\bamk\b:að minnsta kosti:g' \
 	-e 's:\bdr\b:doktor:g' \
@@ -306,14 +295,14 @@ if [ $stage -le 5 ]; then
 	< ${outdir}/text_noPuncts_${n}.txt > ${outdir}/text_exp1_${n}.txt
   done
 
-  for n in bb endanlegt; do
-    
-    # Capitalize acronyms which are pronounced as words (some are incorrectly written capitalized, e.g. IKEA as Ikea)
-    # Make the regex pattern
-    tr "\n" "|" < $acronyms_as_words | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > ${tmp}/acronyms_as_words_pattern.tmp
+  # Capitalize acronyms which are pronounced as words (some are incorrectly written capitalized, e.g. IKEA as Ikea)
+  # Make the regex pattern
+  tr "\n" "|" < $acronyms_as_words | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > ${tmp}/acronyms_as_words_pattern.tmp
+
+  for n in upphaflegt endanlegt; do
 
     # Capitalize 
-    srun sed -re 's:(\b'$(cat ${tmp}/acronyms_as_words_pattern.tmp)'\b):\U\1:g' -e 's:\b([a-záðéíóúýþæö][A-ZÁÐÉÍÓÚÝÞÆÖ]):\u\1:g' ${outdir}/text_exp1_${n}.txt > ${outdir}/text_exp1_${n}_acroCS.txt
+    srun sed -re 's:(\b'$(cat ${tmp}/acronyms_as_words_pattern.tmp)'\b):\U\1:g' -e 's:\b([a-záðéíóúýþæö][A-ZÁÐÉÍÓÚÝÞÆÖ]+)\b:\u\1:g' ${outdir}/text_exp1_${n}.txt > ${outdir}/text_exp1_${n}_acroCS.txt
     
     # Use Anna's code to expand many instances of hv, þm og hæstv
     python3 local/althingi_replace_plain_text.py ${outdir}/text_exp1_${n}_acroCS.txt ${outdir}/text_exp2_${n}.txt
@@ -323,63 +312,67 @@ if [ $stage -le 5 ]; then
   echo "make a special text version for the punctuation training texts"
   cp ${outdir}/text_exp2_endanlegt.txt ${intermediate}/text_exp2_forPunct.txt
 
-  for n in bb endanlegt; do
-    # Add spaces into acronyms pronounced as letters
-    egrep -o "[A-ZÁÐÉÍÓÚÝÞÆÖ]{2,}\b" ${outdir}/text_exp2_${n}.txt | sort -u > $tmp/acro.tmp
-    egrep "\b[AÁEÉIÍOÓUÚYÝÆÖ]+\b|\b[QWRTPÐSDFGHJKLZXCVBNM]+\b" $tmp/asletters.tmp
-    cat $tmp/asletters.tmp $abbr_acro_as_letters | sort -u > $tmp/asletters_tot.tmp
+  # Add spaces into acronyms pronounced as letters
+  egrep -o "[A-ZÁÐÉÍÓÚÝÞÆÖ]{2,}\b" ${outdir}/text_exp2_{upphaflegt,endanlegt}.txt | cut -d":" -f2 | sort -u > $tmp/acro.tmp
+  egrep "\b[AÁEÉIÍOÓUÚYÝÆÖ]+\b|\b[QWRTPÐSDFGHJKLZXCVBNM]+\b" $tmp/acro.tmp > $tmp/asletters.tmp
+  cat $tmp/asletters.tmp $abbr_acro_as_letters | sort -u > $tmp/asletters_tot.tmp
 
-    # Create a table where the 1st col is the acronym and the 2nd one is the acronym with with spaces between the letters
-    paste <(cat $tmp/asletters_tot.tmp | awk '{ print length, $0 }' | sort -nrs | cut -d" " -f2) <(cat $tmp/asletters_tot.tmp | awk '{ print length, $0 }' | sort -nrs | cut -d" " -f2 | sed -re 's/./\l& /g' -e 's/ +$//') | tr '\t' ' ' | sed -re 's: +: :g' > $tmp/insert_space_into_acro.tmp
-    
-    # Create a sed pattern file: Change the first space to ":"
-    sed -re 's/ /\\b:/' -e 's/^.*/s:\\b&/' -e 's/$/:gI/g' < $tmp/insert_space_into_acro.tmp > $tmp/acro_sed_pattern.tmp
+  # Create a table where the 1st col is the acronym and the 2nd one is the acronym with with spaces between the letters
+  paste <(cat $tmp/asletters_tot.tmp | awk '{ print length, $0 }' | sort -nrs | cut -d" " -f2) <(cat $tmp/asletters_tot.tmp | awk '{ print length, $0 }' | sort -nrs | cut -d" " -f2 | sed -re 's/./\l& /g' -e 's/ +$//') | tr '\t' ' ' | sed -re 's: +: :g' > $tmp/insert_space_into_acro.tmp
+  
+  # Create a sed pattern file: Change the first space to ":"
+  sed -re 's/ /\\b:/' -e 's/^.*/s:\\b&/' -e 's/$/:g/g' < $tmp/insert_space_into_acro.tmp > $tmp/acro_sed_pattern.tmp
+  
+  for n in upphaflegt endanlegt; do
     /bin/sed -f $tmp/acro_sed_pattern.tmp ${outdir}/text_exp2_${n}.txt > ${outdir}/text_exp3_${n}.txt
-
   done
 fi
 
 if [ $stage -le 6 ]; then
-    
-    echo "Fix spelling errors"
-    cut -d" " -f2- ${outdir}/text_exp2_endanlegt.txt | sed -e 's/[0-9\.,%‰°º]//g' | tr " " "\n" | egrep -v "^\s*$" | sort -u > ${outdir}/words_text_endanlegt.txt
-    if [ -f ${outdir}/text_bb_SpellingFixed.txt ]; then
-	rm ${outdir}/text_bb_SpellingFixed.txt
-    fi
-    
-    # Split into subfiles and correct them in parallel
-    mkdir -p ${outdir}/split${nj}/log
-    total_lines=$(wc -l ${outdir}/text_exp2_bb.txt | cut -d" " -f1)
-    ((lines_per_file = (total_lines + num_files - 1) / num_files))
-    split --lines=${lines_per_file} ${outdir}/text_exp2_bb.txt ${outdir}/split${nj}/text_exp2_bb.
+  
+  echo "Fix spelling errors"
+  # Commented out the option to fix words where the edit distance was >1.
+  # Damerau-Levenshtein considers a single transposition to have distance 1.
+  # Much faster and fixes most of the errors
+  cut -d" " -f2- ${outdir}/text_exp3_endanlegt.txt | sed -e 's/[0-9.,:;?!%‰°º]//g' | tr " " "\n" | egrep -v "^\s*$" | sort -u > ${intermediate}/words_text_endanlegt.txt
+  cat ${outdir}/words_text_endanlegt.txt <(cut -f1 $prondict) | sort -u > $intermediate/words_all.txt
+  if [ -f ${outdir}/text_SpellingFixed.txt ]; then
+    rm ${outdir}/text_SpellingFixed.txt
+  fi
+  
+  # Split into subfiles and correct them in parallel
+  mkdir -p ${outdir}/split${nj}/log
+  total_lines=$(wc -l ${outdir}/text_exp3_upphaflegt.txt | cut -d" " -f1)
+  ((lines_per_file = (total_lines + nj - 1) / nj))
+  split --lines=${lines_per_file} ${outdir}/text_exp3_upphaflegt.txt ${outdir}/split${nj}/text_exp3_upphaflegt.
 
-    source py3env/bin/activate
-    IFS=$'\n' # Important
-    for ext in $(ls ${outdir}/split${nj}/text_exp2_bb.* | cut -d"." -f2); do
-        sbatch --get-user-env --time=0-12 --job-name=correct_spelling --output=${outdir}/split${nj}/log/spelling_fixed.${ext}.log --wrap="srun local/correct_spelling.sh --nj=$nj --ext=$ext ${outdir}/words_text_endanlegt.txt $outdir"
-    done
-    deactivate
+  source venv3/bin/activate
+  IFS=$'\n' # Important
+  for ext in $(ls ${outdir}/split${nj}/text_exp3_upphaflegt.* | cut -d"." -f2); do
+    sbatch --get-user-env --time=0-12 --job-name=correct_spelling --output=${outdir}/split${nj}/log/spelling_fixed.${ext}.log --wrap="srun local/correct_spelling.sh --ext $ext $intermediate/words_all.txt ${outdir}/split${nj}/text_exp3_upphaflegt ${outdir}/text_exp3_endanlegt.txt"
+  done
+  deactivate
 
-    cat ${outdir}/split${nj}/text_bb_SpellingFixed.*.txt > ${outdir}/text_bb_SpellingFixed.txt
-        
+  cat ${outdir}/split${nj}/text_SpellingFixed.*.txt > ${outdir}/text_SpellingFixed.txt
+  
 fi
 
 if [ $stage -le 7 ]; then
 
-    # If the intermediate text file is empty or does not exist, use the final one instead
-    egrep "^rad[0-9][^ ]+ *$" ${outdir}/text_bb_SpellingFixed.txt > ${tmp}/empty_text_bb.tmp
-    if [ -s ${tmp}/empty_text_bb.tmp ]; then
-	echo "Empty text_bb files"
-	echo "Insert text from text_endanlegt"
-	for file in $(cat ${tmp}/empty_text_bb.tmp); do
-	    sed -i -r "s#${file}#$(grep $file ${outdir}/text_exp2_endanlegt.txt)#" ${outdir}/text_bb_SpellingFixed.txt
-	done
-    fi
+  # If the initial text file is empty or does not exist, use the final one instead
+  egrep "^rad[0-9][^ ]+ *$" ${outdir}/text_SpellingFixed.txt > ${tmp}/empty_text_upphaflegt.tmp
+  if [ -s ${tmp}/empty_text_upphaflegt.tmp ]; then
+    echo "Empty text_upphaflegt files"
+    echo "Insert text from text_endanlegt"
+    for file in $(cat ${tmp}/empty_text_upphaflegt.tmp); do
+      sed -i -r "s#${file}#$(grep $file ${outdir}/text_exp3_endanlegt.txt)#" ${outdir}/text_SpellingFixed.txt
+    done
+  fi
 
-    # If the intermediate file did not exist at all, I use the final text instead
-    comm -13 <(cut -d" " -f1 ${outdir}/text_bb_SpellingFixed.txt | sort -u) <(cut -d" " -f1 ${outdir}/text_exp2_endanlegt.txt | sort -u) > ${tmp}/ids_only_in_text_endanlegt.tmp
-    join -j1 ${tmp}/ids_only_in_text_endanlegt.tmp ${outdir}/text_exp2_endanlegt.txt >> ${outdir}/text_bb_SpellingFixed.txt
-    sort -u ${outdir}/text_bb_SpellingFixed.txt > $tmp/tmp && mv $tmp/tmp ${outdir}/text_bb_SpellingFixed.txt
+  # If the initial text did not exist at all, I use the final text instead
+  comm -13 <(cut -d" " -f1 ${outdir}/text_SpellingFixed.txt | sort -u) <(cut -d" " -f1 ${outdir}/text_exp3_endanlegt.txt | sort -u) > ${tmp}/ids_only_in_text_endanlegt.tmp
+  join -j1 ${tmp}/ids_only_in_text_endanlegt.tmp ${outdir}/text_exp3_endanlegt.txt >> ${outdir}/text_SpellingFixed.txt
+  sort -u ${outdir}/text_SpellingFixed.txt > $tmp/tmp && mv $tmp/tmp ${outdir}/text_SpellingFixed.txt
 
 fi
 
@@ -404,7 +397,7 @@ if [ $stage -le 8 ]; then
        > ${tmp}/only_lc_prondict.tmp || exit 1;
 
   # Find words in the new text that are not in the pron dict
-  comm -23 <(cut -d' ' -f2- ${outdir}/text_bb_SpellingFixed.txt \
+  comm -23 <(cut -d' ' -f2- ${outdir}/text_SpellingFixed.txt \
     | tr ' ' '\n' | egrep -v '[0-9%‰°º²³,.:;?! ]' \
     | egrep -v "\b$(cat $tmp/abbr_pattern.tmp)\b" | sort -u) \
     <(cut -f1 $prondict | sort -u) | egrep -v "Binary file" \
@@ -425,7 +418,7 @@ if [ $stage -le 8 ]; then
     > $tmp/to_lowercase_pattern.tmp || exit 1;
 
   sed -r 's:(\b'$(cat $tmp/to_lowercase_pattern.tmp)'\b):\l\1:g' \
-      < ${outdir}/text_bb_SpellingFixed.txt > ${intermediate}/text_case1.txt || exit 1;
+      < ${outdir}/text_SpellingFixed.txt > ${intermediate}/text_case1.txt || exit 1;
   
   # Capitalize
   tr "\n" "|" < $intermediate/to_uppercase.tmp \
@@ -433,7 +426,7 @@ if [ $stage -le 8 ]; then
   | sed 's:.*:\L&:' > $tmp/to_uppercase_pattern.tmp || exit 1;
 
   sed -r 's:(\b'$(cat $tmp/to_uppercase_pattern.tmp)'\b):\u\1:g' \
-      < ${intermediate}/text_case1.txt > ${outdir}/text_bb_SpellingFixed_CasingFixed.txt || exit 1;
+      < ${intermediate}/text_case1.txt > ${outdir}/text_SpellingFixed_CasingFixed.txt || exit 1;
 
   # Do the same for the punctuation text
   sed -r 's:(\b'$(cat $tmp/to_lowercase_pattern.tmp)'\b):\l\1:g' \
@@ -446,23 +439,23 @@ if [ $stage -le 8 ]; then
 fi
 
 if [ $stage -le 8 ]; then
-    # Join the utterance names with the spkID to make the uttIDs
-    join -j 1 <(sort -k1,1 ${outdir}/filename_uttID.txt) <(sort -k1,1 ${outdir}/text_bb_SpellingFixed_CasingFixed.txt) | cut -d" " -f2- > ${outdir}/text_bb_uttID.txt
+  # Join the utterance names with the spkID to make the uttIDs
+  join -j 1 <(sort -k1,1 ${outdir}/filename_uttID.txt) <(sort -k1,1 ${outdir}/text_SpellingFixed_CasingFixed.txt) | cut -d" " -f2- > ${outdir}/text_upphaflegt_uttID.txt
 
-    if [ -e ${outdir}/text ] ; then
-	# we don't want to overwrite old stuff, ask the user to delete it.
-	echo "$0: ${outdir}/text already exists: "
-	echo "Are you sure you want to proceed?"
-	echo "It will overwrite the file"
-	echo ""
-        echo "  If so, please delete and then rerun"
-	exit 1;
-    fi
+  if [ -e ${outdir}/text ] ; then
+    # we don't want to overwrite old stuff, ask the user to delete it.
+    echo "$0: ${outdir}/text already exists: "
+    echo "Are you sure you want to proceed?"
+    echo "It will overwrite the file"
+    echo ""
+    echo "  If so, please delete and then rerun"
+    exit 1;
+  fi
 
-    cp ${outdir}/text_bb_uttID.txt ${outdir}/text
-    
-    echo "Make sure all files are created and that everything is sorted"
-    utils/validate_data_dir.sh --no-feats ${outdir} || utils/fix_data_dir.sh ${outdir}
+  cp ${outdir}/text_upphaflegt_uttID.txt ${outdir}/text
+  
+  echo "Make sure all files are created and that everything is sorted"
+  utils/validate_data_dir.sh --no-feats ${outdir} || utils/fix_data_dir.sh ${outdir}
 fi
 
 exit 0

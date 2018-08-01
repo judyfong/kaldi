@@ -64,7 +64,7 @@ GSYMS
 
 # Temporary files
 *.tmp
-tmp
+tmp*
 
 # Punctuator model file
 *.pcl

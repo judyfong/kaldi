@@ -12,4 +12,5 @@ error_array=(
   [11]="Failed to activate virtual environment"
   [12]="Could not calculate prediction errors (error_calculator.py)"
   [13]="Error while applying regular expressions"
+  [14]="Bash command error"
 )

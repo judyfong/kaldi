@@ -39,6 +39,8 @@ timestamp () {
 
 error () {
   local code=$1; shift
+  #local parent_lineno=$1; shift
+  #message "error" "$parent_lineno" "$@" && exit $code
   message "error" "$@" && exit $code
 }
 info () {
@@ -48,9 +50,11 @@ info () {
 message () {
   level=$1; shift
   if [ $level == "error" ]; then
-      msg="$bldred$@$txtrst"
+    #lineno=$1; shift
+    msg="In line: $lineno, $bldred$@$txtrst"
+    msg="$bldred$@$txtrst"
   else
-      msg="$@"
+    msg="$@"
   fi
   echo -e "[$(timestamp)] [$level] $0: $msg" >&2
 }

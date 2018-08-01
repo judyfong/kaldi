@@ -26,25 +26,10 @@ ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-orde
               # exploding exponentially
 pruned_rescore=true
 
-# Which model bundle to use when testing the RNN LN
-bundle=latest
-
 . ./path.sh
 . ./cmd.sh
 . ./utils/parse_options.sh
 . ./conf/path.conf # Here $data, $exp and $mfcc are defined, default to /mnt/scratch/inga/
-
-bundle=$root_bundle/$bundle
-langdir=$bundle/lang
-
-# Used when applying the new rnnlm
-ac_model_dir=$bundle/acoustic_model #$exp/chain/tdnn_lstm_2_sp      #tdnn_sp
-ngram_lm=$bundle/decoding_lang #$(ls -td $root_lm_modeldir/20* | head -n1)
-if [ $ngram_lm = $bundle/decoding_lang ]; then
-  LM=3gsmall # if using the small 3-gram G.fst file as old lm
-else
-  LM=5g  # if using the 5-gram carpa file as old lm
-fi
 
 if [ $# -ne 1 ]; then
   echo "This script trains a RNN language model and uses it to performe lattice rescoring"
@@ -138,32 +123,45 @@ if [ $stage -le 3 ]; then
     --cmd "$decode_cmd --time 2-00" $dir
 fi
 
-# Calculate the lattice-rescoring time
-begin=$(date +%s)
+# # Calculate the lattice-rescoring time
+# begin=$(date +%s)
 
-if [ $stage -le 4 ] && $run_lat_rescore; then
-  echo "$0: Perform lattice-rescoring on $ac_model_dir"
-  pruned=
-  if $pruned_rescore; then
-    pruned=_pruned
-  fi
-  for decode_set in dev eval; do
-    (
-    decode_dir=${ac_model_dir}/decode_${decode_set}_${LM}
+# if [ $stage -le 4 ] && $run_lat_rescore; then
+#   # Used when applying the new rnnlm
+#   lmdir=$(ls -td $root_lm_modeldir/20* | head -n1)
+#   langdir=$lmdir/lang
+#   ngram_lm=$lmdir/lang_3gsmall
+#   ac_model_dir=$(ls -td $exp/chain/tdnn* | head -n1) #$exp/chain/tdnn_lstm_2_sp   #tdnn_sp
 
-    # Lattice rescoring
-    rnnlm/lmrescore$pruned.sh \
-      --cmd "$decode_cmd" \
-      --weight 0.5 --max-ngram-order $ngram_order \
-      $ngram_lm $dir \
-      $data/${decode_set}_hires ${decode_dir} \
-      ${decode_dir}_${decode_dir_suffix}
-    ) &
-  done
-fi
+#   if [ $ngram_lm = $lmdir/lang_3gsmall ]; then
+#     LM=3gsmall # if using the small 3-gram G.fst file as old lm
+#   elif [ $ngram_lm = $lmdir/lang_5g ]; then
+#     LM=5g  # if using the 5-gram carpa file as old lm
+#   fi
 
-end=$(date +%s)
-tottime=$(expr $end - $begin)
-echo "total time: $tottime seconds"
+#   echo "$0: Perform lattice-rescoring on $ac_model_dir"
+  
+#   pruned=
+#   if $pruned_rescore; then
+#     pruned=_pruned
+#   fi
+#   for decode_set in dev eval; do
+#     (
+#     decode_dir=${ac_model_dir}/decode_${decode_set}_${LM}
+
+#     # Lattice rescoring
+#     rnnlm/lmrescore$pruned.sh \
+#       --cmd "$decode_cmd" \
+#       --weight 0.5 --max-ngram-order $ngram_order \
+#       $ngram_lm $dir \
+#       $data/${decode_set}_hires ${decode_dir} \
+#       ${decode_dir}_${decode_dir_suffix}
+#     ) &
+#   done
+# fi
+
+# end=$(date +%s)
+# tottime=$(expr $end - $begin)
+# echo "total time: $tottime seconds"
 
 exit 0

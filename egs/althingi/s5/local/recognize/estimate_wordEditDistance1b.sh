@@ -14,6 +14,9 @@ suffix=
 echo "$0 $@"  # Print the command line for logging
 . ./path.sh
 . ./utils/parse_options.sh
+. ./conf/path.conf
+
+normlistdir=$(ls -td $root_text_norm_listdir/thraxgrammar_lex.* | head -n1)
 
 if [ $# -ne 3 ]; then
     echo "Usage: $0 [options] <textfile1> <textfile2> <output-dir>"
@@ -29,7 +32,7 @@ textfile1=$1
 textfile2=$2
 dir=$3
 mkdir -p $dir
-abbr_list=~/kaldi/egs/althingi/s5/text_norm/lex/abbr_lex_pattern.txt
+abbr_list=$normlistdir/abbr_lex_pattern.txt
 
 base=$(basename "$textfile1")
 base="${base%.*}"

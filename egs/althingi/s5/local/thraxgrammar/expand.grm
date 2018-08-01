@@ -5,7 +5,7 @@
 #
 # This grammar can be interactively tested by doing:
 #
-# thraxrewrite-tester --far=local/expand.far --rules=EXPAND_UTT --noutput=3 --input_mode=utf8 --output_mode=utf8
+# thraxrewrite-tester --far=local/thraxgrammar/expand.far --rules=EXPAND_UTT --noutput=3 --input_mode=utf8 --output_mode=utf8
 
 import 'local/thraxgrammar/common.grm' as c;
 import 'local/thraxgrammar/numbers.grm' as n;

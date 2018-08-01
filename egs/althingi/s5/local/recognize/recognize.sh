@@ -5,7 +5,7 @@
 
 # Decode audio using a LF-MMI tdnn model. Takes in audio + an optional meta file connecting the audiofile name and the speaker. The final transcript is capitalized and contains punctuation. 
 #
-# Usage: $0 <audiofile> [<metadata>]
+# Usage: $0 <audiofile> <outdir> [<metadata>]
 # Example:
 # local/recognize/recognize.sh /data/althingi/corpus_nov2016/audio/rad20160309T151154.flac recognize/chain/ data/local/corpus/metadata.csv &> recognize/chain/log/rad20160309T151154.log
 

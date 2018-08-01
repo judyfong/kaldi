@@ -14,17 +14,23 @@ if [ $# -ne 1 ]; then
     exit 1;
 fi
 
-data=$1
-if [ -f ${data}/wps.txt ]; then
-  rm ${data}/wps.txt
+datadir=$1
+
+tmp=$(mktemp -d)
+cleanup () {
+    rm -rf "$tmp"
+}
+trap cleanup EXIT
+
+if [ -f ${datadir}/wps.txt ]; then
+  rm ${datadir}/wps.txt
 fi
 # Calculate the length of each segment
-awk 'NR >= 1 { $5 = $4 - $3 } 1' < ${data}/segments > segments_diff.tmp
-awk '{print NF-1" "$0}' < ${data}/text  > wordcount.tmp
-join -1 1 -2 2 segments_diff.tmp wordcount.tmp > wc_sec.tmp # Join on uttID
-awk '{ tmp=($6)/($5+0.0001) ; print tmp" "$0 }' wc_sec.tmp > ${data}/wps.txt # How to also round the new column?
-
-rm *.tmp
+awk 'NR >= 1 { $5 = $4 - $3 } 1' < ${datadir}/segments > $tmp/segments_diff.tmp
+awk '{print NF-1" "$0}' < ${datadir}/text  > $tmp/wordcount.tmp
+join -1 1 -2 2 $tmp/segments_diff.tmp $tmp/wordcount.tmp > $tmp/wc_sec.tmp # Join on uttID
+awk '{ wps=($6)/($5+0.0001) ; wps_r=sprintf("%.2f",wps); print wps_r" "$0 }' \
+    < $tmp/wc_sec.tmp > ${datadir}/wps.txt
 
 exit 0
 

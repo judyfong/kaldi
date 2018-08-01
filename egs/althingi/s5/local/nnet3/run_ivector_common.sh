@@ -8,8 +8,6 @@ set -e
 stage=1
 generate_alignments=false # Depends on whether we are doing speech perturbations
 speed_perturb=true
-suffix=
-$speed_perturb && suffix=_sp
 
 # Defined in conf/path.conf, default to /mnt/scratch/inga/{exp,data,mfcc_hires}
 exp=
@@ -31,8 +29,8 @@ if [ ! $# = 4 ]; then
   echo " e.g.: $0 data/train data data/lang tri5"
   echo ""
   echo "Options:"
-  echo "    --speed_perturb         # apply speed perturbations, default: true"
-  echo "    --generate_alignments   # obtain the alignments of the perturbed data"
+  echo "    --speed-perturb         # apply speed perturbations, default: true"
+  echo "    --generate-alignments   # obtain the alignments of the perturbed data"
   exit 1;
 fi
 
@@ -40,6 +38,9 @@ inputdata=$1
 testdatadir=$2
 langdir=$3
 gmm=$4
+
+suffix=
+$speed_perturb && suffix=_sp
 
 # perturbed data preparation
 train_set=$(basename $inputdata)

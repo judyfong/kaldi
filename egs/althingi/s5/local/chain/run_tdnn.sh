@@ -17,9 +17,6 @@ exp=
 data=
 mfccdir=
 
-# # Which model bundle to use
-# bundle=latest
-
 affix=
 dir=$exp/chain/tdnn${affix}
 
@@ -46,15 +43,11 @@ echo "$0 $@"  # Print the command line for logging
 . ./cmd.sh
 . ./utils/parse_options.sh
 
-# # LMs
+# LMs
 lmdir=$(ls -td $root_lm_modeldir/20* | head -n1)
 decoding_lang=$lmdir/lang_3gsmall
 rescoring_lang=$lmdir/lang_5g
 langdir=$lmdir/lang
-# bundle=$root_bundle/$bundle
-# decoding_lang=$bundle/decoding_lang
-# rescoring_lang=$bundle/rescoring_lang
-# langdir=$bundle/lang
 
 if [ ! $# = 2 ]; then
   echo "This script trains a factorized time delay deep neural network"
@@ -70,7 +63,6 @@ if [ ! $# = 2 ]; then
   echo "    --generate-plots <bool>      # generate a report on the training"
   echo "    --calculate-bias <bool>      # estimate the bias by decoding a subset of the training set"
   echo "    --zerogram-decoding <bool>   # check the effect of the LM on the decoding results"
-  #echo "    --bundle <bundle>            # which model bundle to use, default: latest"
   exit 1;
 fi
 

@@ -77,7 +77,7 @@ if [ $stage -le 3 ]; then
   done
 
   # Map words which are not seen in context in numbertexts to <word>
-  source py3env/bin/activate
+  source venv3/bin/activate
   #pip install nltk
   utils/slurm.pl JOB=1:$nj ${dir}/split${nj}/log/save-OOVwords.JOB.log python3 local/save_OOVwords.py ${dir}/split${nj}/cleantext.JOB.txt ${dir}/split${nj}/words_jobJOB_only.tmp ${dir}/split${nj}/cleantext_afterWordMapping.JOB.txt ${dir}/split${nj}/mappedWords_jobJOB.txt
   # I get problems if encounter more than one space between words after the thrax step. Temporary fix is this:

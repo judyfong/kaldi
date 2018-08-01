@@ -65,7 +65,7 @@ if [ $stage -le 1 ]; then
   fi
       
   # Make a word symbol table. Code from prepare_lang.sh
-  cat $expLMbase/wordlist_numbertexts_althingi100.txt $outdir/words_input_text.txt | grep -v "<num>"| LC_ALL=C sort | uniq  | awk '
+  cat $expLMbase/wordlist_numbertexts_althingi100.txt $outdir/words_input_text.txt | egrep -v "<num>|<unk>|<word>"| LC_ALL=C sort | uniq  | awk '
     BEGIN {
       print "<eps> 0";
     }

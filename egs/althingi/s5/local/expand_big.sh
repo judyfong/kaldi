@@ -23,6 +23,10 @@ echo "$0 $@"  # Print the command line for logging
 . local/utils.sh
 . ./conf/path.conf
 
+expLMbase=$root_expansionLM_cs_data
+# Maybe I should rather have these just in the same dir as the input/output text since it is only used for that
+fstnormdir=$(ls -dt $root_text_norm_modeldir/20* | head -n1)
+
 if [ $# != 2 ]; then
   echo "Text normalize training corpora, i.e. expand numbers and abbreviations,"
   echo "using an expansion language model which is adapted to the training corpora."
@@ -34,15 +38,8 @@ fi
 infile=$1
 outfile=$2
 dir=$(dirname $infile);
-mkdir -p ${dir}/{log,split$nj}
-
-#date
-d=$(date +'%Y%m%d')
-expLMbase=$root_expansionLM_cs_data
-# Maybe I should rather have these just in the same dir as the input/output text since it is only used for that
-fstnormdir=$(ls -dt $root_text_norm_modeldir/20* | head -n1)
-expLMout=$fstnormdir/../$d
-mkdir $expLMout  # This has to happen after fstnormdir is defined
+expLM=$dir/expLM
+mkdir -p ${dir}/{log,split$nj,expLM}
 
 for f in $infile $fstnormdir/EXPAND_UTT.fst \
   $expLMbase/{wordlist_numbertexts_althingi100.txt,numbertexts_althingi100.txt.gz}; do
@@ -51,7 +48,7 @@ done
 
 if [ $stage -le 1 ]; then
 
-  utils/slurm.pl ${dir}/log/make_adapted_expansionLM.log local/make_adapted_expansionLM.sh --order $order $infile $fstnormdir $expLMbase $expLMout
+  utils/slurm.pl --mem 12G ${dir}/log/make_adapted_expansionLM.log local/make_adapted_expansionLM.sh --order $order $infile $fstnormdir $expLMbase $expLM
 
 fi
   
@@ -72,13 +69,13 @@ fi
 
 if [ $stage -le 3 ]; then
   echo "Expand"
-  utils/slurm.pl --mem 4G JOB=1:$nj ${dir}/log/expand-numbers.JOB.log expand-numbers --word-symbol-table=${dir}/words.txt ark,t:${dir}/split${nj}/cleantext.JOB.txt ${dir}/expand_to_words.fst ${dir}/expansionLM_${order}g.fst ark,t:${dir}/split${nj}/text_expanded_${order}g.JOB.txt
+  utils/slurm.pl --mem 4G JOB=1:$nj ${dir}/log/expand-numbers.JOB.log expand-numbers --word-symbol-table=${expLM}/words.txt ark,t:${dir}/split${nj}/cleantext.JOB.txt ${expLM}/expand_to_words.fst ${expLM}/expansionLM_${order}g.fst ark,t:${dir}/split${nj}/text_expanded_${order}g.JOB.txt
 fi
 
 if [ $stage -le 4 ]; then
 
   echo "Check if all the speeches were expanded"
-  join -1 1 -2 1 <(egrep "(^[0-9]{10} *$)|(rad[0-9T]+ *$)" ${dir}/split${nj}/text_expanded_${order}g.*.txt | sed 's/ *//g' | sort) <(sort ${dir}/split${nj}/cleantext.*.txt) > ${dir}/split${nj}/text_notexpanded_${order}g.txt
+  join -1 1 -2 1 <(egrep "(^[0-9]{10} *$)|(rad[0-9T]+ *$)" ${dir}/split${nj}/text_expanded_${order}g.*.txt | sed 's/ *//g' | cut -d':' -f2 | sort) <(sort ${dir}/split${nj}/cleantext.*.txt) > ${dir}/split${nj}/text_notexpanded_${order}g.txt
   # Ignore lines which were not expanded
   grep -vF <(cut -d" " -f1 ${dir}/split${nj}/text_notexpanded_${order}g.txt) ${dir}/split${nj}/text_expanded_${order}g.*.txt | cut -d":" -f2- | sort -n > ${dir}/text_expanded_${order}g.txt
   
@@ -113,3 +110,4 @@ if [ $stage -le 5 ]; then
 fi
 
 exit 0;
+

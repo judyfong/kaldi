@@ -18,14 +18,12 @@ exp=
 data=
 mfccdir=
 
-# Which model bundle to use
-bundle=latest
+# GMM to use for alignments
+gmm=tri5
 
-affix=2
-suffix=
-$speed_perturb && suffix=_sp
 
-dir=$exp/chain/tdnn${affix}${suffix}
+affix=_2
+
 decode_iter=
 
 generate_plots=false
@@ -48,10 +46,10 @@ echo "$0 $@"  # Print the command line for logging
 . ./conf/path.conf
 
 # LMs
-bundle=$root_bundle/$bundle
-decoding_lang=$bundle/decoding_lang
-rescoring_lang=$bundle/rescoring_lang
-langdir=$bundle/lang
+lmdir=$(ls -td $root_lm_modeldir/20* | head -n1)
+decoding_lang=$lmdir/lang_3gsmall
+rescoring_lang=$lmdir/lang_5g
+langdir=$lmdir/lang
 
 if [ ! $# = 2 ]; then
   echo "This script trains a factorized time delay deep neural network"
@@ -67,12 +65,15 @@ if [ ! $# = 2 ]; then
   echo "    --generate-plots        # generate a report on the training"
   echo "    --calculate-bias        # estimate the bias by decoding a subset of the training set"
   echo "    --zerogram-decoding     # check the effect of the LM on the decoding results"
-  echo "    --bundle                # which model bundle to use, default: latest"
   exit 1;
 fi
 
 inputdata=$1
 testdatadir=$2
+
+( ! cmp $langdir/words.txt $decoding_lang/words.txt || \
+! cmp $decoding_lang/words.txt $rescoring_lang/words.txt ) && \
+  echo "$0: Warning: vocabularies may be incompatible."
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -86,26 +87,40 @@ fi
 # nnet3 setup, and you can skip them by setting "--stage 8" if you have already
 # run those things.
 
+suffix=
+$speed_perturb && suffix=_sp
+dir=$exp/chain/tdnn${affix}${suffix}
+
+
 train_set=$(basename $inputdata)$suffix
 #train_set=train_okt2017$suffix
-ali_dir=$exp/tri5_ali_${train_set}
-treedir=$exp/chain/tri5_tree$suffix # NOTE!
+ali_dir=$exp/${gmm}_ali_${train_set}
+treedir=$exp/chain/${gmm}_tree$suffix # NOTE!
 lang=$data/lang_chain
+
+
+if [ -f ${ali_dir}/num_jobs ]; then
+  n_alijobs=$(cat ${ali_dir}/num_jobs)
+else
+  n_alijobs=100;
+fi
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
 local/nnet3/run_ivector_common.sh --stage $stage \
   --speed-perturb $speed_perturb \
   --generate-alignments $speed_perturb \
-  $inputdata $testdatadir $langdir || exit 1;
+  $inputdata $testdatadir $langdir $gmm || exit 1;
 
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the CTC training more freedom).
   # use the same num-jobs as the alignments
-  nj=$(cat ${ali_dir}/num_jobs) || exit 1;
-  steps/align_fmllr_lats.sh --nj $nj --cmd "$decode_cmd --time 2-00" $data/$train_set \
-    $langdir $exp/tri5 $exp/tri5_lats$suffix
-  rm $exp/tri5_lats$suffix/fsts.*.gz # save space
+  #nj=$(cat ${ali_dir}/num_jobs) || exit 1; NOTE!
+  steps/align_fmllr_lats.sh \
+    --nj $n_alijobs --cmd "$decode_cmd --time 2-00" \
+    $data/$train_set $langdir \
+    $exp/${gmm} $exp/${gmm}_lats$suffix
+  rm $exp/${gmm}_lats$suffix/fsts.*.gz # save space
 fi
 
 if [ $stage -le 10 ]; then
@@ -200,7 +215,7 @@ if [ $stage -le 13 ]; then
     --egs.chunk-width $frames_per_eg \
     --trainer.num-chunk-per-minibatch 128 \
     --trainer.frames-per-iter 1500000 \
-    --trainer.num-epochs 8 \
+    --trainer.num-epochs 6 \
     --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.001 \
@@ -209,7 +224,7 @@ if [ $stage -le 13 ]; then
     --cleanup.remove-egs $remove_egs \
     --feat-dir $data/${train_set}_hires \
     --tree-dir $treedir \
-    --lat-dir $exp/tri5_lats$suffix \
+    --lat-dir $exp/${gmm}_lats$suffix \
     --dir $dir  || exit 1;
 
 fi
@@ -253,7 +268,7 @@ fi
 if [ $generate_plots = true ]; then
     echo "Generating plots and compiling a latex report on the training"
     steps/nnet3/report/generate_plots.py \
-	--is-chain true $dir $dir/report_tdnn_${affix}$suffix
+	--is-chain true $dir $dir/report_tdnn${affix}$suffix
 fi
 
 if [ $zerogram_decoding = true ]; then

@@ -16,7 +16,7 @@ carpa=true
 if [ $# != 4 ]; then
   echo "This scripts creates language models"
   echo ""
-  echo "Usage: local/make_LM.sh [options] <input-text-file> <data-lang-dir> <language-model-dir>"
+  echo "Usage: local/make_LM.sh [options] <input-text-file> <data-lang-dir> <dict-dir> <language-model-dir>"
   echo "e.g.: local/make_LM.sh data/language_model/LMtext.txt data/lang data/local/dict/lexicon.txt models/language_model/"
   echo ""
   echo "Options:"
@@ -38,7 +38,7 @@ done
 
 suffix=
 affix=
-[ $small ] && suffix=small && pruning="--prune 0 3 5" && affix=_035pruned
+[ $small = true ] && suffix=small && pruning="--prune 0 3 5" && affix=_035pruned
 
 if [ $stage -le 1 ]; then
   # Preparing the language model
@@ -58,7 +58,7 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then
-  if [ $carpa ]; then
+  if [ $carpa = true ]; then
     echo "Build constant ARPA language model"
     utils/build_const_arpa_lm.sh \
       $dir/lang_${order}g${suffix}/kenlm_${order}g${affix}.arpa.gz \

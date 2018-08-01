@@ -62,7 +62,7 @@ cleanup () {
 trap cleanup EXIT
 
 [ ! -d $capitalization_listdir ] && echo "$0: expected $capitalization_listdir to exist" && exit 1;
-for f in $corpus $fstnormdir/ABBREVIATE_forExpansion.fst $prondict $text100 \
+for f in $corpus $fstnormdir/ABBREVIATE_forExpansion.fst $prondict $althingitext \
   $text_norm_lex_dir/{abbr_lexicon.txt,units_lexicon.txt,ordinals_*?_lexicon.txt}; do
   [ ! -f $f ] && echo "$0: expected $f to exist" && exit 1;
 done  
@@ -188,7 +188,7 @@ if [ $stage -le 7 ]; then
   
   # Since the expanded form of some abbreviations did not appear often enough,
   # or at all in the Leipzig texts.
-  comm -23 <(cut -d" " -f2- $text100 | tr " " "\n" | egrep -v "^\s*$" | sort -u) <(sort $wordlist) > $intermediate/vocab_alth_only.txt
+  comm -23 <(cut -d" " -f2- $althingitext | tr " " "\n" | egrep -v "^\s*$" | sort -u) <(sort $wordlist) > $intermediate/vocab_alth_only.txt
   
   cat $wordlist $intermediate/vocab_alth_only.txt > $outdir/wordlist_numbertexts_althingi100.txt
 
@@ -213,9 +213,9 @@ if [ $stage -le 8 ]; then
   echo "Add the expanded and partly manually corrected 100 hours of Althingi speeches"
 
   if [ $lowertext = true ]; then
-    cat $outdirlc/numbertexts_Leipzig_lc.txt <(cut -d" " -f2- $text100) | sed -r 's: +: :g' | gzip > $outdir/numbertexts_althingi100.txt.gz
+    cat $outdirlc/numbertexts_Leipzig_lc.txt <(cut -d" " -f2- $althingitext) | sed -r 's: +: :g' | gzip > $outdir/numbertexts_althingi100.txt.gz
   else
-    cat $outdir/numbertexts_Leipzig_cs.txt <(cut -d" " -f2- $text100) | sed -r 's: +: :g' | gzip > $outdir/numbertexts_althingi100.txt.gz
+    cat $outdir/numbertexts_Leipzig_cs.txt <(cut -d" " -f2- $althingitext) | sed -r 's: +: :g' | gzip > $outdir/numbertexts_althingi100.txt.gz
   fi
 
   # Compress the Leipzig files

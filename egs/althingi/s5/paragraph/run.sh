@@ -18,14 +18,16 @@ d=$(date +'%Y%m%d')
 
 source activate thenv || error 11 ${error_array[11]};
 
-modeldir=$ASSET_ROOT/models/paragraph/${d}
-datadir=$ASSET_ROOT/data/paragraph/${d}
+# The root dirs are defined in conf/path.conf (set in path.sh)
+inputdatadir=$root_intermediate
+modeldir=$root_paragraph_modeldir/${d}
+datadir=$root_paragraph_datadir/${d}
 mkdir -p $datadir/log $modeldir/log
 
 if [ $stage -le -1 ]; then
   
   echo "Clean and preprocess the training data"
-  paragraph/local/prep_data_for_paragraph_model.sh $datadir
+  paragraph/local/prep_data_for_paragraph_model.sh $inputdatadir $datadir || exit 1;
 fi
 
 # Check the number of paragraphs I have
@@ -38,17 +40,26 @@ if [ $stage -le 1 ]; then
   fi
 
   echo "Process data" # I need to do this differently. Otherwise the insertion of paragraphs will be way to slow
-  sbatch --get-user-env --mem 12G --time 0-12:00 --job-name=paragraph_data_stage --output=$datadir/log/data.log --wrap="srun python paragraph/data.py ${datadir}"
+  utils/slurm.pl --mem 12G --time 0-12:00 $datadir/log/data.log \
+		 python paragraph/data.py ${datadir} || exit 1;
 fi
 
 if [ $stage -le 2 ]; then
   echo "Train the model"
-  sbatch --get-user-env --job-name=main_paragraph --output=$datadir/log/main.log --gres=gpu:1 --mem=12G --time=0-10:00 --wrap="srun python paragraph/main.py $modeldir althingi_paragraph 256 0.02"
+  utils/slurm.pl --gpu 1 --mem 12G --time 0-10:00 $datadir/log/main.log \
+		 python paragraph/main.py $modeldir althingi_paragraph 256 0.02 || exit 1;
 fi
 
 if [ $stage -le 3 ]; then
   echo "Insert paragraph tokens into the dev and test sets using the 1st stage model"
-  sbatch --export=datadir=$datadir,modeldir=$modeldir paragraph/local/run_paragrapher.sh
+  for dataset in dev test; do
+    (
+      utils/slurm.pl --mem 4G --time 0-10:00 ${datadir}/log/${dataset}_paragraphed.log \
+		     cat ${datadir}/althingi.$dataset.txt \| THEANO_FLAGS='device=cpu' python paragraph/paragrapher.py $modeldir/Model_althingi_paragraph_h256_lr0.02.pcl ${datadir}/${dataset}_paragraphed.txt || exit 1;
+    ) &
+  done
+  wait
+  #sbatch --export=datadir=$datadir,modeldir=$modeldir paragraph/local/run_paragrapher.sh
 fi
 
 if [ $stage -le 4 ]; then

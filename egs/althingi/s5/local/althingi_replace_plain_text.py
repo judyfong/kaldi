@@ -93,7 +93,7 @@ for line in in_file:
                 matched_line = ' '.join(t)
                 text = replace(text, matched_line, "nefndar")
 
-        result_lines.append(text)               
+        result_lines.append(text)
 
 in_file.close()
 

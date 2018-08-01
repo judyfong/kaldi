@@ -101,10 +101,11 @@ málsl	málslið
 málsl	málsliður
 mgr	málsgrein
 mgr	málsgreinar
-millj	milljón
-millj	milljóna
-millj	milljónir
-millj	milljónum
+millj kr	milljón króna
+millj kr	milljónar króna
+millj kr	milljóna króna
+millj kr	milljónir króna
+millj kr	milljónum króna
 mw	megavatt
 mw	megavatta
 mw	megavatti

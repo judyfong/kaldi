@@ -90,6 +90,7 @@ tmp
 /egs/*/s*/text_norm/*
 /egs/*/s*/recognize/*
 /egs/*/s*/py3env
+/egs/*/s*/venv3
 /egs/*/s*/q
 /egs/*/s*/Makefile
 /egs/*/s*/punctuator/example

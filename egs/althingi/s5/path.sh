@@ -13,5 +13,5 @@ export CONDAPATH=$ASSET_ROOT/miniconda2/bin
 # export CPATH=$CPATH:~/.local/include:~/kaldi/tools/openfst/include
 # export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/.local/lib64/:~/.local/lib:~/kaldi/tools/openfst/lib:/usr/local/lib
 
-# Activate all althingi specific paths
+# Activate all althingi specific paths as well as exp, data and mfcc on scratch
 . ./conf/path.conf

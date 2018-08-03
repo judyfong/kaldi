@@ -50,6 +50,7 @@ Leipzig_corpus=$root_leipzig_corpus/isl_sentences_10M.txt
 
 # Intermediate data dir. I will have it on scratch to begin with at least
 outdir=$data/all_$d  #$root_intermediate/all_$d
+all_intermediate=$root_intermediate
 
 # Dir with a subdir, base, containing expansionLM models,
 # dirs, named after the date, containing Thrax grammar FSTs.
@@ -80,10 +81,11 @@ rnnlm_datadir=$root_lm_datadir/rnn/$d
 # Existing language model training data
 lm_trainingset=$root_lm_datadir/training/LMtext_2004-March2018.txt
 
-# Directories for punctuation, language and acoustic models, respectively
+# Directories for punctuation, language and acoustic models
 punct_modeldir=$root_punctuation_modeldir/$d
 lm_modeldir=$root_lm_modeldir/$d
 am_modeldir=$root_am_modeldir/$d
+rnnlm_modeldir=$root_rnnlm/$d
 
 # Temporary dir used when creating data/lang dirs in local/prep_lang.sh
 localdict=$root_localdict # Byproduct of local/prep_lang.sh
@@ -140,11 +142,12 @@ if [ $stage -le 2 ]; then
   echo "Create a Kaldi dir for the data, do initial text normalization,"
   echo "fix spelling errors and casing in the text"
   mkdir -p $outdir/log
-  utils/slurm.pl --mem 4G $outdir/log/prep_althingi_data.log local/prep_althingi_data.sh ${corpusdir} ${outdir} ${outdir}/text_prepared
+  utils/slurm.pl --mem 4G $outdir/log/prep_althingi_data.log \
+		 local/prep_althingi_data.sh ${corpusdir} ${outdir} ${outdir}/text_PunctuationTraining.txt ${outdir}/text_prepared
 
-  # prep_althingi_data.sh returns an additional text, which is fit for punctuation model preprocessing
-  mkdir -p $punct_datadir/first_stage
-  cut -d' ' -f2- ${outdir}/text_PunctuationTraining.txt > $punct_datadir/first_stage/althingi_text_before_preprocess.txt
+  # # prep_althingi_data.sh returns an additional text, which is fit for punctuation model preprocessing
+  # mkdir -p $punct_datadir/first_stage
+  # cut -d' ' -f2- ${outdir}/text_PunctuationTraining.txt > $punct_datadir/first_stage/althingi_text_before_preprocess.txt
 fi
 
 if [ $stage -le 3 ]; then
@@ -171,17 +174,24 @@ if [ $stage -le 4 ]; then
   echo "Expand numbers and abbreviations"
   utils/slurm.pl $outdir/log/expand_big.log local/expand_big.sh ${outdir}/text_prepared ${outdir}/text_expanded || error 1 "Expansion failed";
   # Sometimes the "og" in e.g. "hundrað og sextíu" is missing
-  perl -pe 's/(hundr[au]ð) ([^ ]+tíu|tuttugu) (?!og)/$1 og $2 $3/g' ${outdir}/text_expanded > $tmp/tmp && mv $tmp/tmp ${outdir}/text_expanded
+  perl -pe 's/(hundr[au]ð) ([^ ]+tíu|tuttugu) (?!og)/$1 og $2 $3/g' \
+       < ${outdir}/text_expanded > $tmp/tmp && mv $tmp/tmp ${outdir}/text_expanded
   
   # NOTE! The ${outdir}/text_expanded utterances fit for use in the stage 2 punctuation training
   
   echo "Make a language model training text from the expanded text"
   # NOTE! I remove 2016 data since that I have in my ASR test sets
   # Need to adapt this to other sets
-  egrep -v "rad2016" $outdir/text_expanded | cut -d' ' -f2- | sed -re 's:[.:?!]+ *$::g' -e 's:[.:?!]+ :\n:g' -e 's:[^A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö \n]::g' -e 's: +: :g' > $lm_datadir/text_$(basename $outdir).txt || exit 1;
+  egrep -v "rad2016" $outdir/text_expanded \
+    | cut -d' ' -f2- \
+    | sed -re 's:[.:?!]+ *$::g' -e 's:[.:?!]+ :\n:g' \
+	  -e 's:[^A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö \n]::g' \
+	  -e 's: +: :g' \
+	  > $lm_datadir/text_$(basename $outdir).txt || exit 1;
 
   echo "Remove punctuations to make the text better fit for acoustic modelling"
-  sed -re 's: [^A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö ] : :g' -e 's: +: :g' ${outdir}/text_expanded > ${outdir}/text || exit 1;
+  sed -re 's: [^A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö ] : :g' -e 's: +: :g' \
+      < ${outdir}/text_expanded > ${outdir}/text || exit 1;
   
   echo "Validate the data dir"
   utils/validate_data_dir.sh --no-feats ${outdir} || utils/fix_data_dir.sh ${outdir}
@@ -225,10 +235,10 @@ if [ $stage -le 4 ]; then
   local/filter_segments.sh ${outdir}_reseg ${outdir}_reseg_filtered
 
   # Copy the "$outdir" directory to the home drive to save for possible later uses
-  if [ ! -d $root_intermediate/all_$(basename $outdir) ]; then
-    cp $outdir $root_intermediate/all_$(basename $outdir)
+  if [ ! -d $all_intermediate/$(basename $outdir) ]; then
+    cp $outdir $all_intermediate/$(basename $outdir)
   else
-    echo "$root_intermediate/all_$(basename $outdir) already exists"
+    echo "$all_intermediate/$(basename $outdir) already exists"
     exit 1;
   fi
   
@@ -282,6 +292,15 @@ if [ $stage -le 6 ]; then
   for dir in train dev eval; do
     ln -s $data/$dir $am_datadir/$dir
   done
+
+  # I will keep the intermediate data in my data structure since that will not be used more in
+  # this training but might come in handy later
+  if [ ! -d $all_intermediate/segmented/$(basename $outdir)_reseg_filtered ]; then
+    mv ${outdir}_reseg_filtered $all_intermediate/segmented
+  else
+    echo "$all_intermediate/segmented/$(basename $outdir)_reseg_filtered already exists"
+    exit 1;
+  fi
 
   # NOTE! I removed later utterances that were both in train and dev_eval, from train if
   # the same speaker said both
@@ -367,7 +386,7 @@ if [ $stage -le 9 ]; then
   echo "Align and train on the segmented data"
   # Now there is no need to start from mono training since we already got a good recognizer.
   steps/align_fmllr.sh \
-    --nj 100 --cmd "$train_cmd --time 1-00" \
+    --nj 100 --cmd "$train_cmd --time 4-00" \
     $data/train $lm_modeldir/lang $exp/tri4 $exp/tri4_ali || exit 1;
 
   echo "Train SAT"
@@ -411,12 +430,12 @@ if [ $stage -le 11 ]; then
 
   # echo "Run the swbd chain tdnn recipe without sp on all my training data. Bigger model"
   affix=_2
-  logdir=$root_chain/$(cat $KALDI_ROOT/src/.version)/$d/tdnn${affix}/log
+  logdir=$root_chain/$(cat $KALDI_ROOT/src/.version)/$d/tdnn${affix}.log
   mkdir -p $logdir
   nohup local/chain/tuning/run_tdnn${affix}.sh --stage 9 --speed-perturb false --generate-plots true --zerogram-decoding true $data/train_okt2017 data >>$logdir/tdnn2_july28.log 2>&1 &
   wait
 
-  # Save in my structure
+  # Save in my file structure
   cp -r -L -t $root_am_modeldir/extractor/$d $exp/nnet3/extractor/*
   cp -r -t $root_chain/$(cat $KALDI_ROOT/src/.version)/$d/tdnn${affix} cmvn_opts final.*  frame_subsampling_factor graph_3gsmall/ tree
 
@@ -427,13 +446,14 @@ if [ $stage -le 12 ]; then
   # Train and rescore with an RNN LM
   # Now the training text is LMtext_2004-March2018.txt. Updated if a newer big one is created.
   # Small texts fitting for language modelling are not in the training dir but in dirs marked with the creation date
-  local/rnnlm/run_tdnn_lstm.sh --run-lat-rescore false $(ls -t $root_lm_datadir/training/ | head -n1) >>rnnlm_tdnn_lstm.log 2>&1 &
+  mkdir -p $rnnlm_modeldir/log
+  local/rnnlm/run_tdnn_lstm.sh --run-lat-rescore false $(ls -t $root_lm_datadir/training/ | head -n1) >>$rnnlm_modeldir/log/rnnlm_tdnn_lstm.log 2>&1 &
   wait
 
   # Save in my structure
   affix=_1e
-  cp -L -t $root_rnnlm/$d $exp/rnnlm_lstm${affix}/{final.raw,feat_embedding.final.mat,special_symbol_opts.txt,word_feats.txt,config/words.txt}
-  [ -f $exp/rnnlm_lstm${affix}/word_embedding.final.mat ] && cp -L $exp/rnnlm_lstm${affix}/word_embedding.final.mat $root_rnnlm/$d
+  cp -r -L -t $rnnlm_modeldir $exp/rnnlm_lstm${affix}/{final.raw,feat_embedding.final.mat,special_symbol_opts.txt,word_feats.txt,config}
+  [ -f $exp/rnnlm_lstm${affix}/word_embedding.final.mat ] && cp -L $exp/rnnlm_lstm${affix}/word_embedding.final.mat $rnnlm_modeldir
 fi
 
 # If I intend to use the ASR from transcribing speeches and apply post-processing I need to train the punctuation model

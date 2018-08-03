@@ -65,7 +65,7 @@ if [ "$speed_perturb" == "true" ]; then
 
   if [ $stage -le 2 ] && [ "$generate_alignments" == "true" ]; then
     #obtain the alignment of the perturbed data
-    steps/align_fmllr.sh --nj 100 --cmd "$train_cmd --time 2-12" \
+    steps/align_fmllr.sh --nj 100 --cmd "$train_cmd --time 3-00" \
       $data/${train_set}${suffix} $langdir $gmm_dir $ali_dir || exit 1
   fi
   train_set=${train_set}${suffix}

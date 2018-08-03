@@ -9,6 +9,7 @@ set -e
 
 # configs for 'chain'
 stage=0
+align_stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=false
@@ -20,7 +21,7 @@ mfccdir=
 
 # GMM to use for alignments
 gmm=tri5
-
+generate_ali_from_lats=false
 
 affix=_2
 
@@ -91,19 +92,11 @@ suffix=
 $speed_perturb && suffix=_sp
 dir=$exp/chain/tdnn${affix}${suffix}
 
-
 train_set=$(basename $inputdata)$suffix
 #train_set=train_okt2017$suffix
 ali_dir=$exp/${gmm}_ali_${train_set}
 treedir=$exp/chain/${gmm}_tree$suffix # NOTE!
 lang=$data/lang_chain
-
-
-if [ -f ${ali_dir}/num_jobs ]; then
-  n_alijobs=$(cat ${ali_dir}/num_jobs)
-else
-  n_alijobs=100;
-fi
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
@@ -112,12 +105,24 @@ local/nnet3/run_ivector_common.sh --stage $stage \
   --generate-alignments $speed_perturb \
   $inputdata $testdatadir $langdir $gmm || exit 1;
 
+# See if regular alignments already exist
+if [ -f ${ali_dir}/num_jobs ]; then
+  n_alijobs=$(cat ${ali_dir}/num_jobs)
+else
+  n_alijobs=`cat $data/${train_set}/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+  generate_ali_from_lats=true
+  ali_dir=$exp/${gmm}_lats$suffix
+fi
+  
 if [ $stage -le 9 ]; then
+ 
   # Get the alignments as lattices (gives the CTC training more freedom).
   # use the same num-jobs as the alignments
   #nj=$(cat ${ali_dir}/num_jobs) || exit 1; NOTE!
   steps/align_fmllr_lats.sh \
-    --nj $n_alijobs --cmd "$decode_cmd --time 2-00" \
+    --nj $n_alijobs --stage $align_stage \
+    --cmd "$decode_cmd --time 4-00" \
+    --generate-ali-from-lats $generate_ali_from_lats \
     $data/$train_set $langdir \
     $exp/${gmm} $exp/${gmm}_lats$suffix
   rm $exp/${gmm}_lats$suffix/fsts.*.gz # save space
@@ -140,7 +145,7 @@ if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
-      --cmd "$train_cmd --time 2-00" 11000 $data/$train_set $lang $ali_dir $treedir
+      --cmd "$train_cmd --time 4-00" 11000 $data/$train_set $lang $ali_dir $treedir
 fi
 
 
@@ -201,7 +206,7 @@ if [ $stage -le 13 ]; then
 
 
   steps/nnet3/chain/train.py --stage $train_stage \
-    --cmd "$train_cmd --time 3-12" \
+    --cmd "$train_cmd --time 6-00" \
     --feat.online-ivector-dir $exp/nnet3/ivectors_${train_set} \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \

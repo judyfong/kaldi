@@ -8,6 +8,7 @@ set -e
 
 # configs for 'chain'
 stage=0
+align_stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
@@ -17,11 +18,11 @@ exp=
 data=
 mfccdir=
 
-affix=
-dir=$exp/chain/tdnn${affix}
-
 # GMM to use for alignments
 gmm=tri5
+generate_ali_from_lats=false
+
+affix=
 
 decode_iter=
 
@@ -57,8 +58,9 @@ if [ ! $# = 2 ]; then
   echo " e.g.: $0 data/train data"
   echo ""
   echo "Options:"
-  echo "    --speed_perturb <bool>       # apply speed perturbations, default: true"
-  echo "    --affix <affix>              # idendifier for the model, e.g. _1b"
+  echo "    --speed-perturb <bool>           # apply speed perturbations, default: true"
+  echo "    --generate-ali-from-lats <bool>  # ali.*.gz is generated in lats dir, default: false"
+  echo "    --affix <affix>                  # idendifier for the model, e.g. _1b"
   echo "    --decode-iter <iter>         # iteration of model to test"
   echo "    --generate-plots <bool>      # generate a report on the training"
   echo "    --calculate-bias <bool>      # estimate the bias by decoding a subset of the training set"
@@ -68,6 +70,10 @@ fi
 
 inputdata=$1
 testdatadir=$2
+
+( ! cmp $langdir/words.txt $decoding_lang/words.txt || \
+! cmp $decoding_lang/words.txt $rescoring_lang/words.txt ) && \
+  echo "$0: Warning: vocabularies may be incompatible."
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -81,8 +87,9 @@ fi
 # nnet3 setup, and you can skip them by setting "--stage 8" if you have already
 # run those things.
 
+suffix=
 $speed_perturb && suffix=_sp
-dir=${dir}${suffix}
+dir=$exp/chain/tdnn${affix}${suffix}
 
 train_set=$(basename $inputdata)$suffix
 #train_set=train_okt2017_fourth$suffix
@@ -97,12 +104,25 @@ local/nnet3/run_ivector_common.sh --stage $stage \
   --generate-alignments $speed_perturb \
   $inputdata $testdatadir $langdir $gmm || exit 1;
 
+# See if regular alignments already exist
+if [ -f ${ali_dir}/num_jobs ]; then
+  n_alijobs=$(cat ${ali_dir}/num_jobs)
+else
+  n_alijobs=`cat $data/${train_set}/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+  generate_ali_from_lats=true
+  ali_dir=$exp/${gmm}_lats$suffix
+fi
+
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the CTC training more freedom).
   # use the same num-jobs as the alignments
-  nj=$(cat ${ali_dir}/num_jobs) || exit 1;
-  steps/align_fmllr_lats.sh --nj $nj --cmd "$decode_cmd --time 2-00" $data/$train_set \
-    $langdir $exp/${gmm} $exp/${gmm}_lats$suffix
+  #nj=$(cat ${ali_dir}/num_jobs) || exit 1;
+  steps/align_fmllr_lats.sh \
+    --nj $n_alijobs --stage $align_stage \
+    --cmd "$decode_cmd --time 4-00" \
+    --generate-ali-from-lats $generate_ali_from_lats \
+    $data/$train_set $langdir \
+    $exp/${gmm} $exp/${gmm}_lats$suffix
   rm $exp/${gmm}_lats$suffix/fsts.*.gz # save space
 fi
 
@@ -123,7 +143,7 @@ if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
-      --cmd "$train_cmd --time 2-00" 11000 $data/$train_set $lang $ali_dir $treedir
+      --cmd "$train_cmd --time 4-00" 11000 $data/$train_set $lang $ali_dir $treedir
 fi
 
 

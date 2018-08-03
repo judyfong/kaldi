@@ -14,6 +14,7 @@ set -e
 
 # configs for 'chain'
 stage=0
+align_stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
@@ -24,10 +25,10 @@ data=
 mfccdir=
 
 affix=_2  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
-dir=${exp}/chain/tdnn_lstm${affix} # Note: _sp will get added to this if $speed_perturb == true.
 
 # GMM to use for alignments
 gmm=tri5
+generate_ali_from_lats=false
 
 decode_iter=
 generate_plots=false # Generate plots showing how parameters were updated throughout training and log-probability changes
@@ -82,17 +83,21 @@ if [ ! $# = 2 ]; then
   echo ""
   echo "Options:"
   echo "    --speed_perturb <bool>       # apply speed perturbations, default: true"
+  echo "    --generate-ali-from-lats <bool> # ali.*.gz is generated in lats dir, default: false"
   echo "    --affix <affix>              # idendifier for the model, e.g. _1b"
   echo "    --decode-iter <iter>         # iteration of model to test"
   echo "    --generate-plots <bool>      # generate a report on the training"
   echo "    --calculate-bias <bool>      # estimate the bias by decoding a subset of the training set"
   echo "    --zerogram-decoding <bool>   # check the effect of the LM on the decoding results"
-  #echo "    --bundle <bundle>            # which model bundle to use, default: latest"
   exit 1;
 fi
 
 inputdata=$1
 testdatadir=$2
+
+( ! cmp $langdir/words.txt $decoding_lang/words.txt || \
+! cmp $decoding_lang/words.txt $rescoring_lang/words.txt ) && \
+  echo "$0: Warning: vocabularies may be incompatible."
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -107,11 +112,9 @@ fi
 # run those things.
 
 suffix=
-if [ "$speed_perturb" == "true" ]; then
-  suffix=_sp
-fi
+$speed_perturb && suffix=_sp
+dir=${exp}/chain/tdnn_lstm${affix}${suffix}
 
-dir=${dir}$suffix
 train_set=$(basename $inputdata)$suffix
 ali_dir=${exp}/${gmm}_ali_${train_set} #exp/tri4_cs_ali$suffix
 treedir=${exp}/chain/${gmm}_tree$suffix # NOTE!
@@ -125,12 +128,25 @@ local/nnet3/run_ivector_common.sh --stage $stage \
   --generate-alignments $speed_perturb \
   $inputdata $testdatadir $langdir $gmm || exit 1;
 
+# See if regular alignments already exist
+if [ -f ${ali_dir}/num_jobs ]; then
+  n_alijobs=$(cat ${ali_dir}/num_jobs)
+else
+  n_alijobs=`cat $data/${train_set}/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+  generate_ali_from_lats=true
+  ali_dir=$exp/${gmm}_lats$suffix
+fi
+
 if [ $stage -le 11 ]; then
   # Get the alignments as lattices (gives the CTC training more freedom).
   # use the same num-jobs as the alignments
-  nj=$(cat ${ali_dir}/num_jobs) || exit 1;
-  steps/align_fmllr_lats.sh --nj $nj --cmd "$decode_cmd --time 2-00" $data/$train_set \
-    $langdir $exp/${gmm} $exp/${gmm}_lats$suffix
+  #nj=$(cat ${ali_dir}/num_jobs) || exit 1;
+  steps/align_fmllr_lats.sh \
+    --nj $n_alijobs --stage $align_stage \
+    --cmd "$decode_cmd --time 4-00" \
+    --generate-ali-from-lats $generate_ali_from_lats \
+    $data/$train_set $langdir \
+    $exp/${gmm} $exp/${gmm}_lats$suffix
   rm ${exp}/${gmm}_lats$suffix/fsts.*.gz # save space
 fi
 

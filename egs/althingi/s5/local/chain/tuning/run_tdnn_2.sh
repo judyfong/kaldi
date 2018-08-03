@@ -32,7 +32,6 @@ calculate_bias=false
 zerogram_decoding=false
 
 # training options
-leftmost_questions_truncate=-1
 frames_per_eg=150,110,100
 remove_egs=false
 common_egs_dir=
@@ -60,12 +59,13 @@ if [ ! $# = 2 ]; then
   echo " e.g.: $0 data/train data"
   echo ""
   echo "Options:"
-  echo "    --speed_perturb         # apply speed perturbations, default: true"
-  echo "    --affix <affix>         # idendifier for the model, e.g. _1b"
-  echo "    --decode-iter <iter>    # iteration of model to test"
-  echo "    --generate-plots        # generate a report on the training"
-  echo "    --calculate-bias        # estimate the bias by decoding a subset of the training set"
-  echo "    --zerogram-decoding     # check the effect of the LM on the decoding results"
+  echo "    --speed_perturb <bool>          # apply speed perturbations, default: true"
+  echo "    --generate-ali-from-lats <bool> # ali.*.gz is generated in lats dir, default: false"
+  echo "    --affix <affix>                 # idendifier for the model, e.g. _1b"
+  echo "    --decode-iter <iter>            # iteration of model to test"
+  echo "    --generate-plots <bool>     # generate a report on the training"
+  echo "    --calculate-bias <bool>     # estimate the bias by decoding a subset of the training set"
+  echo "    --zerogram-decoding <bool>  # check the effect of the LM on the decoding results"
   exit 1;
 fi
 
@@ -118,7 +118,7 @@ if [ $stage -le 9 ]; then
  
   # Get the alignments as lattices (gives the CTC training more freedom).
   # use the same num-jobs as the alignments
-  #nj=$(cat ${ali_dir}/num_jobs) || exit 1; NOTE!
+  #nj=$(cat ${ali_dir}/num_jobs) || exit 1;
   steps/align_fmllr_lats.sh \
     --nj $n_alijobs --stage $align_stage \
     --cmd "$decode_cmd --time 4-00" \
@@ -145,7 +145,7 @@ if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
-      --cmd "$train_cmd --time 4-00" 11000 $data/$train_set $lang $ali_dir $treedir
+      --cmd "$train_cmd --time 3-00" 11000 $data/$train_set $lang $ali_dir $treedir
 fi
 
 

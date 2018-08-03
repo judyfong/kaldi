@@ -30,17 +30,35 @@ datadir_2nd_stage=$root_punctuation_datadir/$d/second_stage$id
 mkdir -p $datadir/log $modeldir/log
 $two_stage && mkdir -p $datadir_2nd_stage/log
 
+# NOTE! Review! This is what I used for my test:
+# Input data for 2nd stage training
+input_2nd_stage=$root_intermediate/all_sept2017
+ali_dir=$exp/tri4_ali
+
 source activate thenv || error 11 ${error_array[11]};
 
 if [ $stage -le -1 ]; then
 
-  # NOTE! Now I've changed such that data ready for punctuation preprocessing
-  # is created in prep_althingi_data.sh. So update!
-  echo "Clean and preprocess the training data"
+  # # NOTE! Now I've changed such that data ready for punctuation preprocessing
+  # # is created in prep_althingi_data.sh. So update!
+  # echo "Clean and preprocess the training data"
+  # utils/slurm.pl $datadir/log/prep_punct_data.log \
+  #   punctuator/local/prep_punct_data.sh \
+  #   --id $id --ignore-commas $ignore_commas \
+  #   $cleaned $datadir $datadir_2nd_stage || exit 1;
+
+  # The following will use data as it is prepared by the new prep_althingi_data.sh
   utils/slurm.pl $datadir/log/prep_punct_data.log \
-    punctuator/local/prep_punct_data.sh \
+    punctuator/local/prep_punct_data2.sh \
     --id $id --ignore-commas $ignore_commas \
-    $cleaned $datadir $datadir_2nd_stage || exit 1;
+    text_PunctuationTraining.txt $datadir || exit 1;
+
+  # Scripts called by this one have not been reviewed. I have not used the
+  # 2nd stage data so far exept in one test.
+  utils/slurm.pl --mem 8G --time 2-00 $datadir/log/prep_punct_data_2nd_stage.log \
+    punctuator/local/prep_punct_data_2nd_stage.sh \
+    --id $id --ignore-commas $ignore_commas \
+    $input_2nd_stage $ali_dir $datadir_2nd_stage || exit 1;
 fi
 
 if [ $stage -le 1 ]; then

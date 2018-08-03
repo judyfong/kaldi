@@ -2,42 +2,58 @@
 
 # Train a g2p model based on the Althingi projects pron dict, excluding foreign words. See: https://github.com/sequitur-g2p/sequitur-g2p
 
-. ./path.sh
-
-dictdir=~/data/althingi/pronDict_LM
-# Remove non-Icelandic words
-#comm -13 <(sort ${dictdir}/erlend_ord_wtrans.txt | uniq) <(sort ${dictdir}/CaseSensitive_pron_dict_Fix16.txt | uniq) > ${dictdir}/g2p_pron_dict_Fix16.txt
-modeldir=data/local/g2p
-id=_jan18
-
 n=4 # Number of training iterations
 
+. ./path.sh
+. utils/parse_options.sh
+
+#date
+d=$(date +'%Y%m%d')
+
+dictdir=$root_lexicon
+prondict=$(ls -t $dictdir/prondict.*.txt | head -n1)
+foreign=$(ls -t $dictdir/foreign_wtrans.*.txt | head -n1)
+modeldir=$root_g2p/$d #data/local/g2p
+intermediate=$modeldir/intermediate
+mkdir -p $modeldir/log $intermediate
+
+tmp=$(mktemp -d)
+cleanup () {
+    rm -rf "$tmp"
+}
+trap cleanup EXIT
+
+# Remove foreign words
+comm -23 <(sort -u $prondict) <(sort -u $foreign) > $tmp/g2p_all.txt || exit 1;
+
 # 1) Make a train and a test lex
-#    Randomly select 50 words for a test set
-sort -R ${dictdir}/g2p_pron_dict_Fix16.txt > ${dictdir}/shuffled_prondict.tmp
-head -n 200 ${dictdir}/shuffled_prondict.tmp | sort > ${dictdir}/g2p_test${id}.txt
-tail -n +201 ${dictdir}/shuffled_prondict.tmp | sort > ${dictdir}/g2p_train${id}.txt
-rm ${dictdir}/shuffled_prondict.tmp
+#    Randomly select 200 words for a test set
+sort -R $tmp/g2p_all.txt > ${tmp}/shuffled_prondict.tmp
+head -n 200 ${tmp}/shuffled_prondict.tmp | sort > ${dictdir}/g2p_test.${d}.txt
+tail -n +201 ${tmp}/shuffled_prondict.tmp | sort > ${dictdir}/g2p_train.${d}.txt
 
 # 2) Train a model
 #    Train the first model, will be rather poor because it is only a unigram
-utils/slurm.pl --mem 4G ${modeldir}/g2p_1${id}.log g2p.py --train ${dictdir}/g2p_train${id}.txt --devel 5% --encoding="UTF-8" --write-model ${modeldir}/g2p_1${id}.mdl
+utils/slurm.pl --mem 4G ${modeldir}/log/g2p_1.${d}.log g2p.py --train ${dictdir}/g2p_train.${d}.txt --devel 5% --encoding="UTF-8" --write-model ${intermediate}/g2p_1.${d}.mdl || exit 1;
 
 #    To create higher order models you need to run g2p.py again a few times
 for i in `seq 1 $[$n-1]`; do
-    utils/slurm.pl --mem 8G --time 0-08 ${modeldir}/g2p_$[$i+1]${id}.log g2p.py --model ${modeldir}/g2p_${i}${id}.mdl --ramp-up --train ${dictdir}/g2p_train${id}.txt --devel 5% --encoding="UTF-8" --write-model ${modeldir}/g2p_$[$i+1]${id}.mdl
+    utils/slurm.pl --mem 8G --time 0-08 ${modeldir}/log/g2p_$[$i+1].${d}.log g2p.py --model ${intermediate}/g2p_${i}.${d}.mdl --ramp-up --train ${dictdir}/g2p_train.${d}.txt --devel 5% --encoding="UTF-8" --write-model ${intermediate}/g2p_$[$i+1].${d}.mdl || exit 1;
 done
 
 # 3) Evaluate the model
 #    To find out how accurately your model can transcribe unseen words type:
-g2p.py --model ${modeldir}/g2p_${n}${id}.mdl --encoding="UTF-8" --test ${dictdir}/g2p_test${id}.txt
+g2p.py --model ${intermediate}/g2p_${n}.${d}.mdl --encoding="UTF-8" --test ${dictdir}/g2p_test.${d}.txt || exit 1;
 
 # If happy with the model I would rename it to g2p.mdl
-# mv ${modeldir}/g2p_${n}.mdl ${modeldir}/g2p.mdl
+# mv ${intermediate}/g2p_${n}.mdl ${modeldir}/g2p.mdl
 
 # 4) Transcribe new words.
 #   Prepare a list of words you want to transcribe as a simple text
 #   file words.txt with one word per line (and no phonemic
 #   transcription), then type:
-# local/transcribe_g2p.sh data/local/g2p words.txt > transcribed_words.txt
+# g2pmodeldir=$(ls -td $root_g2p/2* | head -n1)
+# local/transcribe_g2p.sh $g2pmodeldir words.txt > transcribed_words.txt
 # The above script contains: g2p.py --apply $wordlist --model $model --encoding="UTF-8"
+
+exit 0;

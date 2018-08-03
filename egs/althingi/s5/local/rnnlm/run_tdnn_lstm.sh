@@ -40,6 +40,7 @@ if [ $# -ne 1 ]; then
 fi
 
 text=$1 #/data/althingi/text_corpora/LMtext_2004-2018.txt # excluding text in test sets for the acoustic training
+echo "training text: $text"
 
 data_dir=$data/rnnlm
 dir=$exp/rnnlm_lstm${affix}

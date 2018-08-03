@@ -68,7 +68,6 @@ begin=$(date +%s)
 
 speechfile=$1
 speechname=$(basename "$speechfile")
-extension="${speechname##*.}"
 speechname="${speechname%.*}"
 
 dir=$2

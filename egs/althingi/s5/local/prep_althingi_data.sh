@@ -41,6 +41,7 @@ fi
 
 corpusdir=$(readlink -f $1); shift
 outdir=$1; shift
+punct_textout=$1; shift
 textout=$1
 intermediate=$outdir/intermediate
 mkdir -p $intermediate
@@ -565,7 +566,7 @@ if [ $stage -le 8 ]; then
 
   /bin/sed -f $tmp/ner_sed_pattern.tmp \
 	   < $intermediate/text_case3_forPunct.txt \
-	   > ${outdir}/text_PunctuationTraining.txt
+	   > $punct_textout
 fi
 
 if [ $stage -le 8 ]; then

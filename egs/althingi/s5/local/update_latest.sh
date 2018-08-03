@@ -3,6 +3,7 @@
 set -o pipefail
 
 # Update the models used by the recognizer
+# Info on the training data used to create the models is in the log files for the acoustic and ngram and rnn language models, 
 # NOTE! For those of above which are dependent on certain versions of training data, can I have at their original location an info files listing the version of the training data (e.g. $root_punctuation_datadir/$d ) ?
 # So in each bundle I could do something like `cat $bundle/punctuation_model/training_data_info`
 
@@ -42,7 +43,6 @@ rnnlmdir=
 punct_model=
 paragraph_model=
 text_norm=
-extractor=
 
 # Define the paths. path.sh also called conf/path.conf
 . ./path.sh

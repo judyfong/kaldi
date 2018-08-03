@@ -7,19 +7,19 @@ import os
 import codecs
 import re
 import sys
-#import nltk # I had to add these lines, but only needed once
-#nltk.download('punkt')
+import nltk # I had to add these lines, but only needed once
+nltk.download('punkt')
 
 NUM = '<NUM>'
 
-EOS_PUNCTS = {".": ".PERIOD", "?": "?QUESTIONMARK", "!": "!EXCLAMATIONMARK"}
+EOS_PUNCTS = {".": ".PERIOD", "?": "?QUESTIONMARK", "!": "!EXCLAMATIONMARK", ":": ":COLON"}
 #INS_PUNCTS = {",": ",COMMA", ";": ";SEMICOLON", ":": ":COLON", "-": "-DASH"}
-INS_PUNCTS = {",": ",COMMA", ";": ";SEMICOLON", ":": ":COLON"}
+INS_PUNCTS = {",": ",COMMA", ";": ";SEMICOLON"}
 
 forbidden_symbols = re.compile(r"[\[\]\(\)\\\>\<\=\+\_\*]")
 numbers = re.compile(r"\d")
 #multiple_punct = re.compile(r'([\.\?\!\,\:\;\-])(?:[\.\?\!\,\:\;\-]){1,}')
-multiple_punct = re.compile(r'([\.\?\!\,\:])(?:[\.\?\!\,\:]){1,}')
+multiple_punct = re.compile(r'([\.\?\!\,\:\;])(?:[\.\?\!\,\:\;]){1,}')
 
 is_number = lambda x: len(numbers.sub("", x)) / len(x) < 0.6
 

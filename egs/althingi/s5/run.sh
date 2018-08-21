@@ -327,7 +327,7 @@ if [ $stage -le 7 ]; then
   
   echo "Preparing a pruned trigram language model"
   mkdir -p $lm_modeldir/log
-  utils/slurm.pl --mem 8G $lm_modeldir/log/make_LM_3gsmall.log \
+  utils/slurm.pl --mem 16G $lm_modeldir/log/make_LM_3gsmall.log \
     local/make_LM.sh \
       --order 3 --small true --carpa false \
       $lm_trainingset $lm_modeldir/lang \
@@ -336,7 +336,7 @@ if [ $stage -le 7 ]; then
 		 
   echo "Preparing an unpruned trigram language model"
   mkdir -p $lm_modeldir/log
-  utils/slurm.pl --mem 12G $lm_modeldir/log/make_LM_3g.log \
+  utils/slurm.pl --mem 18G $lm_modeldir/log/make_LM_3g.log \
     local/make_LM.sh \
       --order 3 --small false --carpa true \
       $lm_trainingset $lm_modeldir/lang \
@@ -345,7 +345,7 @@ if [ $stage -le 7 ]; then
 
   echo "Preparing an unpruned 5g LM"
   mkdir -p $lm_modeldir/log
-  utils/slurm.pl --mem 16G $lm_modeldir/log/make_LM_5g.log \
+  utils/slurm.pl --mem 20G $lm_modeldir/log/make_LM_5g.log \
     local/make_LM.sh \
       --order 5 --small false --carpa true \
       $lm_trainingset $lm_modeldir/lang \
@@ -355,13 +355,10 @@ if [ $stage -le 7 ]; then
   echo "Make a zerogram language model to be able to check the effect of"
   echo "the language model in the ASR results"
   mkdir -p $lm_modeldir/log
-  utils/slurm.pl $lm_modeldir/log/make_LM_zerogram.log \
-    local/make_LM.sh \
-      --order 1 --small false --carpa false \
-      $lm_trainingset $lm_modeldir/lang \
-      $localdict/lexicon.txt $lm_modeldir \
+  utils/slurm.pl $lm_modeldir/log/make_zerogram_LM.log \
+    local/make_zgLM.sh \
+      $lm_modeldir/lang $localdict/lexicon.txt $lm_modeldir/lang_zg \
     || error 1 "Failed creating a zerogram language model"
-  mv $lm_modeldir/lang_1g $lm_modeldir/lang_zg
   
 fi
 
@@ -416,7 +413,7 @@ fi
 
 # if [ $stage -le 10 ]; then
 #     echo "Clean and resegment the training data"
-#     local/run_cleanup_segmentation.sh
+#     nohup steps/cleanup/clean_and_segment_data.sh --cmd "$big_memory_cmd --time 2-00" --nj 64 data/train_okt2017_500k $(ls -td $root_lm_modeldir/20* | head -n1)/lang $exp/tri5_lats $exp/tri5_train_okt2017_500k_cleanup $data/train_okt2017_500k_cleaned & 
 # fi
 
 # Input data dirs need to be changed
@@ -437,7 +434,7 @@ if [ $stage -le 11 ]; then
 
   # Save in my file structure
   cp -r -L -t $root_am_modeldir/extractor/$d $exp/nnet3/extractor/*
-  cp -r -t $root_chain/$(cat $KALDI_ROOT/src/.version)/$d/tdnn${affix} cmvn_opts final.*  frame_subsampling_factor graph_3gsmall/ tree
+  cp -r -t $root_chain/$(cat $KALDI_ROOT/src/.version)/$d/tdnn${affix} $exp/chain/tdnn${affix}/{cmvn_opts,final.*,frame_subsampling_factor,graph_3gsmall,tree}
 
 fi
 
@@ -447,11 +444,11 @@ if [ $stage -le 12 ]; then
   # Now the training text is LMtext_2004-March2018.txt. Updated if a newer big one is created.
   # Small texts fitting for language modelling are not in the training dir but in dirs marked with the creation date
   mkdir -p $rnnlm_modeldir/log
-  local/rnnlm/run_tdnn_lstm.sh --run-lat-rescore false $(ls -t $root_lm_datadir/training/ | head -n1) >>$rnnlm_modeldir/log/rnnlm_tdnn_lstm.log 2>&1 &
+  affix=_${d}
+  nohup local/rnnlm/run_tdnn_lstm.sh --affix $affix --run-lat-rescore false $root_lm_datadir/training/$(ls -t $root_lm_datadir/training/ | head -n1) >>$rnnlm_modeldir/log/rnnlm_tdnn_lstm.log 2>&1 &
   wait
 
   # Save in my structure
-  affix=_1e
   cp -r -L -t $rnnlm_modeldir $exp/rnnlm_lstm${affix}/{final.raw,feat_embedding.final.mat,special_symbol_opts.txt,word_feats.txt,config}
   [ -f $exp/rnnlm_lstm${affix}/word_embedding.final.mat ] && cp -L $exp/rnnlm_lstm${affix}/word_embedding.final.mat $rnnlm_modeldir
 fi

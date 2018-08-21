@@ -19,7 +19,6 @@ affix=_1e
 
 # variables for lattice rescoring
 run_lat_rescore=false
-decode_dir_suffix=rnnlm${affix}
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
               # if it's set, it merges histories in the lattice if they share
               # the same ngram history and this prevents the lattice from 
@@ -35,18 +34,24 @@ if [ $# -ne 1 ]; then
   echo "This script trains a RNN language model and uses it to performe lattice rescoring"
   echo ""
   echo "Usage: $0 [options] <text-set>" >&2
-  echo "e.g.: $0 /data/althingi/text_corpora/LMtext_2004-2018.txt" >&2
+  echo "e.g.: $0 ~/data/language_model/training/LMtext_2004-March2018.txt" >&2
   exit 1;
 fi
 
-text=$1 #/data/althingi/text_corpora/LMtext_2004-2018.txt # excluding text in test sets for the acoustic training
+text=$1
 echo "training text: $text"
 
 data_dir=$data/rnnlm
 dir=$exp/rnnlm_lstm${affix}
-
-text_dir=$data_dir/text${affix}
 mkdir -p $dir/config
+
+decode_dir_suffix=rnnlm${affix}
+text_dir=$data_dir/text${affix}
+
+# Use the newest vocabulary
+lmdir=$(ls -td $root_lm_modeldir/20* | head -n1)
+langdir=$lmdir/lang
+
 set -e
 
 for f in $text $langdir/words.txt; do
@@ -117,11 +122,11 @@ fi
 
 if [ $stage -le 3 ]; then
   rnnlm/train_rnnlm.sh \
-    --num-jobs-initial 3 \
+    --num-jobs-initial 4 \
     --num-jobs-final 12 \
     --stage $train_stage \
     --num-epochs 10 \
-    --cmd "$decode_cmd --time 2-00" $dir
+    --cmd "$train_cmd --mem 12G --time 2-00" $dir
 fi
 
 # # Calculate the lattice-rescoring time
@@ -129,8 +134,6 @@ fi
 
 # if [ $stage -le 4 ] && $run_lat_rescore; then
 #   # Used when applying the new rnnlm
-#   lmdir=$(ls -td $root_lm_modeldir/20* | head -n1)
-#   langdir=$lmdir/lang
 #   ngram_lm=$lmdir/lang_3gsmall
 #   ac_model_dir=$(ls -td $exp/chain/tdnn* | head -n1) #$exp/chain/tdnn_lstm_2_sp   #tdnn_sp
 
@@ -151,12 +154,12 @@ fi
 #     decode_dir=${ac_model_dir}/decode_${decode_set}_${LM}
 
 #     # Lattice rescoring
-#     rnnlm/lmrescore$pruned.sh \
-#       --cmd "$decode_cmd" \
-#       --weight 0.5 --max-ngram-order $ngram_order \
-#       $ngram_lm $dir \
-#       $data/${decode_set}_hires ${decode_dir} \
-#       ${decode_dir}_${decode_dir_suffix}
+    # rnnlm/lmrescore$pruned.sh \
+    #   --cmd "$big_memory_cmd" \
+    #   --weight 0.5 --max-ngram-order $ngram_order \
+    #   $ngram_lm $dir \
+    #   $data/${decode_set}_hires ${decode_dir} \
+    #   ${decode_dir}_${decode_dir_suffix}
 #     ) &
 #   done
 # fi

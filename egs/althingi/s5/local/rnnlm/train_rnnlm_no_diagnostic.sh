@@ -36,7 +36,8 @@ num_egs_threads=10  # number of threads used for sampling, if we're using
                     # sampling and the actual training, this is just the maximum
                     # possible number that are allowed to run
 use_gpu=true  # use GPU for training
-use_gpu_for_diagnostics=true #false  # set true to use GPU for compute_prob_*.log
+use_gpu_for_diagnostics=false  # set true to use GPU for compute_prob_*.log
+calc_diagnostics=false
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 . utils/parse_options.sh
@@ -148,17 +149,19 @@ while [ $x -lt $num_iters ]; do
       --embedding.backstitch-training-scale=$backstitch_training_scale \
       --embedding.backstitch-training-interval=$backstitch_training_interval"
     [ -f $dir/.error ] && rm $dir/.error
-    $cmd $queue_gpu_opt $dir/log/compute_prob.$x.log \
-       rnnlm-get-egs $(cat $dir/special_symbol_opts.txt) \
-                     --vocab-size=$vocab_size $dir/text/dev.txt ark:- \| \
-       rnnlm-compute-prob $gpu_opt $dir/$x.raw "$word_embedding" ark:- || touch $dir/.error &
+    if [ $calc_diagnostics = true ]; then
+      $cmd $queue_gpu_opt $dir/log/compute_prob.$x.log \
+        rnnlm-get-egs $(cat $dir/special_symbol_opts.txt) \
+                       --vocab-size=$vocab_size $dir/text/dev.txt ark:- \| \
+        rnnlm-compute-prob $gpu_opt $dir/$x.raw "$word_embedding" ark:- || touch $dir/.error &
 
-    if [ $x -gt 0 ]; then
-      $cmd $dir/log/progress.$x.log \
-        nnet3-show-progress --use-gpu=no $dir/$[$x-1].raw $dir/$x.raw '&&' \
-          nnet3-info $dir/$x.raw &
+      if [ $x -gt 0 ]; then
+        $cmd $dir/log/progress.$x.log \
+          nnet3-show-progress --use-gpu=no $dir/$[$x-1].raw $dir/$x.raw '&&' \
+            nnet3-info $dir/$x.raw &
+      fi
     fi
-
+    
     echo "Training neural net (pass $x)"
 
 
@@ -231,28 +234,36 @@ done
 wait # wait for diagnostic jobs in the background.
 
 if [ $stage -le $num_iters ]; then
-  # link the best model we encountered during training (based on
-  # dev-set probability) as the final model.
-  best_iter=$(rnnlm/get_best_model.py $dir)
-  echo "$0: best iteration (out of $num_iters) was $best_iter, linking it to final iteration."
-  train_best_log=$dir/log/train.$best_iter.1.log
-  ppl_train=`grep 'Overall objf' $train_best_log | awk '{printf("%.1f",exp(-$10))}'`
-  dev_best_log=$dir/log/compute_prob.$best_iter.log
-  ppl_dev=`grep 'Overall objf' $dev_best_log | awk '{printf("%.1f",exp(-$NF))}'`
-  echo "$0: train/dev perplexity was $ppl_train / $ppl_dev."
-  ln -sf ${embedding_type}_embedding.$best_iter.mat $dir/${embedding_type}_embedding.final.mat
-  ln -sf $best_iter.raw $dir/final.raw
+  if [ $calc_diagnostics = true ]; then
+    # link the best model we encountered during training (based on
+    # dev-set probability) as the final model.
+    best_iter=$(rnnlm/get_best_model.py $dir)
+    echo "$0: best iteration (out of $num_iters) was $best_iter, linking it to final iteration."
+    train_best_log=$dir/log/train.$best_iter.1.log
+    ppl_train=`grep 'Overall objf' $train_best_log | awk '{printf("%.1f",exp(-$10))}'`
+    dev_best_log=$dir/log/compute_prob.$best_iter.log
+    ppl_dev=`grep 'Overall objf' $dev_best_log | awk '{printf("%.1f",exp(-$NF))}'`
+    echo "$0: train/dev perplexity was $ppl_train / $ppl_dev."
+    ln -sf ${embedding_type}_embedding.$best_iter.mat $dir/${embedding_type}_embedding.final.mat
+    ln -sf $best_iter.raw $dir/final.raw
+  else
+    ln -sf ${embedding_type}_embedding.$num_iters.mat $dir/${embedding_type}_embedding.final.mat
+    ln -sf $num_iters.raw $dir/final.raw 
+  fi
 fi
 
+
 # Now get some diagnostics about the evolution of the objective function.
-if [ $stage -le $[num_iters+1] ]; then
-  (
-    logs=$(for iter in $(seq 0 $[$num_iters-1]); do echo -n $dir/log/train.$iter.1.log ''; done)
-    # in the non-sampling case the exact objf is printed and we plot that
-    # in the sampling case we print the approximated objf for training.
-    grep 'Overall objf' $logs | awk 'BEGIN{printf("Train objf: ")} /exact/{printf("%.2f ", $NF);next} {printf("%.2f ", $10)} END{print "";}'
-    logs=$(for iter in $(seq 0 $[$num_iters-1]); do echo -n $dir/log/compute_prob.$iter.log ''; done)
-    grep 'Overall objf' $logs | awk 'BEGIN{printf("Dev objf:   ")} {printf("%.2f ", $NF)} END{print "";}'
-  ) > $dir/report.txt
-  cat $dir/report.txt
+if [ $calc_diagnostics = true ]; then
+  if [ $stage -le $[num_iters+1] ]; then
+    (
+      logs=$(for iter in $(seq 0 $[$num_iters-1]); do echo -n $dir/log/train.$iter.1.log ''; done)
+      # in the non-sampling case the exact objf is printed and we plot that
+      # in the sampling case we print the approximated objf for training.
+      grep 'Overall objf' $logs | awk 'BEGIN{printf("Train objf: ")} /exact/{printf("%.2f ", $NF);next} {printf("%.2f ", $10)} END{print "";}'
+      logs=$(for iter in $(seq 0 $[$num_iters-1]); do echo -n $dir/log/compute_prob.$iter.log ''; done)
+      grep 'Overall objf' $logs | awk 'BEGIN{printf("Dev objf:   ")} {printf("%.2f ", $NF)} END{print "";}'
+    ) > $dir/report.txt
+    cat $dir/report.txt
+  fi
 fi

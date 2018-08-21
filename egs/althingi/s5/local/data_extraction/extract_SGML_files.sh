@@ -3,7 +3,6 @@
 set -o pipefail
 
 datadir=data/althingiUploads
-corpusdir=/data/althingi/text_corpus/AlthingiUploads
 
 # Extract info about the speeches from althingi.is
 srun --nodelist=terra sh -c "php local/data_extraction/scrape_althingi_info.php &> data/althingiUploads/log/scraping_althingi_info.log" &

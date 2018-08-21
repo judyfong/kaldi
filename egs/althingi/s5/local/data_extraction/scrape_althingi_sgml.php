@@ -20,7 +20,7 @@ if ($file_handle = fopen($ifile, "r")) {
 
 	    // Extract the text
 	    $ch = curl_init($text);
-	    $text_file_name = '/data/althingi/text_corpus/AlthingiUploads/' . $rad . '.sgml';
+	    $text_file_name = '/data/althingi/text_corpora/AlthingiUploads/' . $rad . '.sgml';
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT ,0); 
         curl_setopt($ch, CURLOPT_TIMEOUT, 500);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);

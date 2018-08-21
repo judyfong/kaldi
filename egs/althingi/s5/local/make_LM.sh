@@ -14,9 +14,9 @@ carpa=true
 . ./local/utils.sh
 
 if [ $# != 4 ]; then
-  echo "This scripts creates language models"
+  echo "This script creates language models"
   echo ""
-  echo "Usage: local/make_LM.sh [options] <input-text-file> <data-lang-dir> <dict-dir> <language-model-dir>"
+  echo "Usage: local/make_LM.sh [options] <input-text-file> <lang-dir> <dict-dir> <language-model-dir>"
   echo "e.g.: local/make_LM.sh data/language_model/LMtext.txt data/lang data/local/dict/lexicon.txt models/language_model/"
   echo ""
   echo "Options:"
@@ -24,6 +24,7 @@ if [ $# != 4 ]; then
   echo "     --small <bool>       # Prune if true (default: false)"
   echo "     --pruning <string>   # How to prune, e.g. '--prune 0 0 1' (default --prune 0 3 5)"
   echo "     --carpa <bool>       # Make a constant arpa lm if true, otherwise convert arpa to fst"
+  exit 1;
 fi
 
 lmtext=$1

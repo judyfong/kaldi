@@ -109,5 +109,7 @@ if [ $stage -le 5 ]; then
   fi
 fi
 
+# Remove the expansion dir
+rm -r $expLM
 exit 0;
 

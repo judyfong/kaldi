@@ -95,8 +95,6 @@ ln -s $rnnlmdir $thisbundle/rescoring_lang_rnn || error 1 "Failed creating rnn l
 [ -d $latest ] && mv $latest $root_bundle/.oldlatest
 ln -s $thisbundle $latest || error 1 "Failed creating the 'latest' dir symlink";
 
-
-
-
+exit 0;
 
   

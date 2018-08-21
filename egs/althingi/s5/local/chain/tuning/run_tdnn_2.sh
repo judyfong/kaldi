@@ -17,7 +17,7 @@ speed_perturb=false
 # Defined in conf/path.conf, default to /mnt/scratch/inga/{exp,data,mfcc_hires}
 exp=
 data=
-mfccdir=
+mfcc=
 
 # GMM to use for alignments
 gmm=tri5
@@ -44,11 +44,13 @@ echo "$0 $@"  # Print the command line for logging
 . ./path.sh
 . ./utils/parse_options.sh
 . ./conf/path.conf
+. ./local/utils.sh
 
 # LMs
 lmdir=$(ls -td $root_lm_modeldir/20* | head -n1)
 decoding_lang=$lmdir/lang_3gsmall
 rescoring_lang=$lmdir/lang_5g
+zerogramLM=$lmdir/lang_zg
 langdir=$lmdir/lang
 
 if [ ! $# = 2 ]; then
@@ -271,9 +273,11 @@ if [ $stage -le 15 ]; then
 fi
 
 if [ $generate_plots = true ]; then
-    echo "Generating plots and compiling a latex report on the training"
-    steps/nnet3/report/generate_plots.py \
-	--is-chain true $dir $dir/report_tdnn${affix}$suffix
+  echo "Generating plots and compiling a latex report on the training"
+  source activate thenv || error 11 $LINENO "Can't activate thenv";
+  steps/nnet3/report/generate_plots.py \
+    --is-chain true $dir $dir/report_tdnn${affix}$suffix
+  source deactivate
 fi
 
 if [ $zerogram_decoding = true ]; then
@@ -287,7 +291,7 @@ if [ $zerogram_decoding = true ]; then
   fi
   
   echo "Make a zerogram graph"
-  utils/slurm.pl --mem 4G --time 0-06 $dir/log/mkgraph_zg.log utils/mkgraph.sh --self-loop-scale 1.0 $data/lang_zg $dir $dir/graph_zg
+  utils/slurm.pl --mem 4G --time 0-06 $dir/log/mkgraph_zg.log utils/mkgraph.sh --self-loop-scale 1.0 $zerogramLM $dir $dir/graph_zg
   
   for decode_set in dev eval; do
     (

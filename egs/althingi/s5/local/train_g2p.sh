@@ -53,7 +53,7 @@ g2p.py --model ${intermediate}/g2p_${n}.${d}.mdl --encoding="UTF-8" --test ${dic
 #   file words.txt with one word per line (and no phonemic
 #   transcription), then type:
 # g2pmodeldir=$(ls -td $root_g2p/2* | head -n1)
-# local/transcribe_g2p.sh $g2pmodeldir words.txt > transcribed_words.txt
+# local/transcribe_g2p.sh $g2pmodeldir/g2p.mdl words.txt > transcribed_words.txt
 # The above script contains: g2p.py --apply $wordlist --model $model --encoding="UTF-8"
 
 exit 0;

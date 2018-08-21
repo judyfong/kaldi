@@ -77,7 +77,7 @@ if [ $stage -le 0 ]; then
   
   echo "a) utt2spk" # Connect each utterance to a speaker.
   echo "b) wav.scp" # Connect every utterance with an audio file
-  for s in ${outdir}/utt2spk ${outdir}/wav.scp ${outdir}/filename_uttID.txt; do
+  for s in ${outdir}/utt2spk ${outdir}/wav.scp ${intermediate}/filename_uttID.txt; do
     if [ -f ${s} ]; then rm ${s}; fi
   done
 
@@ -91,13 +91,13 @@ if [ $stage -le 0 ]; then
     printf "%s %s\n" ${spkID}-${filename} ${spkID} | tr -d $'\r' >> ${outdir}/utt2spk
 
     # Make a helper file with mapping between the filenames and uttID
-    echo -e ${filename} ${spkID}-${filename} | tr -d $'\r' | LC_ALL=C sort -n >> ${outdir}/filename_uttID.txt
+    echo -e ${filename} ${spkID}-${filename} | tr -d $'\r' | LC_ALL=C sort -n >> ${intermediate}/filename_uttID.txt
     
     #Print to wav.scp
     echo -e ${spkID}-${filename} $wav_cmd" < "$(readlink -f $file)" |" | tr -d $'\r' >> ${outdir}/wav.scp
   done
 
-  for f in utt2spk filename_uttID.txt wav.scp; do
+  for f in utt2spk wav.scp; do
     sort -u $outdir/$f > $tmp/tmp && mv $tmp/tmp $outdir/$f
   done
   
@@ -192,7 +192,7 @@ if not roman_path in sys.path:
     sys.path.append(roman_path)
 import roman
 text = open('${outdir}/text_noXML_${n}.txt', 'r')
-text_out = open('${outdir}/text_noRoman_${n}.txt', 'w')
+text_out = open('${intermediate}/text_noRoman_${n}.txt', 'w')
 for line in text:
     match_list = re.findall(r'\b(X{0,3}IX|X{0,3}IV|X{0,3}V?I{0,3})\.?,?\b', line, flags=0)
     match_list = [elem for elem in match_list if len(elem)>0]
@@ -272,7 +272,7 @@ if [ $stage -le 4 ]; then
 	-e 's:\b([0-9]\.) +([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \l\2:g' \
 	-e 's:([^ 0-9])–([^ 0-9]):\1 \2:g' -e 's:([^ ])–([^ ]):\1 til \2:g' -e 's:([0-9]\.?)tilstr[^ 0-9]*?\.?([0-9]):\1 til \2:g' -e 's:([0-9\.%])-+([0-9]):\1 til \2:g' \
 	-e 's:([0-9]+),([0-46-9]):\1 komma \2:g' -e 's:([0-9]+),5([0-9]):\1 komma 5\2:g' \
-	< ${outdir}/text_noRoman_${n}.txt \
+	< ${intermediate}/text_noRoman_${n}.txt \
       | perl -pe 's/ (0(?!,5))/ $1 /g' | perl -pe 's/komma (0? ?)(\d)(\d)(\d)(\d?)/komma $1$2 $3 $4 $5/g' \
       | sed -re 's:¼: einn 4. :g' -e 's:¾: 3 fjórðu:g' -e 's:([0-9])½:\1,5 :g' -e 's: ½: 0,5 :g' \
             -e 's:([,;])([^0-9]|\s*$): \1 \2:g' -e 's:([^0-9]),:\1 ,:g' \
@@ -334,7 +334,7 @@ if [ $stage -le 5 ]; then
 	-e 's:\bþús\b:þúsund:g' \
 	-e 's:\bþeas\b:það er að segja:g' \
 	< ${outdir}/text_noPuncts_${n}.txt \
-	> ${outdir}/text_exp1_${n}.txt || error 14 $LINENO ${error_array[14]};
+	> ${intermediate}/text_exp1_${n}.txt || error 14 $LINENO ${error_array[14]};
   done
 
   # Capitalize acronyms which are pronounced as words (some are incorrectly written capitalized, e.g. IKEA as Ikea)
@@ -350,13 +350,13 @@ if [ $stage -le 5 ]; then
     # Capitalize 
     sed -re 's:(\b'$(cat ${tmp}/acronyms_as_words_pattern.tmp)'\b):\U\1:g' \
 	-e 's:\b([a-záðéíóúýþæö][A-ZÁÐÉÍÓÚÝÞÆÖ]+)\b:\u\1:g' \
-	< ${outdir}/text_exp1_${n}.txt \
-	> ${outdir}/text_exp1_${n}_acroCS.txt || error 14 $LINENO ${error_array[14]};
+	< ${intermediate}/text_exp1_${n}.txt \
+	> ${intermediate}/text_exp1_${n}_acroCS.txt || error 14 $LINENO ${error_array[14]};
     
     # Use Anna's code to expand many instances of hv, þm og hæstv
     python3 local/althingi_replace_plain_text.py \
-	    ${outdir}/text_exp1_${n}_acroCS.txt \
-	    ${outdir}/text_exp2_${n}.txt
+	    ${intermediate}/text_exp1_${n}_acroCS.txt \
+	    ${intermediate}/text_exp2_${n}.txt
     ret=$?
     if [ $ret -ne 0 ]; then
       error 1 $LINENO "Error in althingi_replace_plain_text.py";
@@ -365,11 +365,11 @@ if [ $stage -le 5 ]; then
   
   # I don't want to expand acronyms pronounced as letters in the punctuation training text
   echo "make a special text version for the punctuation training texts"
-  cp ${outdir}/text_exp2_endanlegt.txt ${intermediate}/text_exp2_forPunct.txt || error 14 $LINENO ${error_array[14]};
+  cp ${intermediate}/text_exp2_endanlegt.txt ${intermediate}/text_exp2_forPunct.txt || error 14 $LINENO ${error_array[14]};
 
   # Add spaces into acronyms pronounced as letters
   egrep -o "[A-ZÁÐÉÍÓÚÝÞÆÖ]{2,}\b" \
-	< ${outdir}/text_exp2_{upphaflegt,endanlegt}.txt \
+	< ${intermediate}/text_exp2_{upphaflegt,endanlegt}.txt \
     | cut -d":" -f2 | sort -u > $tmp/acro.tmp || error 14 $LINENO ${error_array[14]};
   
   egrep "\b[AÁEÉIÍOÓUÚYÝÆÖ]+\b|\b[QWRTPÐSDFGHJKLZXCVBNM]+\b" \
@@ -395,8 +395,8 @@ if [ $stage -le 5 ]; then
       > $tmp/acro_sed_pattern.tmp || error 14 $LINENO ${error_array[14]};
   
   for n in upphaflegt endanlegt; do
-    /bin/sed -f $tmp/acro_sed_pattern.tmp ${outdir}/text_exp2_${n}.txt \
-	     > ${outdir}/text_exp3_${n}.txt || error 14 $LINENO ${error_array[14]};
+    /bin/sed -f $tmp/acro_sed_pattern.tmp ${intermediate}/text_exp2_${n}.txt \
+	     > ${intermediate}/text_exp3_${n}.txt || error 14 $LINENO ${error_array[14]};
   done
 fi
 
@@ -406,14 +406,14 @@ if [ $stage -le 6 ]; then
   # Commented out the option to fix words where the edit distance was >1.
   # Damerau-Levenshtein considers a single transposition to have distance 1.
   # Much faster and fixes most of the errors
-  cut -d" " -f2- < ${outdir}/text_exp3_endanlegt.txt \
+  cut -d" " -f2- < ${intermediate}/text_exp3_endanlegt.txt \
     | sed -e 's/[0-9.,:;?!%‰°º]//g' \
     | tr " " "\n" \
     | egrep -v "^\s*$" \
     | sort -u \
     > ${intermediate}/words_text_endanlegt.txt || error 14 $LINENO ${error_array[14]};
   
-  cat ${outdir}/words_text_endanlegt.txt \
+  cat ${intermediate}/words_text_endanlegt.txt \
       <(cut -f1 $prondict) | sort -u \
 				  > $intermediate/words_all.txt
   
@@ -422,32 +422,32 @@ if [ $stage -le 6 ]; then
   fi
   
   # Split into subfiles and correct them in parallel
-  mkdir -p ${outdir}/split${nj}/log
-  total_lines=$(wc -l ${outdir}/text_exp3_upphaflegt.txt | cut -d" " -f1) \
+  mkdir -p ${intermediate}/split${nj}/log
+  total_lines=$(wc -l ${intermediate}/text_exp3_upphaflegt.txt | cut -d" " -f1) \
     || error 14 $LINENO ${error_array[14]};
   
   ((lines_per_file = (total_lines + nj - 1) / nj)) || error 14 $LINENO ${error_array[14]};
   
   split --lines=${lines_per_file} \
-	${outdir}/text_exp3_upphaflegt.txt \
-	${outdir}/split${nj}/text_exp3_upphaflegt. \
+	${intermediate}/text_exp3_upphaflegt.txt \
+	${intermediate}/split${nj}/text_exp3_upphaflegt. \
     || error 1 $LINENO "Error splitting lines with split";
 
   # Activate a virt environment to be able to use Damerau-Levenshtein edit distance 
   source venv3/bin/activate || error 11 $LINENO ${error_array[11]};
   IFS=$'\n' # Important
-  for ext in $(ls ${outdir}/split${nj}/text_exp3_upphaflegt.* | cut -d"." -f2); do
+  for ext in $(ls ${intermediate}/split${nj}/text_exp3_upphaflegt.* | cut -d"." -f2); do
     # NOTE! Can't let the script wait till all the sbatch jobs are finished and can't pass on user-env when use utils/slurm.pl
     
-    # sbatch --get-user-env --time=0-6 --job-name=correct_spelling --output=${outdir}/split${nj}/log/spelling_fixed.${ext}.log --wrap="srun local/correct_spelling.sh --ext $ext $intermediate/words_all.txt ${outdir}/split${nj}/text_exp3_upphaflegt ${outdir}/text_exp3_endanlegt.txt"
+    # sbatch --get-user-env --time=0-6 --job-name=correct_spelling --output=${intermediate}/split${nj}/log/spelling_fixed.${ext}.log --wrap="srun local/correct_spelling.sh --ext $ext $intermediate/words_all.txt ${intermediate}/split${nj}/text_exp3_upphaflegt ${intermediate}/text_exp3_endanlegt.txt"
     (
-      utils/slurm.pl ${outdir}/split${nj}/log/spelling_fixed.${ext}.log local/correct_spelling.sh --ext $ext $intermediate/words_all.txt ${outdir}/split${nj}/text_exp3_upphaflegt ${outdir}/text_exp3_endanlegt.txt || error 1 $LINENO "Error running correct_spelling.sh";
+      utils/slurm.pl ${intermediate}/split${nj}/log/spelling_fixed.${ext}.log local/correct_spelling.sh --ext $ext $intermediate/words_all.txt ${intermediate}/split${nj}/text_exp3_upphaflegt ${intermediate}/text_exp3_endanlegt.txt || error 1 $LINENO "Error running correct_spelling.sh";
     ) &
   done
   deactivate
 
   wait;
-  cat ${outdir}/split${nj}/text_SpellingFixed.*.txt > ${outdir}/text_SpellingFixed.txt
+  cat ${intermediate}/split${nj}/text_SpellingFixed.*.txt > ${outdir}/text_SpellingFixed.txt
   
 fi
 
@@ -456,12 +456,12 @@ if [ $stage -le 7 ]; then
   # If the initial text file is empty or does not exist, use the final one instead
   comm -13 \
        <(cut -d" " -f1 ${outdir}/text_SpellingFixed.txt | sort -u) \
-       <(cut -d" " -f1 ${outdir}/text_exp3_endanlegt.txt | sort -u) \
+       <(cut -d" " -f1 ${intermediate}/text_exp3_endanlegt.txt | sort -u) \
        > ${tmp}/ids_only_in_text_endanlegt.tmp || error 14 $LINENO ${error_array[14]};
   
   join -j1 \
        <(sort -u ${tmp}/ids_only_in_text_endanlegt.tmp) \
-       <(sort -u ${outdir}/text_exp3_endanlegt.txt) \
+       <(sort -u ${intermediate}/text_exp3_endanlegt.txt) \
        >> ${outdir}/text_SpellingFixed.txt || error 14 $LINENO ${error_array[14]};
   
   sort -u ${outdir}/text_SpellingFixed.txt \
@@ -546,7 +546,7 @@ if [ $stage -le 8 ]; then
 
   /bin/sed -f $tmp/ner_sed_pattern.tmp \
 	   < $intermediate/text_case3.txt \
-	   > ${outdir}/text_SpellingFixed_CasingFixed.txt
+	   > ${intermediate}/text_SpellingFixed_CasingFixed.txt
   
   # Do the same for the punctuation text
   sed -r 's:(\b'$(cat $tmp/to_lowercase_pattern.tmp)'\b):\l\1:g' \
@@ -572,8 +572,8 @@ fi
 if [ $stage -le 8 ]; then
   # Join the utterance names with the spkID to make the uttIDs
   join -j 1 \
-       <(sort -k1,1 ${outdir}/filename_uttID.txt) \
-       <(sort -k1,1 ${outdir}/text_SpellingFixed_CasingFixed.txt) | cut -d" " -f2- \
+       <(sort -k1,1 -u ${intermediate}/filename_uttID.txt) \
+       <(sort -k1,1 ${intermediate}/text_SpellingFixed_CasingFixed.txt) | cut -d" " -f2- \
        > ${outdir}/text_SpellingFixed_uttID.txt || error 14 $LINENO ${error_array[14]};
 
   if [ -e ${outdir}/text ] ; then

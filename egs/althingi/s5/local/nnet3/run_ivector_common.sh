@@ -12,7 +12,7 @@ speed_perturb=true
 # Defined in conf/path.conf, default to /mnt/scratch/inga/{exp,data,mfcc_hires}
 exp=
 data=
-mfccdir=
+mfcc=
 
 . ./cmd.sh
 . ./path.sh
@@ -96,9 +96,9 @@ if [ $stage -le 3 ]; then
     --nj 100 --mfcc-config conf/mfcc_hires.conf \
     --cmd "$train_cmd --time 2-00" \
     $data/${train_set}_hires \
-    $exp/make_hires/$train_set $mfccdir;
+    $exp/make_hires/$train_set $mfcc;
   
-  steps/compute_cmvn_stats.sh $data/${train_set}_hires $exp/make_hires/${train_set} $mfccdir;
+  steps/compute_cmvn_stats.sh $data/${train_set}_hires $exp/make_hires/${train_set} $mfcc;
 
   # Remove the small number of utterances that couldn't be extracted for some
   # reason (e.g. too short; no such file).
@@ -108,8 +108,8 @@ if [ $stage -le 3 ]; then
     # Create MFCCs for the dev/eval sets
     utils/copy_data_dir.sh $testdatadir/$dataset $data/${dataset}_hires
     steps/make_mfcc.sh --cmd "$train_cmd" --nj 30 --mfcc-config conf/mfcc_hires.conf \
-      $data/${dataset}_hires $exp/make_hires/$dataset $mfccdir;
-    steps/compute_cmvn_stats.sh $data/${dataset}_hires $exp/make_hires/$dataset $mfccdir;
+      $data/${dataset}_hires $exp/make_hires/$dataset $mfcc;
+    steps/compute_cmvn_stats.sh $data/${dataset}_hires $exp/make_hires/$dataset $mfcc;
     utils/fix_data_dir.sh $data/${dataset}_hires  # remove segments with problems
   done
 

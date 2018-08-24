@@ -16,7 +16,7 @@ speed_perturb=true
 # Defined in conf/path.conf, default to /mnt/scratch/inga/{exp,data,mfcc_hires}
 exp=
 data=
-mfccdir=
+mfcc=
 
 # GMM to use for alignments
 gmm=tri5
@@ -48,6 +48,7 @@ echo "$0 $@"  # Print the command line for logging
 lmdir=$(ls -td $root_lm_modeldir/20* | head -n1)
 decoding_lang=$lmdir/lang_3gsmall
 rescoring_lang=$lmdir/lang_5g
+zerogramLM=$lmdir/lang_zg
 langdir=$lmdir/lang
 
 if [ ! $# = 2 ]; then
@@ -92,7 +93,7 @@ $speed_perturb && suffix=_sp
 dir=$exp/chain/tdnn${affix}${suffix}
 
 train_set=$(basename $inputdata)$suffix
-#train_set=train_okt2017_fourth$suffix
+#train_set=train_okt2017$suffix
 ali_dir=$exp/${gmm}_ali_${train_set}
 treedir=$exp/chain/${gmm}_tree$suffix # NOTE!
 lang=$data/lang_chain
@@ -249,17 +250,19 @@ fi
 if [ $stage -le 15 ]; then
   rm $dir/.error 2>/dev/null || true
   for decode_set in dev eval; do
-      (
-	num_jobs=`cat $data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-        steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-          --nj $num_jobs --cmd "$decode_cmd --time 0-06" $iter_opts \
-          --online-ivector-dir $exp/nnet3/ivectors_${decode_set} \
-          $graph_dir $data/${decode_set}_hires \
-          $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_3gsmall || exit 1;
-        steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-            $decoding_lang $rescoring_lang $data/${decode_set}_hires \
-            $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_{3gsmall,5g} || exit 1;
-      ) || touch $dir/.error &
+    (
+      num_jobs=`cat $data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+      steps/nnet3/decode.sh \
+	--acwt 1.0 --post-decode-acwt 10.0 \
+	--nj $num_jobs --cmd "$decode_cmd --time 0-06" $iter_opts \
+	--online-ivector-dir $exp/nnet3/ivectors_${decode_set} \
+	$graph_dir $data/${decode_set}_hires \
+	$dir/decode_${decode_set}${decode_iter:+_$decode_iter}_3gsmall || exit 1;
+      steps/lmrescore_const_arpa.sh \
+	--cmd "$decode_cmd" \
+	$decoding_lang $rescoring_lang $data/${decode_set}_hires \
+	$dir/decode_${decode_set}${decode_iter:+_$decode_iter}_{3gsmall,5g} || exit 1;
+    ) || touch $dir/.error &
   done
   wait
   if [ -f $dir/.error ]; then
@@ -269,9 +272,11 @@ if [ $stage -le 15 ]; then
 fi
 
 if [ $generate_plots = true ]; then
-    echo "Generating plots and compiling a latex report on the training"
-    steps/nnet3/report/generate_plots.py \
-	--is-chain true $dir $dir/report_tdnn${affix}$suffix
+  echo "Generating plots and compiling a latex report on the training"
+  source activate thenv || error 11 $LINENO "Can't activate thenv";
+  steps/nnet3/report/generate_plots.py \
+    --is-chain true $dir $dir/report_tdnn${affix}$suffix
+  source deactivate
 fi
 
 if [ $zerogram_decoding = true ]; then
@@ -285,7 +290,7 @@ if [ $zerogram_decoding = true ]; then
   fi
   
   echo "Make a zerogram graph"
-  utils/slurm.pl --mem 4G --time 0-06 $dir/log/mkgraph_zg.log utils/mkgraph.sh --self-loop-scale 1.0 $data/lang_zg $dir $dir/graph_zg
+  utils/slurm.pl --mem 4G --time 0-06 $dir/log/mkgraph_zg.log utils/mkgraph.sh --self-loop-scale 1.0 $zerogramLM $dir $dir/graph_zg
   
   for decode_set in dev eval; do
     (

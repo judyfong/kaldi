@@ -61,7 +61,7 @@ if [ ! $# = 2 ]; then
   echo " e.g.: $0 data/train data"
   echo ""
   echo "Options:"
-  echo "    --speed_perturb <bool>          # apply speed perturbations, default: true"
+  echo "    --speed-perturb <bool>          # apply speed perturbations, default: true"
   echo "    --generate-ali-from-lats <bool> # ali.*.gz is generated in lats dir, default: false"
   echo "    --affix <affix>                 # idendifier for the model, e.g. _1b"
   echo "    --decode-iter <iter>            # iteration of model to test"

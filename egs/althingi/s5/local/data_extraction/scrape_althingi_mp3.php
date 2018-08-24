@@ -20,7 +20,7 @@ if ($file_handle = fopen($ifile, "r")) {
 
         // Extract the audio
         $ch = curl_init($mp3);
-	    $audio_file_name = '/data/althingi/corpus_okt2017/AlthingiUploads/audio/' . $rad . '.mp3';
+	    $audio_file_name = '/data/althingi/corpus_okt2017/audio/' . $rad . '.mp3';
 	    curl_setopt($ch, CURLOPT_HEADER, 0);
         curl_setopt($ch, CURLOPT_NOBODY, 0);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT ,0); 

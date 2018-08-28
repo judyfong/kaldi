@@ -46,6 +46,7 @@ echo "$0 $@"  # Print the command line for logging
 
 # LMs
 lmdir=$(ls -td $root_lm_modeldir/20* | head -n1)
+echo "Using LM dir: $lmdir"
 decoding_lang=$lmdir/lang_3gsmall
 rescoring_lang=$lmdir/lang_5g
 zerogramLM=$lmdir/lang_zg

@@ -424,18 +424,24 @@ if [ $stage -le 11 ]; then
 
   # echo "Run the swbd chain tdnn recipe with sp"
   # local/chain/run_tdnn.sh data/train data >>tdnn.log 2>&1 &
+  affix=_1
+  logdir=$root_chain/$(cat $KALDI_ROOT/src/.version)/$d/log
+  mkdir -p $logdir
+  nohup local/chain/run_tdnn.sh --stage 0 --speed-perturb true --generate-plots true --zerogram-decoding true $data/train_okt2017_500k_cleaned data >>$logdir/tdnn1$affix.log 2>&1 &
 
   # echo "Run the swbd chain tdnn recipe without sp on all my training data. Bigger model"
   affix=_2
-  logdir=$root_chain/$(cat $KALDI_ROOT/src/.version)/$d/tdnn${affix}.log
+  logdir=$root_chain/$(cat $KALDI_ROOT/src/.version)/$d/log
   mkdir -p $logdir
-  nohup local/chain/tuning/run_tdnn${affix}.sh --stage 9 --speed-perturb false --generate-plots true --zerogram-decoding true $data/train_okt2017 data >>$logdir/tdnn2_july28.log 2>&1 &
+  nohup local/chain/tuning/run_tdnn${affix}.sh --stage 9 --speed-perturb false --generate-plots true --zerogram-decoding true $data/train_okt2017 data >>$logdir/tdnn2$affix.log 2>&1 &
   wait
 
   # Save in my file structure
   cp -r -L -t $root_am_modeldir/extractor/$d $exp/nnet3/extractor/*
   cp -r -t $root_chain/$(cat $KALDI_ROOT/src/.version)/$d/tdnn${affix} $exp/chain/tdnn${affix}/{cmvn_opts,final.*,frame_subsampling_factor,graph_3gsmall,tree}
 
+  # Create a symlink to the extractor in the AM dir:
+  ln -s $root_am_modeldir/extractor/$d $root_chain/$(cat $KALDI_ROOT/src/.version)/$d/tdnn${affix}/extractor
 fi
 
 

@@ -7,7 +7,7 @@ set -e
 
 stage=1
 generate_alignments=false # Depends on whether we are doing speech perturbations
-speed_perturb=true
+speed_perturb=false
 
 # Defined in conf/path.conf, default to /mnt/scratch/inga/{exp,data,mfcc_hires}
 exp=
@@ -65,7 +65,7 @@ if [ "$speed_perturb" == "true" ]; then
 
   if [ $stage -le 2 ] && [ "$generate_alignments" == "true" ]; then
     #obtain the alignment of the perturbed data
-    steps/align_fmllr.sh --nj 100 --cmd "$train_cmd --time 3-00" \
+    steps/align_fmllr.sh --nj 100 --cmd "$decode_cmd --time 3-00" \
       $data/${train_set}${suffix} $langdir $gmm_dir $ali_dir || exit 1
   fi
   train_set=${train_set}${suffix}
@@ -94,7 +94,7 @@ if [ $stage -le 3 ]; then
 
   steps/make_mfcc.sh \
     --nj 100 --mfcc-config conf/mfcc_hires.conf \
-    --cmd "$train_cmd --time 2-00" \
+    --cmd "$decode_cmd --time 3-00" \
     $data/${train_set}_hires \
     $exp/make_hires/$train_set $mfcc;
   
@@ -140,7 +140,7 @@ if [ $stage -le 7 ]; then
   # fairly small dim (defaults to 100) so we don't use all of it, we use just the
   # 100k subset (~15% of the data).
   echo "$0: training the iVector extractor"
-  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd --time 0-12" --nj 10 \
+  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd --time 1-12" --nj 10 \
     $data/${train_set}_100k_hires $exp/nnet3/diag_ubm $exp/nnet3/extractor || exit 1;
 fi
 

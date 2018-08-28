@@ -26,6 +26,9 @@ set -o pipefail
 # punctuation_model
 # paragraph_model
 
+# NOTE! I need to make an easy way of updating the LMs and then the graph needs to be updated as well.
+# Where will I store the graph?
+
   # graph is dependent on decoding_lang and the acoustic model.
   # rescoring and decoding LMs need to be compatible
   # All the files used in denormalize are independent of each other so latest can be updated
@@ -58,8 +61,8 @@ thisbundle=$root_bundle/$d
 mkdir -p $thisbundle
 
 # Choose the newest version if not provided a specific version
-[ -z $extractor ] && extractor=$(ls -td $root_am_modeldir/extractor/2* | head -n1)
 [ -z $acoustic_model ] && acoustic_model=$(ls -td $root_chain/*/*/* | head -n1)
+[ -z $extractor ] && extractor=$acoustic_model/extractor
 [ -z $lmdir ] && lmdir=$(ls -td $root_lm_modeldir/2* | head -n1)
 [ -z $rnnlmdir ] && rnnlmdir=$(ls -td $root_rnnlm/2* | head -n1)
 [ -z $punct_model ] && punct_model=$(ls -t $root_punctuation_modeldir/2*/*.pcl | head -n1)
@@ -67,11 +70,11 @@ mkdir -p $thisbundle
 [ -z $text_norm ] && text_norm=$(ls -td $root_text_norm_modeldir/2* | head -n1)
 
 newest_graph=$(ls -td $acoustic_model/graph_3gsmall $root_bundle/*/graph | head -n1)
-if [ $lmdir/lang_3gsmall -nt $newest_graph ]; then
+if [ $lmdir/lang_3gsmall/words.txt -nt $newest_graph/words.txt ]; then
   echo "Make a small 3-gram graph"
   utils/mkgraph.sh --self-loop-scale 1.0 $lmdir/lang_3gsmall $acoustic_model $thisbundle/graph
 fi
-newest_graph=$(ls -td $modeldir/graph/*/graph_3gsmall $root_bundle/*/graph | head -n1)
+
 
 amb_pers_names=$(ls -t $root_capitalization/ambiguous_personal_names.*.txt | head -n1)
 utf8syms=$root_listdir/utf8.syms
@@ -87,7 +90,7 @@ ln -s $amb_pers_names $thisbundle/ambiguous_personal_names || error 1 "Failed cr
 ln -s $punct_model $thisbundle/punctuation_model || error 1 "Failed creating punctuation model symlink";
 ln -s $paragraph_model $thisbundle/paragraph_model || error 1 "Failed creating paragraph model symlink";
 
-! cmp $thisbundle/decoding_lang/words.txt <(egrep -v "<brk>" $rnnlmdir/words.txt) && \
+! cmp $thisbundle/decoding_lang/words.txt <(egrep -v "<brk>" $rnnlmdir/config/words.txt) && \
   echo "$0: Warning: decoding and rnn rescoring LM vocabularies may be incompatible."
 ln -s $rnnlmdir $thisbundle/rescoring_lang_rnn || error 1 "Failed creating rnn lm symlink";
 

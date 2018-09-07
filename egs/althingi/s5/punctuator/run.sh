@@ -35,7 +35,7 @@ $two_stage && mkdir -p $datadir_2nd_stage/log
 input_2nd_stage=$root_intermediate/all_sept2017
 ali_dir=$exp/tri4_ali
 
-source activate thenv || error 11 ${error_array[11]};
+source $CONDAPATH/activate thenv || error 11 ${error_array[11]};
 
 if [ $stage -le -1 ]; then
 
@@ -136,6 +136,6 @@ if [ $stage -le 4 ]; then
   fi
 fi
 
-source deactivate
+source $CONDAPATH/deactivate
 
 exit 0;

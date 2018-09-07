@@ -38,7 +38,7 @@ punctuation_model=$bundle/punctuation_model
 paragraph_model=$bundle/paragraph_model
 
 for f in $ifile $utf8syms $normdir/ABBR_AND_DENORM.fst \
-  $normdir/INS_PERIODS.fst $punctuation_model $paragraph_model; do
+  $normdir/INSERT_PERIODS.fst $punctuation_model $paragraph_model; do
   [ ! -f $f ] && echo "$0: expected $f to exist" && exit 1;
 done  
 
@@ -53,7 +53,7 @@ fststringcompile ark:$ifile ark:- \
   > ${intermediate}/thrax_out.tmp || error 8 ${error_array[8]};
 
 # Need to activate the conda environment for the punctuation and paragraph models
-source activate thenv || error 11 ${error_array[11]};
+source $CONDAPATH/activate thenv || error 11 ${error_array[11]};
 
 echo "Extract the numbers before punctuation"
 python punctuator/local/saving_numbers.py \
@@ -109,6 +109,6 @@ python paragraph/convert_to_readable.py \
 # # Fix the casing of known named entities
 # /bin/sed -f ${intermediate}/ner_sed_pattern.tmp file > file_out
 
-source deactivate
+source $CONDAPATH/deactivate
 
 exit 0;

@@ -74,8 +74,7 @@ dir=$2
 outdir=$dir/${speechname}
 
 wdir=$dir/${speechname}_inprocess # I want to keep intermediate files in case of a crash
-mkdir -p $wdir
-mkdir -p $outdir/{intermediate,log}
+mkdir -p $wdir $outdir/{intermediate,log}
 
 # Created
 decodedir=${wdir}_segm_hires/decode_3gsmall
@@ -163,7 +162,7 @@ if [ $stage -le 6 ]; then
   if $rnnlm; then
     echo "RNN-LM rescoring"
     rnnlm/lmrescore_pruned.sh \
-      --cmd "$decode_cmd" \
+      --cmd "utils/slurm.pl --mem 8G" \
       --weight 0.5 --max-ngram-order $ngram_order \
       --skip-scoring true \
       ${oldLMdir} $rnnlmdir \

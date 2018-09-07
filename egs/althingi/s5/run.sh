@@ -36,7 +36,7 @@ corpus_zip=/data/althingi/tungutaekni_145.tar.gz # Data from Althingi
 
 . ./cmd.sh
 . ./path.sh
-. utils/parse_options.sh
+. utils/parse_options.sh || exit 1;
 . local/utils.sh
 . ./conf/path.conf # Here $data, $exp and $mfcc are defined, as well as all $root_*
 # path.conf defines the file structure used and where the data and output from experiments is put
@@ -79,13 +79,12 @@ lm_datadir=$root_lm_datadir/$d
 rnnlm_datadir=$root_lm_datadir/rnn/$d
 
 # Existing language model training data
-lm_trainingset=$root_lm_datadir/training/LMtext_2004-March2018.txt
+lm_trainingset=$(ls -t $root_lm_datadir/training/LMtext.*.txt | head -n1)
 
-# Directories for punctuation, language and acoustic models
+# Directories for punctuation and language models
 punct_modeldir=$root_punctuation_modeldir/$d
 lm_modeldir=$root_lm_modeldir/$d
-am_modeldir=$root_am_modeldir/$d
-rnnlm_modeldir=$root_rnnlm/$d
+rnnlm_modeldir=$lm_modeldir/rnn #$root_rnnlm/$d
 
 # Temporary dir used when creating data/lang dirs in local/prep_lang.sh
 localdict=$root_localdict # Byproduct of local/prep_lang.sh
@@ -319,11 +318,10 @@ if [ $stage -le 7 ]; then
       $lm_modeldir/lang
   fi
   
-  # Expanded LM training text and split on EOS:
-  #/home/staff/inga/data/althingi/pronDict_LM/LMtext_w_t131_split_on_EOS_expanded.txt
-  # A newer one: $root_lm_datadir/training/LMtext_2004-March2018.txt
+  # Expanded LM training text and split on EOS
   # If I want to use the newly created language model it is:
   #    $lm_datadir/text_$(basename $outdir).txt
+  # Small texts fitting for language modelling are not in the training dir but in dirs marked with the creation date
   
   echo "Preparing a pruned trigram language model"
   mkdir -p $lm_modeldir/log
@@ -359,6 +357,17 @@ if [ $stage -le 7 ]; then
     local/make_zgLM.sh \
       $lm_modeldir/lang $localdict/lexicon.txt $lm_modeldir/lang_zg \
     || error 1 "Failed creating a zerogram language model"
+
+  echo "Train a RNN LM"
+  mkdir -p $rnnlm_modeldir/log
+  affix=_${d}
+  nohup local/rnnlm/run_tdnn_lstm_no_diagnostic.sh --affix $affix --run-lat-rescore false $lm_trainingset >>$rnnlm_modeldir/log/rnnlm_tdnn_lstm.log 2>&1 &
+  wait
+
+  # Save in my structure
+  cp -r -L -t $rnnlm_modeldir $exp/rnnlm_lstm${affix}/{final.raw,feat_embedding.final.mat,special_symbol_opts.txt,word_feats.txt,config}
+  [ -f $exp/rnnlm_lstm${affix}/word_embedding.final.mat ] && cp -L $exp/rnnlm_lstm${affix}/word_embedding.final.mat $rnnlm_modeldir
+fi
   
 fi
 
@@ -425,38 +434,29 @@ if [ $stage -le 11 ]; then
   # echo "Run the swbd chain tdnn recipe with sp"
   # local/chain/run_tdnn.sh data/train data >>tdnn.log 2>&1 &
   affix=_1
-  logdir=$root_chain/$(cat $KALDI_ROOT/src/.version)/$d/log
+  amdir=$root_chain/$(cat $KALDI_ROOT/src/.version)/tdnn${affix}/$d
+  logdir=$amdir/log
   mkdir -p $logdir
-  nohup local/chain/run_tdnn.sh --stage 0 --speed-perturb true --generate-plots true --zerogram-decoding true $data/train_okt2017_500k_cleaned data >>$logdir/tdnn1$affix.log 2>&1 &
+  nohup local/chain/run_tdnn.sh --stage 0 --speed-perturb true --generate-plots true --zerogram-decoding true $data/train_okt2017_500k_cleaned data >>$logdir/tdnn$affix.log 2>&1 &
 
   # echo "Run the swbd chain tdnn recipe without sp on all my training data. Bigger model"
   affix=_2
-  logdir=$root_chain/$(cat $KALDI_ROOT/src/.version)/$d/log
+  amdir=$root_chain/$(cat $KALDI_ROOT/src/.version)/tdnn${affix}/$d
+  logdir=$amdir/log
   mkdir -p $logdir
   nohup local/chain/tuning/run_tdnn${affix}.sh --stage 9 --speed-perturb false --generate-plots true --zerogram-decoding true $data/train_okt2017 data >>$logdir/tdnn2$affix.log 2>&1 &
   wait
-
+  
   # Save in my file structure
-  cp -r -L -t $root_am_modeldir/extractor/$d $exp/nnet3/extractor/*
-  cp -r -t $root_chain/$(cat $KALDI_ROOT/src/.version)/$d/tdnn${affix} $exp/chain/tdnn${affix}/{cmvn_opts,final.*,frame_subsampling_factor,graph_3gsmall,tree}
+  cp -L -t $root_am_modeldir/extractor/$d $exp/nnet3/extractor/{final.ie,final.dubm,global_cmvn.stats,splice_opts,online_cmvn.conf,final.mat}
+  cp -r -t $amdir $exp/chain/tdnn${affix}/{cmvn_opts,final.*,frame_subsampling_factor,graph_3gsmall,tree}
+  [ -f $exp/chain/tdnn${affix}/log/mkgraph.log ] && cp $exp/chain/tdnn${affix}/log/mkgraph.log $logdir/
 
-  # Create a symlink to the extractor in the AM dir:
-  ln -s $root_am_modeldir/extractor/$d $root_chain/$(cat $KALDI_ROOT/src/.version)/$d/tdnn${affix}/extractor
-fi
-
-
-if [ $stage -le 12 ]; then
-  # Train and rescore with an RNN LM
-  # Now the training text is LMtext_2004-March2018.txt. Updated if a newer big one is created.
-  # Small texts fitting for language modelling are not in the training dir but in dirs marked with the creation date
-  mkdir -p $rnnlm_modeldir/log
-  affix=_${d}
-  nohup local/rnnlm/run_tdnn_lstm.sh --affix $affix --run-lat-rescore false $root_lm_datadir/training/$(ls -t $root_lm_datadir/training/ | head -n1) >>$rnnlm_modeldir/log/rnnlm_tdnn_lstm.log 2>&1 &
-  wait
-
-  # Save in my structure
-  cp -r -L -t $rnnlm_modeldir $exp/rnnlm_lstm${affix}/{final.raw,feat_embedding.final.mat,special_symbol_opts.txt,word_feats.txt,config}
-  [ -f $exp/rnnlm_lstm${affix}/word_embedding.final.mat ] && cp -L $exp/rnnlm_lstm${affix}/word_embedding.final.mat $rnnlm_modeldir
+  # Create a symlink to the extractor and LM dir used:
+  ln -s $root_am_modeldir/extractor/$d $amdir/extractor
+  vers=$(egrep -o "language_model/[0-9]+/" $logdir/*.log | sort -u | tail -n1)
+  ln -s $root_modeldir/$vers $amdir/lmdir
+  
 fi
 
 # If I intend to use the ASR from transcribing speeches and apply post-processing I need to train the punctuation model

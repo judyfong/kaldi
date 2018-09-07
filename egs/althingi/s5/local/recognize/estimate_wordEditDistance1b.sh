@@ -26,7 +26,7 @@ if [ $# -ne 3 ]; then
     exit 1;
 fi
 
-# If one of the texts is and ASR transcription and one is either a manual transcription
+# If one of the texts is an ASR transcription and one is either a manual transcription
 # or an edited ASR text, then text2 should be the unedited ASR transcription
 textfile1=$1
 textfile2=$2
@@ -120,6 +120,8 @@ if [ $dir1 = "Lestur" -a $dir2 = "ASR" ]; then
 elif [ $dir1 = "Text_D" -a $dir2 = "ASR" ]; then
   wc -w $dir/text1.tmp > $dir/wc_D
   wc -w $dir/text2.tmp > $dir/wc_B
+else
+  wc -w $dir/text1.tmp > $dir/wc_ref
 fi
 
 # Align the two texts

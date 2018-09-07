@@ -40,13 +40,11 @@ xent_regularize=0.1
 echo "$0 $@"  # Print the command line for logging
 
 . ./path.sh
-. ./conf/path.conf
 . ./cmd.sh
-. ./utils/parse_options.sh
+. ./utils/parse_options.sh || exit 1;
 
 # LMs
 lmdir=$(ls -td $root_lm_modeldir/20* | head -n1)
-echo "Using LM dir: $lmdir"
 decoding_lang=$lmdir/lang_3gsmall
 rescoring_lang=$lmdir/lang_5g
 zerogramLM=$lmdir/lang_zg
@@ -204,7 +202,6 @@ fi
 
 if [ $stage -le 13 ]; then
 
-
   steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$train_cmd --time 3-12" \
     --feat.online-ivector-dir $exp/nnet3/ivectors_${train_set} \
@@ -239,7 +236,7 @@ if [ $stage -le 14 ]; then
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
   echo "Make a small 3-gram graph"
-  utils/mkgraph.sh --self-loop-scale 1.0 $decoding_lang $dir $dir/graph_3gsmall
+  utils/slurm.pl --mem 8G $dir/log/mkgraph.log utils/mkgraph.sh --self-loop-scale 1.0 $decoding_lang $dir $dir/graph_3gsmall
 fi
 
 graph_dir=$dir/graph_3gsmall

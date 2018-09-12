@@ -35,7 +35,9 @@ $two_stage && mkdir -p $datadir_2nd_stage/log
 input_2nd_stage=$root_intermediate/all_sept2017
 ali_dir=$exp/tri4_ali
 
-source $CONDAPATH/activate thenv || error 11 ${error_array[11]};
+if [[ $(hostname -f) == terra.hir.is ]]; then
+  source $CONDAPATH/activate thenv || error 11 ${error_array[11]};
+fi
 
 if [ $stage -le -1 ]; then
 
@@ -136,6 +138,8 @@ if [ $stage -le 4 ]; then
   fi
 fi
 
-source $CONDAPATH/deactivate
+if [[ $(hostname -f) == terra.hir.is ]]; then
+  source $CONDAPATH/deactivate
+fi
 
 exit 0;

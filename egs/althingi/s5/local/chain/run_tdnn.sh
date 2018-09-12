@@ -271,10 +271,16 @@ fi
 
 if [ $generate_plots = true ]; then
   echo "Generating plots and compiling a latex report on the training"
-  source activate thenv || error 11 $LINENO "Can't activate thenv";
-  steps/nnet3/report/generate_plots.py \
-    --is-chain true $dir $dir/report_tdnn${affix}$suffix
-  source deactivate
+  if [[ $(hostname -f) == terra.hir.is ]]; then
+    source $CONDAPATH/activate thenv || error 11 $LINENO "Can't activate thenv";
+    steps/nnet3/report/generate_plots.py \
+      --is-chain true $dir $dir/report_tdnn${affix}$suffix
+    source $CONDAPATH/deactivate
+  else
+    steps/nnet3/report/generate_plots.py \
+      --is-chain true $dir $dir/report_tdnn${affix}$suffix
+  fi
+  
 fi
 
 if [ $zerogram_decoding = true ]; then

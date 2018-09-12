@@ -53,7 +53,9 @@ fststringcompile ark:$ifile ark:- \
   > ${intermediate}/thrax_out.tmp || error 8 ${error_array[8]};
 
 # Need to activate the conda environment for the punctuation and paragraph models
-source $CONDAPATH/activate thenv || error 11 ${error_array[11]};
+if [[ $(hostname -f) == terra.hir.is ]]; then
+  source $CONDAPATH/activate thenv || error 11 ${error_array[11]};
+fi
 
 echo "Extract the numbers before punctuation"
 python punctuator/local/saving_numbers.py \
@@ -109,6 +111,8 @@ python paragraph/convert_to_readable.py \
 # # Fix the casing of known named entities
 # /bin/sed -f ${intermediate}/ner_sed_pattern.tmp file > file_out
 
-source $CONDAPATH/deactivate
+if [[ $(hostname -f) == terra.hir.is ]]; then
+  source $CONDAPATH/deactivate
+fi
 
 exit 0;

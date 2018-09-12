@@ -13,7 +13,6 @@ nj=24
 . ./path.sh # Needed for KALDI_ROOT and ASSET_ROOT
 . ./cmd.sh
 . parse_options.sh || exit 1;
-. ./conf/path.conf
 . ./local/utils.sh
 . ./local/array.sh
 

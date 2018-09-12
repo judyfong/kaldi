@@ -28,7 +28,7 @@ pruned_rescore=true
 . ./path.sh
 . ./cmd.sh
 . ./utils/parse_options.sh
-. ./conf/path.conf # Here $data, $exp and $mfcc are defined, default to /mnt/scratch/inga/
+# path.sh calls path.conf where $data, $exp and $mfcc are defined, default to /mnt/scratch/inga/
 
 if [ $# -ne 1 ]; then
   echo "This script trains a RNN language model and uses it to performe lattice rescoring"

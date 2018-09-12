@@ -15,7 +15,7 @@ set -o pipefail
 # configs
 stage=-1
 num_jobs=1
-lmwt=8 # Language model weight. Can have big effect.
+lmwt=9 # Language model weight. Can have big effect.
 rnnlm=false
 ngram_rnnlm=false
 score=false

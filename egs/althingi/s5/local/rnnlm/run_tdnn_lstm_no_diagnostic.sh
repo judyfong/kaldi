@@ -41,6 +41,9 @@ fi
 text=$1
 echo "training text: $text"
 
+# # Time the whole training process
+# begin=$(date +%s)
+
 data_dir=$data/rnnlm
 dir=$exp/rnnlm_lstm${affix}
 mkdir -p $dir/config
@@ -126,7 +129,7 @@ if [ $stage -le 3 ]; then
     --num-jobs-final 12 \
     --stage $train_stage \
     --num-epochs 10 \
-    --cmd "$train_cmd --mem 12G --time 2-00" $dir
+    --cmd "$big_memory_cmd --time 2-00" $dir
 fi
 
 # # Calculate the lattice-rescoring time
@@ -168,4 +171,4 @@ fi
 # tottime=$(expr $end - $begin)
 # echo "total time: $tottime seconds"
 
-exit 0
+exit 0;

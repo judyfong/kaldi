@@ -32,13 +32,15 @@ set -o pipefail
 nj=20
 decode_nj=32 
 stage=-100
-corpus_zip=/data/althingi/tungutaekni_145.tar.gz # Data from Althingi
+corpus_zip=/data/althingi/tungutaekni_145.tar.gz # Data from Althingi or Malfong
+first_session=132
+last_session=148
 
 . ./cmd.sh
 . ./path.sh
 . utils/parse_options.sh || exit 1;
 . local/utils.sh
-. ./conf/path.conf # Here $data, $exp and $mfcc are defined, as well as all $root_*
+# path.sh calls path.conf where $data, $exp and $mfcc are defined, as well as all $root_*
 # path.conf defines the file structure used and where the data and output from experiments is put
 
 #date
@@ -96,6 +98,13 @@ cleanup () {
 trap cleanup EXIT
 
 if [ $stage -le -1 ]; then
+
+  echo "Create a virtual python 3 environment"
+  virtualenv -p python3.5 venv3
+  source venv3/bin/activate
+  pip install -r $listdir/venv3_requirements.txt
+  deactivate
+  
   echo "Extracting corpus"
   [ -f $corpus_zip ] || error 1 "$corpus_zip not a file"
   mkdir -p ${corpusdir}
@@ -103,22 +112,20 @@ if [ $stage -le -1 ]; then
   c=$(ls $corpusdir)
   [ $(ls ${corpusdir} | wc -l) = 1 ] && mv ${corpusdir}/$c/* ${corpusdir}/ && rm -r ${corpusdir}/$c
   # validate
-  if ! [[ -d ${corpusdir}/audio && \
-	    -d ${corpusdir}/text_bb && \
-	    -d ${corpusdir}/text_endanlegt ]]; then
-    error 1 "Corpus doesn not have the correct structure"
+  if [ ${corpusdir}/text_bb -o ${corpusdir}/text_upphaflegt ]; then
+    if [[ -d ${corpusdir}/audio && -d ${corpusdir}/text_endanlegt ]]; then
+      mv ${corpusdir}/text_bb ${corpusdir}/text_upphaflegt # More informative and matches the naming of the directory of the final text files
+      encoding=$(file -i ${corpusdir}/metadata.csv | cut -d" " -f3)
+      if [[ "$encoding"=="charset=iso-8859-1" ]]; then
+	iconv -f ISO-8859-1 -t UTF-8 ${corpusdir}/metadata.csv > $tmp/tmp && mv $tmp/tmp ${corpusdir}/metadata.csv
+      fi
+    else
+      echo "Need to extract the audio and final text from althingi.is"
+      local/data_extraction/extract_new_files.sh $corpusdir $first_session $last_session || error 1 "Failed to extract audio and text from althingi.is"
+    fi
+  else
+    echo "The corpus does not have the correct structure" || exit 1;
   fi
-  mv ${corpusdir}/text_bb ${corpusdir}/text_upphaflegt # More informative and matches the naming of the directory of the final text files
-  encoding=$(file -i ${corpusdir}/metadata.csv | cut -d" " -f3)
-  if [[ "$encoding"=="charset=iso-8859-1" ]]; then
-    iconv -f ISO-8859-1 -t UTF-8 ${corpusdir}/metadata.csv > $tmp/tmp && mv $tmp/tmp ${corpusdir}/metadata.csv
-  fi
-
-  echo "Create a virtual python 3 environment"
-  virtualenv -p python3.5 venv3
-  source venv3/bin/activate
-  pip install -r $listdir/venv3_requirements.txt
-  deactivate
   
 fi
 
@@ -332,14 +339,14 @@ if [ $stage -le 7 ]; then
       $localdict/lexicon.txt $lm_modeldir \
     || error 1 "Failed creating a pruned trigram language model"
 		 
-  echo "Preparing an unpruned trigram language model"
-  mkdir -p $lm_modeldir/log
-  utils/slurm.pl --mem 18G $lm_modeldir/log/make_LM_3g.log \
-    local/make_LM.sh \
-      --order 3 --small false --carpa true \
-      $lm_trainingset $lm_modeldir/lang \
-      $localdict/lexicon.txt $lm_modeldir \
-    || error 1 "Failed creating an unpruned trigram language model"
+  # echo "Preparing an unpruned trigram language model"
+  # mkdir -p $lm_modeldir/log
+  # utils/slurm.pl --mem 18G $lm_modeldir/log/make_LM_3g.log \
+  #   local/make_LM.sh \
+  #     --order 3 --small false --carpa true \
+  #     $lm_trainingset $lm_modeldir/lang \
+  #     $localdict/lexicon.txt $lm_modeldir \
+  #   || error 1 "Failed creating an unpruned trigram language model"
 
   echo "Preparing an unpruned 5g LM"
   mkdir -p $lm_modeldir/log
@@ -434,23 +441,29 @@ if [ $stage -le 11 ]; then
   # echo "Run the swbd chain tdnn recipe with sp"
   # local/chain/run_tdnn.sh data/train data >>tdnn.log 2>&1 &
   affix=_1
-  amdir=$root_chain/$(cat $KALDI_ROOT/src/.version)/tdnn${affix}/$d
+  speed_perturb=false
+  suffix=
+  $speed_perturb && suffix=_sp
+  amdir=$root_chain/$(cat $KALDI_ROOT/src/.version)/tdnn${affix}$suffix/$d
   logdir=$amdir/log
   mkdir -p $logdir
-  nohup local/chain/run_tdnn.sh --stage 0 --speed-perturb true --generate-plots true --zerogram-decoding true $data/train_okt2017_500k_cleaned data >>$logdir/tdnn$affix.log 2>&1 &
+  nohup local/chain/run_tdnn.sh --stage 0 --affix=$affix --speed-perturb $speed_perturb --generate-plots true --zerogram-decoding true $data/train_okt2017_500k_cleaned data >>$logdir/tdnn$affix.log 2>&1 &
 
-  # echo "Run the swbd chain tdnn recipe without sp on all my training data. Bigger model"
-  affix=_2
-  amdir=$root_chain/$(cat $KALDI_ROOT/src/.version)/tdnn${affix}/$d
-  logdir=$amdir/log
-  mkdir -p $logdir
-  nohup local/chain/tuning/run_tdnn${affix}.sh --stage 9 --speed-perturb false --generate-plots true --zerogram-decoding true $data/train_okt2017 data >>$logdir/tdnn2$affix.log 2>&1 &
+  # # echo "Run the swbd chain tdnn recipe without sp on all my training data. Bigger model"
+  # affix=_2
+  # speed_perturb=false
+  # suffix=
+  # $speed_perturb && suffix=_sp
+  # amdir=$root_chain/$(cat $KALDI_ROOT/src/.version)/tdnn${affix}/$d
+  # logdir=$amdir/log
+  # mkdir -p $logdir
+  # nohup local/chain/tuning/run_tdnn${affix}.sh --affix=$affix --stage 0 --speed-perturb $speed_perturb --generate-plots true --zerogram-decoding true $data/train_okt2017 data >>$logdir/tdnn2$affix.log 2>&1 &
   wait
   
   # Save in my file structure
   cp -L -t $root_am_modeldir/extractor/$d $exp/nnet3/extractor/{final.ie,final.dubm,global_cmvn.stats,splice_opts,online_cmvn.conf,final.mat}
-  cp -r -t $amdir $exp/chain/tdnn${affix}/{cmvn_opts,final.*,frame_subsampling_factor,graph_3gsmall,tree}
-  [ -f $exp/chain/tdnn${affix}/log/mkgraph.log ] && cp $exp/chain/tdnn${affix}/log/mkgraph.log $logdir/
+  cp -r -t $amdir $exp/chain/tdnn${affix}$suffix/{cmvn_opts,final.*,frame_subsampling_factor,graph_3gsmall,tree}
+  [ -f $exp/chain/tdnn${affix}$suffix/log/mkgraph.log ] && cp $exp/chain/tdnn${affix}$suffix/log/mkgraph.log $logdir/
 
   # Create a symlink to the extractor and LM dir used:
   ln -s $root_am_modeldir/extractor/$d $amdir/extractor

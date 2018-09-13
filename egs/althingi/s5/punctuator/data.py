@@ -46,7 +46,7 @@ WORD_VOCAB_FILE = os.path.join(DATA_PATH, "vocabulary")
 PUNCTUATION_VOCABULARY = [SPACE, ".PERIOD", "?QUESTIONMARK", ":COLON"]
 PUNCTUATION_MAPPING = {"!EXCLAMATIONMARK": ".PERIOD", ";SEMICOLON": ".PERIOD"}
 
-EOS_TOKENS = {".PERIOD", "?QUESTIONMARK"}
+EOS_TOKENS = {".PERIOD", "?QUESTIONMARK", ":COLON"}
 CRAP_TOKENS = {"<doc>", "<doc.>"} # punctuations that are not included in vocabulary nor mapping, must be added to CRAP_TOKENS
 PAUSE_PREFIX = "<sil="
 

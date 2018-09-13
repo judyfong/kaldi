@@ -225,7 +225,7 @@ if [ $score = true ] ; then
     echo "Estimate the WER"
     # NOTE! Correct for the mismatch in the beginning and end of recordings.
     local/recognize/score_recognize.sh \
-	--cmd "$train_cmd" $speechname $oldLMdir $outdir || exit 1;
+      --cmd "$train_cmd" $speechname $oldLMdir $outdir || exit 1;
 fi
 
 mv -t $outdir/log ${wdir}_segm_hires/decode*/log/*

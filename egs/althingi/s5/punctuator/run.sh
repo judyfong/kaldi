@@ -66,17 +66,17 @@ fi
 if [ $stage -le 1 ]; then
 
   if ! $continue_with_previous; then
-    rm -r processed_data &>/dev/null
+    rm -r punctuator/processed_data &>/dev/null
   fi
   
   echo "Convert data"
   if [ -e $datadir_2nd_stage/althingi.train.txt ]; then
     utils/slurm.pl --mem 12G --time 0-12:00 $datadir/log/data${id}${suffix}_w2nd_stage.log \
-		   python punctuator/data.py ${datadir} ${datadir_2nd_stage} || error 1 "punct: data.py w/2nd stage failed"
+      python punctuator/data.py ${datadir} ${datadir_2nd_stage} || error 1 "punct: data.py w/2nd stage failed"
     #sbatch --get-user-env --mem 12G --time 0-12:00 --job-name=data_2nd_stage --output=$datadir/log/data${id}${suffix}_w2nd_stage.log --wrap="srun python punctuator/data.py ${datadir} ${datadir_2nd_stage}"
   else
     utils/slurm.pl --mem 12G --time 0-12:00 $datadir/log/data${id}${suffix}.log \
-		   python punctuator/data.py ${datadir} || error 1 "punct: data.py failed"
+      python punctuator/data.py ${datadir} || error 1 "punct: data.py failed"
     #sbatch --get-user-env --mem 12G --time 0-12:00 --job-name=data_stage1 --output=$datadir/log/data${id}$suffix.log --wrap="srun python punctuator/data.py ${datadir}"
   fi
 fi
@@ -85,13 +85,13 @@ if [ $stage -le 2 ]; then
  
   echo "Train the model using first stage data"
   utils/slurm.pl --gpu 1 --mem 12G --time 0-10:00 $modeldir/log/main_first_stage${id}$suffix.log \
-		 python punctuator/main.py $modeldir althingi${id}${suffix} 256 0.02 || error 1 "punct: main.py failed"
+    python punctuator/main.py $modeldir althingi${id}${suffix} 256 0.02 || error 1 "punct: main.py failed"
   #sbatch --get-user-env --job-name=main_first_stage --output=$modeldir/log/main_first_stage${id}$suffix.log --gres=gpu:1 --mem=12G --time=0-10:00 --wrap="srun python punctuator/main.py $modeldir althingi${id}${suffix} 256 0.02"
 
   if [ -e $datadir_2nd_stage/althingi.train.txt ]; then
     echo "Train the 2nd stage"
     utils/slurm.pl --gpu 1 --mem 12G --time 0-10:00 $modeldir/log/main_2nd_stage${id}$suffix.log \
-		 python punctuator/main2.py $modeldir althingi${id}${suffix} 256 0.02 $modeldir/Model_althingi${id}${suffix}_h256_lr0.02.pcl || error 1 "punct: main2.py failed"
+      python punctuator/main2.py $modeldir althingi${id}${suffix} 256 0.02 $modeldir/Model_althingi${id}${suffix}_h256_lr0.02.pcl || error 1 "punct: main2.py failed"
     #sbatch --job-name=main_2nd_stage --output=$datadir/log/main_2nd_stage${id}$suffix.log --gres=gpu:1 --mem=12G --time=0-10:00 --wrap="srun python punctuator/main2.py $modeldir althingi${id}${suffix} 256 0.02 $modeldir/Model_althingi${id}${suffix}_h256_lr0.02.pcl"
   fi
 fi
@@ -100,14 +100,14 @@ if [ $stage -le 3 ]; then
   echo "Punctuate the dev and test sets using the 1st stage model"
   for dataset in dev test; do
     utils/slurm.pl --mem 4G $modeldir/log/punctuator_1st_stage.log \
-		   THEANO_FLAGS='device=cpu' python punctuator/punctuator_filein.py $modeldir/Model_althingi${id}${suffix}_h256_lr0.02.pcl ${datadir}/althingi.${dataset}.txt ${datadir}/${dataset}_punctuated_stage1${id}${suffix}.txt  || error 1 "punct: punctuator_filein.py failed"
+      THEANO_FLAGS='device=cpu' python punctuator/punctuator_filein.py $modeldir/Model_althingi${id}${suffix}_h256_lr0.02.pcl ${datadir}/althingi.${dataset}.txt ${datadir}/${dataset}_punctuated_stage1${id}${suffix}.txt  || error 1 "punct: punctuator_filein.py failed"
     #sbatch --get-user-env --job-name=punctuator --mem=4G --wrap="THEANO_FLAGS='device=cpu' srun python punctuator/punctuator_filein.py $modeldir/Model_althingi${id}${suffix}_h256_lr0.02.pcl ${datadir}/althingi.${d}.txt ${datadir}/${d}_punctuated_stage1${id}${suffix}.txt"
   done
   
   if [ -e $datadir_2nd_stage/althingi.train.txt ]; then
     echo "Punctuate the dev and test sets using the 2nd stage model"
     utils/slurm.pl --mem 4G $modeldir/log/punctuator_2nd_stage.log \
-		   THEANO_FLAGS='device=cpu' python punctuator/punctuator_filein.py $modeldir/Model_stage2_althingi${id}${suffix}_h256_lr0.02.pcl ${datadir_2nd_stage}/althingi.${dataset}.txt ${datadir_2nd_stage}/${dataset}_punctuated_stage1${id}${suffix}.txt 1  || error 1 "punct: punctuator_filein.py failed on 2nd stage model"
+      THEANO_FLAGS='device=cpu' python punctuator/punctuator_filein.py $modeldir/Model_stage2_althingi${id}${suffix}_h256_lr0.02.pcl ${datadir_2nd_stage}/althingi.${dataset}.txt ${datadir_2nd_stage}/${dataset}_punctuated_stage1${id}${suffix}.txt 1  || error 1 "punct: punctuator_filein.py failed on 2nd stage model"
     #sbatch --get-user-env --job-name=punctuator_2nd_stage --mem=4G --wrap="THEANO_FLAGS='device=cpu' srun python punctuator/punctuator_filein.py $modeldir/Model_stage2_althingi${id}${suffix}_h256_lr0.02.pcl ${datadir_2nd_stage}/althingi.${dataset}.txt ${datadir_2nd_stage}/${dataset}_punctuated_stage1${id}${suffix}.txt 1"
   fi
 fi

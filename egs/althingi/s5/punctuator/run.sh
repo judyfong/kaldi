@@ -19,7 +19,6 @@ continue_with_previous=false    # continue training an existing model
 . ./utils/parse_options.sh
 . ./local/utils.sh
 . ./local/array.sh
-. ./conf/path.conf
 
 cleaned=$data/postprocessing
 mkdir -p $cleaned/log
@@ -99,15 +98,21 @@ fi
 if [ $stage -le 3 ]; then
   echo "Punctuate the dev and test sets using the 1st stage model"
   for dataset in dev test; do
-    utils/slurm.pl --mem 4G $modeldir/log/punctuator_1st_stage.log \
-      THEANO_FLAGS='device=cpu' python punctuator/punctuator_filein.py $modeldir/Model_althingi${id}${suffix}_h256_lr0.02.pcl ${datadir}/althingi.${dataset}.txt ${datadir}/${dataset}_punctuated_stage1${id}${suffix}.txt  || error 1 "punct: punctuator_filein.py failed"
+    (
+      utils/slurm.pl --mem 4G $modeldir/log/punctuator_1st_stage_$dataset.log \
+        THEANO_FLAGS='device=cpu' python punctuator/punctuator_filein.py $modeldir/Model_althingi${id}${suffix}_h256_lr0.02.pcl ${datadir}/althingi.${dataset}.txt ${datadir}/${dataset}_punctuated_stage1${id}${suffix}.txt  || error 1 "punct: punctuator_filein.py failed";
+      ) 
     #sbatch --get-user-env --job-name=punctuator --mem=4G --wrap="THEANO_FLAGS='device=cpu' srun python punctuator/punctuator_filein.py $modeldir/Model_althingi${id}${suffix}_h256_lr0.02.pcl ${datadir}/althingi.${d}.txt ${datadir}/${d}_punctuated_stage1${id}${suffix}.txt"
   done
   
   if [ -e $datadir_2nd_stage/althingi.train.txt ]; then
     echo "Punctuate the dev and test sets using the 2nd stage model"
-    utils/slurm.pl --mem 4G $modeldir/log/punctuator_2nd_stage.log \
-      THEANO_FLAGS='device=cpu' python punctuator/punctuator_filein.py $modeldir/Model_stage2_althingi${id}${suffix}_h256_lr0.02.pcl ${datadir_2nd_stage}/althingi.${dataset}.txt ${datadir_2nd_stage}/${dataset}_punctuated_stage1${id}${suffix}.txt 1  || error 1 "punct: punctuator_filein.py failed on 2nd stage model"
+    for dataset in dev test; do
+      (
+	utils/slurm.pl --mem 4G $modeldir/log/punctuator_2nd_stage_${dataset}.log \
+          THEANO_FLAGS='device=cpu' python punctuator/punctuator_filein.py $modeldir/Model_stage2_althingi${id}${suffix}_h256_lr0.02.pcl ${datadir_2nd_stage}/althingi.${dataset}.txt ${datadir_2nd_stage}/${dataset}_punctuated_stage1${id}${suffix}.txt 1  || error 1 "punct: punctuator_filein.py failed on 2nd stage model";
+      ) &
+    done
     #sbatch --get-user-env --job-name=punctuator_2nd_stage --mem=4G --wrap="THEANO_FLAGS='device=cpu' srun python punctuator/punctuator_filein.py $modeldir/Model_stage2_althingi${id}${suffix}_h256_lr0.02.pcl ${datadir_2nd_stage}/althingi.${dataset}.txt ${datadir_2nd_stage}/${dataset}_punctuated_stage1${id}${suffix}.txt 1"
   fi
 fi

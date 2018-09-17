@@ -427,10 +427,10 @@ if [ $stage -le 9 ]; then
   done
 fi
 
-# if [ $stage -le 10 ]; then
-#     echo "Clean and resegment the training data"
-#     nohup steps/cleanup/clean_and_segment_data.sh --cmd "$big_memory_cmd --time 2-00" --nj 64 data/train_okt2017_500k $(ls -td $root_lm_modeldir/20* | head -n1)/lang $exp/tri5_lats $exp/tri5_train_okt2017_500k_cleanup $data/train_okt2017_500k_cleaned & 
-# fi
+if [ $stage -le 10 ]; then
+    echo "Clean and resegment the training data"
+    nohup steps/cleanup/clean_and_segment_data.sh --cmd "$big_memory_cmd --time 2-00" --nj 64 data/train_okt2017_500k $(ls -td $root_lm_modeldir/20* | head -n1)/lang $exp/tri5_lats $exp/tri5_train_okt2017_500k_cleanup $data/train_okt2017_500k_cleaned & 
+fi
 
 # Input data dirs need to be changed
 if [ $stage -le 11 ]; then

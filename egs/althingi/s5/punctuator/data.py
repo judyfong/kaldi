@@ -11,7 +11,7 @@ import fnmatch
 import shutil
 
 #DATA_PATH = "../data"
-DATA_PATH = "processed_data"
+DATA_PATH = "punctuator/processed_data"
 
 # path to text file in the format:
 # word1 0.123 0.123 ... 0.123

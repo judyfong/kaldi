@@ -14,10 +14,11 @@ set -o pipefail
 
 # configs
 stage=-1
+trim=0 #4
 num_jobs=1
 lmwt=9 # Language model weight. Can have big effect.
 rnnlm=false
-ngram_rnnlm=false
+#ngram_rnnlm=false # Completely unnecessary
 score=false
 
 # Which bundle to use
@@ -39,7 +40,7 @@ oldLMdir=$bundle/decoding_lang
 newLMdir=$bundle/rescoring_lang
 
 # If RNN-LM rescoring is applied
-if $rnnlm -o $ngram_rnnlm ; then
+if $rnnlm ; then  #  -o $ngram_rnnlm
   rnnlmdir=$bundle/rescoring_lang_rnn
   ngram_order=4  # approximate the lattice-rescoring by limiting the max-ngram-order
                  # if it's set, it merges histories in the lattice if they share
@@ -59,7 +60,7 @@ if [ $# -lt 2 ]; then
   echo "    --lmwt         # language model weight (default: 8)"
   echo "    --bundle       # which model to use, defaults to the latest one"
   echo "    --rnnlm        # rescore with an RNN-LM, default: false"
-  echo "    --ngram-rnnlm  # rescore first with an ngram and then with an rnnlm"
+  #echo "    --ngram-rnnlm  # rescore first with an ngram and then with an rnnlm"
   exit 1;
 fi
 
@@ -87,7 +88,7 @@ elif [ $# = 2 ]; then
   speakerfile=${wdir}/${speechname}_meta.tmp
 fi
 
-! $ngram_rnnlm || rescoredir_ngram=${wdir}_segm_hires/decode_5g
+#! $ngram_rnnlm || rescoredir_ngram=${wdir}_segm_hires/decode_5g
 
 for f in $speechfile $modeldir/final.mdl $graphdir/HCLG.fst \
   $oldLMdir/G.fst $newLMdir/G.carpa $oldLMdir/words.txt $extractor/final.ie; do
@@ -108,9 +109,8 @@ if [ ${length%.*} -lt 1 ]; then
 fi
 
 if [ $stage -le 0 ]; then
-
   echo "Set up a directory in the right format of Kaldi and extract features"
-  local/recognize/prep_audiodata.sh $speechfile $speakerfile $wdir || exit 1;
+  local/recognize/prep_audiodata.sh --trim $trim $speechfile $speakerfile $wdir || exit 1;
 fi
 spkID=$(cut -d" " -f1 $wdir/spk2utt)
 
@@ -152,7 +152,7 @@ if [ $stage -le 6 ]; then
   # except that is allows the decode dir to be positioned outside the model dir
   local/recognize/decode.sh \
     --acwt 1.0 --post-decode-acwt 10.0 \
-    --nj $num_jobs --cmd "$decode_cmd" \
+    --nj $num_jobs --cmd "$train_cmd" \
     --skip-scoring true \
     --frames-per-chunk $frames_per_chunk_primary \
     --model-dir $modeldir \
@@ -169,27 +169,27 @@ if [ $stage -le 6 ]; then
       ${wdir}_segm_hires ${decodedir} \
       ${outdir} || exit 1;
     
-  elif $ngram_rnnlm; then
-    echo "Rescoring with both an n-grams and an RNN-LM"
-    steps/lmrescore_const_arpa.sh \
-      --cmd "$decode_cmd" --skip-scoring true \
-      ${oldLMdir} ${newLMdir} ${wdir}_segm_hires \
-      ${decodedir} ${rescoredir_ngram} || exit 1;
-    cp ${rescoredir_ngram}/lat.1.gz $outdir/intermediate/lat_ngram.1.gz
+  # elif $ngram_rnnlm; then
+  #   echo "Rescoring with both an n-grams and an RNN-LM"
+  #   steps/lmrescore_const_arpa.sh \
+  #     --cmd "$train_cmd" --skip-scoring true \
+  #     ${oldLMdir} ${newLMdir} ${wdir}_segm_hires \
+  #     ${decodedir} ${rescoredir_ngram} || exit 1;
+  #   cp ${rescoredir_ngram}/lat.1.gz $outdir/intermediate/lat_ngram.1.gz
     
-    # Lattice rescoring
-    rnnlm/lmrescore_pruned.sh \
-      --cmd "$decode_cmd" \
-      --weight 0.5 --max-ngram-order $ngram_order \
-      --skip-scoring true \
-      ${newLMdir} $rnnlmdir \
-      ${wdir}_segm_hires ${rescoredir_ngram} \
-      ${outdir} || exit 1;
+  #   # Lattice rescoring
+  #   rnnlm/lmrescore_pruned.sh \
+  #     --cmd "$decode_cmd" \
+  #     --weight 0.5 --max-ngram-order $ngram_order \
+  #     --skip-scoring true \
+  #     ${newLMdir} $rnnlmdir \
+  #     ${wdir}_segm_hires ${rescoredir_ngram} \
+  #     ${outdir} || exit 1;
     
   else
     echo "n-gram rescoring"
     steps/lmrescore_const_arpa.sh \
-      --cmd "$decode_cmd" --skip-scoring true \
+      --cmd "$train_cmd" --skip-scoring true \
       ${oldLMdir} ${newLMdir} ${wdir}_segm_hires \
       ${decodedir} ${outdir} || exit 1;
   fi

@@ -31,7 +31,7 @@ for d in $indir/all_*; do
     -e 's:^rad[0-9T]+ ::' \
     -e 's:\([^/()<>]*?\)+: :g' -e 's: ,,: :g' -e 's:\.\.+ :. :g' -e 's: ([,.:;?!] ):\1:g' \
     -e 's:[^a-záðéíóúýþæöA-ZÁÉÍÓÚÝÞÆÖ0-9 \.,?!:;/%‰°º—–²³¼¾½ _-]+::g' -e 's: |_+: :g' \
-    -e 's:[[:space:]]+: :g' \
+    -e 's: $: EOP :' -e 's:[[:space:]]+: :g' \
     -e 's:(EOP )+:EOP :g' -e 's:([—,—]) EOP:\1:g' -e 's:([A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö0-9]) EOP :\1. :g' -e 's:EOP[,.:;?!] :EOP :g' \
   < ${d}/text_orig_endanlegt.txt \
   >> ${tmp}/text_noXML_endanlegt.txt || error 13 $LINENO ${error_array[13]};

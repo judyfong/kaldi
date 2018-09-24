@@ -53,9 +53,9 @@ fststringcompile ark:$ifile ark:- \
   > ${intermediate}/thrax_out.tmp || error 8 ${error_array[8]};
 
 # Need to activate the conda environment for the punctuation and paragraph models
-if [[ $(hostname -f) == terra.hir.is ]]; then
+#if [[ $(hostname -f) == terra.hir.is ]]; then
   source $CONDAPATH/activate thenv || error 11 ${error_array[11]};
-fi
+#fi
 
 echo "Extract the numbers before punctuation"
 python punctuator/local/saving_numbers.py \
@@ -90,7 +90,7 @@ fststringcompile ark:"sed 's:.*:1 &:' ${intermediate}/punctuator_out_wPuncts.tmp
   | fsttablecompose --match-side=left ark,t:- $normdir/INSERT_PERIODS.fst ark:- \
   | fsts-to-transcripts ark:- ark,t:- | int2sym.pl -f 2- ${utf8syms} \
   | cut -d" " -f2- | sed -re 's: ::g' -e 's:0x0020: :g' \
-  | tr "\n" " " | sed -re "s/ +/ /g" -e 's:\s*$:.:' \
+  | tr "\n" " " | sed -re "s/ +/ /g" -e 's:([^.?!])\s*$:\1.:' \
   > ${intermediate}/punctuator_out_wPeriods.tmp || error 8 ${error_array[8]};
 
 echo "Insert paragraph breaks using a paragraph model"
@@ -111,8 +111,8 @@ python paragraph/convert_to_readable.py \
 # # Fix the casing of known named entities
 # /bin/sed -f ${intermediate}/ner_sed_pattern.tmp file > file_out
 
-if [[ $(hostname -f) == terra.hir.is ]]; then
+#if [[ $(hostname -f) == terra.hir.is ]]; then
   source $CONDAPATH/deactivate
-fi
+#fi
 
 exit 0;

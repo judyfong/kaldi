@@ -112,17 +112,15 @@ if [ $stage -le -1 ]; then
   c=$(ls $corpusdir)
   [ $(ls ${corpusdir} | wc -l) = 1 ] && mv ${corpusdir}/$c/* ${corpusdir}/ && rm -r ${corpusdir}/$c
   # validate
-  if [ ${corpusdir}/text_bb -o ${corpusdir}/text_upphaflegt ]; then
-    if [[ -d ${corpusdir}/audio && -d ${corpusdir}/text_endanlegt ]]; then
-      mv ${corpusdir}/text_bb ${corpusdir}/text_upphaflegt # More informative and matches the naming of the directory of the final text files
-      encoding=$(file -i ${corpusdir}/metadata.csv | cut -d" " -f3)
-      if [[ "$encoding"=="charset=iso-8859-1" ]]; then
-	iconv -f ISO-8859-1 -t UTF-8 ${corpusdir}/metadata.csv > $tmp/tmp && mv $tmp/tmp ${corpusdir}/metadata.csv
-      fi
-    else
-      echo "Need to extract the audio and final text from althingi.is"
-      local/data_extraction/extract_new_files.sh $corpusdir $first_session $last_session || error 1 "Failed to extract audio and text from althingi.is"
+  if [[ -d ${corpusdir}/audio && -d ${corpusdir}/text_endanlegt && -d ${corpusdir}/text_bb ]]; then
+    mv ${corpusdir}/text_bb ${corpusdir}/text_upphaflegt # More informative and matches the naming of the directory of the final text files
+    encoding=$(file -i ${corpusdir}/metadata.csv | cut -d" " -f3)
+    if [[ "$encoding"=="charset=iso-8859-1" ]]; then
+      iconv -f ISO-8859-1 -t UTF-8 ${corpusdir}/metadata.csv > $tmp/tmp && mv $tmp/tmp ${corpusdir}/metadata.csv
     fi
+  elif [[ -d ${corpusdir}/data && -d ${corpusdir}/models && -d ${corpusdir}/lists ]]; then
+    echo "Need to extract the audio and final text from althingi.is"
+    local/data_extraction/extract_new_files.sh $corpusdir $first_session $last_session || error 1 "Failed to extract audio and text from althingi.is"
   else
     echo "The corpus does not have the correct structure" || exit 1;
   fi

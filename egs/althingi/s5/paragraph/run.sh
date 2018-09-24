@@ -24,6 +24,8 @@ modeldir=$root_paragraph_modeldir/${d}
 datadir=$root_paragraph_datadir/${d}
 mkdir -p $datadir/log $modeldir/log
 
+source $CONDAPATH/activate thenv || error 11 ${error_array[11]};
+
 if [ $stage -le -1 ]; then
   
   echo "Clean and preprocess the training data"
@@ -36,26 +38,26 @@ fi
 if [ $stage -le 1 ]; then
 
   if ! $continue_with_previous; then
-    rm -r processed_data &>/dev/null
+    rm -r paragraph/processed_data &>/dev/null
   fi
 
   echo "Process data" # I need to do this differently. Otherwise the insertion of paragraphs will be way to slow
-  utils/slurm.pl --mem 12G --time 0-12:00 $datadir/log/data.log \
-		 python paragraph/data.py ${datadir} || exit 1;
+  utils/slurm.pl --mem 12G --time 0-2:00 $datadir/log/data.log \
+    python paragraph/data.py ${datadir} || exit 1;
 fi
 
 if [ $stage -le 2 ]; then
   echo "Train the model"
   utils/slurm.pl --gpu 1 --mem 12G --time 0-10:00 $datadir/log/main.log \
-		 python paragraph/main.py $modeldir althingi_paragraph 256 0.02 || exit 1;
+    python paragraph/main.py $modeldir althingi_paragraph 256 0.02 || exit 1;
 fi
 
 if [ $stage -le 3 ]; then
   echo "Insert paragraph tokens into the dev and test sets using the 1st stage model"
   for dataset in dev test; do
     (
-      utils/slurm.pl --mem 4G --time 0-10:00 ${datadir}/log/${dataset}_paragraphed.log \
-		     cat ${datadir}/althingi.$dataset.txt \| THEANO_FLAGS='device=cpu' python paragraph/paragrapher.py $modeldir/Model_althingi_paragraph_h256_lr0.02.pcl ${datadir}/${dataset}_paragraphed.txt || exit 1;
+      utils/slurm.pl --mem 8G --time 0-10:00 ${datadir}/log/${dataset}_paragraphed.log \
+        cat ${datadir}/althingi.$dataset.txt \| THEANO_FLAGS='device=cpu' python paragraph/paragrapher.py $modeldir/Model_althingi_paragraph_h256_lr0.02.pcl ${datadir}/${dataset}_paragraphed.txt || exit 1;
     ) &
   done
   wait

@@ -15,7 +15,7 @@ id= #_april2018 or exp_lr_decay_k0.8
 two_stage=false                 # one or two stage training
 continue_with_previous=false    # continue training an existing model
 
-. ./path.sh
+. ./path.sh # root_* and $data defined as well here
 . ./utils/parse_options.sh
 . ./local/utils.sh
 . ./local/array.sh

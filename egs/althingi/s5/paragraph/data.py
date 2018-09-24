@@ -11,7 +11,7 @@ import fnmatch
 import shutil
 
 #DATA_PATH = "../data"
-DATA_PATH = "processed_data"
+DATA_PATH = "paragraph/processed_data"
 
 # path to text file in the format:
 # word1 0.123 0.123 ... 0.123
@@ -24,9 +24,9 @@ UNK = "<UNK>"
 
 SPACE = "_SPACE"
 
-MAX_WORD_VOCABULARY_SIZE = 200000
+MAX_WORD_VOCABULARY_SIZE = 100000
 MIN_WORD_COUNT_IN_VOCAB = 2
-MAX_SEQUENCE_LEN = 250
+MAX_SEQUENCE_LEN = 180
 
 TRAIN_FILE = os.path.join(DATA_PATH, "train")
 DEV_FILE = os.path.join(DATA_PATH, "dev")

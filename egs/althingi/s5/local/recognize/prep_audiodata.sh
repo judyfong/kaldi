@@ -6,11 +6,10 @@
 # Prepare a directory on Kaldi format, containing audio data and some auxiliary info.
 
 stage=-1
-trim=0
 
 . ./cmd.sh
 . ./path.sh
-. utils/parse_options.sh
+. utils/parse_options.sh || exit 1;
 . local/utils.sh
 . local/array.sh
 
@@ -40,7 +39,7 @@ fi
 
 # SoX converts all audio files to an internal uncompressed format before performing any audio processing
 samplerate=16000
-wav_cmd="sox -t$extension - -c1 -esigned -r$samplerate -G -twav - trim $trim"
+wav_cmd="sox -t$extension - -c1 -esigned -r$samplerate -G -twav - "
 
 IFS=$'\n' # Split on new line
 

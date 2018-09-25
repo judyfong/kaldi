@@ -14,7 +14,7 @@ set -o pipefail
 
 # configs
 stage=-1
-trim=0 #4
+trim=0
 num_jobs=1
 lmwt=9 # Language model weight. Can have big effect.
 rnnlm=false
@@ -25,9 +25,8 @@ score=false
 bundle=latest
 
 . ./path.sh
-. ./conf/path.conf
 . ./cmd.sh
-. ./utils/parse_options.sh
+. ./utils/parse_options.sh || exit 1;
 . ./local/utils.sh
 . ./local/array.sh
 
@@ -47,6 +46,12 @@ if $rnnlm ; then  #  -o $ngram_rnnlm
                  # the same ngram history and this prevents the lattice from 
                  # exploding exponentially
 fi
+
+tmp=$(mktemp -d)
+cleanup () {
+    rm -rf "$tmp"
+}
+trap cleanup EXIT
 
 if [ $# -lt 2 ]; then
   echo "This script transcribes Althingi speeches using an Althingi ASR,"
@@ -69,6 +74,7 @@ begin=$(date +%s)
 
 speechfile=$1
 speechname=$(basename "$speechfile")
+extension="${speechname##*.}"
 speechname="${speechname%.*}"
 
 dir=$2
@@ -110,7 +116,16 @@ fi
 
 if [ $stage -le 0 ]; then
   echo "Set up a directory in the right format of Kaldi and extract features"
-  local/recognize/prep_audiodata.sh --trim $trim $speechfile $speakerfile $wdir || exit 1;
+  samplerate=16000
+  if [ $trim -gt 0 ]; then
+    # Convert to wav straight away
+    sox $speechfile $tmp/$speechname.mp3 trim $trim
+    #sox -t$extension $speechfile -c1 -esigned -r$samplerate -G -twav $tmp/$speechname.wav trim $trim
+    local/recognize/prep_audiodata.sh $tmp/$speechname.mp3 $speakerfile $wdir || exit 1;
+  else
+    #wav_cmd="sox -t$extension - -c1 -esigned -r$samplerate -G -twav - "
+    local/recognize/prep_audiodata.sh $speechfile $speakerfile $wdir || exit 1;
+  fi
 fi
 spkID=$(cut -d" " -f1 $wdir/spk2utt)
 

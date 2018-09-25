@@ -12,7 +12,7 @@ min_sil_length=0.8 # 0.5
 echo "$0 $@"
 
 [ -f ./path.sh ] && . ./path.sh
-#. parse_options.sh || exit 1;
+. parse_options.sh || exit 1;
 
 if [ $# -ne 2 ]; then
   echo "This script takes in a Kaldi data dir, works out a segmentation for"

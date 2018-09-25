@@ -69,7 +69,7 @@ if [ $stage -le 4 ]; then
 
   for d in dev test; do
     (
-      python error_calculator.py \
+      python paragraph/error_calculator.py \
         ${datadir}/althingi.$d.txt \
         ${datadir}/${d}_paragraphed.txt \
         > ${datadir}/${d}_error.txt \

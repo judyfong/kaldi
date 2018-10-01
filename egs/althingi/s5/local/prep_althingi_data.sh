@@ -534,7 +534,7 @@ if [ $stage -le 8 ]; then
       -e 's:\b([^ ]+) (([eo])?hf)\b:\u\1 \2:g' \
       -e 's:(\b'$(cat $tmp/ambiguous_personal_names_pattern.tmp)'\b) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\u\1 \2:g' \
       -e 's:(\b'$(cat $tmp/ambiguous_personal_names_pattern.tmp)'\b) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]*) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\u\1 \2 \3:g' \
-      -e 's:\b([A-ZÁÐÉÍÓÚÝÞÆÖ])\b:\l\1:g' \
+      -e 's:\b([A-ZÁÐÉÍÓÚÝÞÆÖ])\b:\l\1:g' -e 's:([º°])c:\1C:g' \
       < $intermediate/text_case2.txt > $intermediate/text_case3.txt
 
   # Fix named entities that are incorrectly lowercased
@@ -560,7 +560,7 @@ if [ $stage -le 8 ]; then
       -e 's:\b([^ ]+) (([eo])?hf)\b:\u\1 \2:g' \
       -e 's:(\b'$(cat $tmp/ambiguous_personal_names_pattern.tmp)'\b) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\u\1 \2:g' \
       -e 's:(\b'$(cat $tmp/ambiguous_personal_names_pattern.tmp)'\b) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]*) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\u\1 \2 \3:g' \
-      -e 's:\b([A-ZÁÐÉÍÓÚÝÞÆÖ])\b:\l\1:g' \
+      -e 's:\b([A-ZÁÐÉÍÓÚÝÞÆÖ])\b:\l\1:g' -e 's:([º°])c:\1C:g' \
       < $intermediate/text_case2_forPunct.txt > $intermediate/text_case3_forPunct.txt
 
   /bin/sed -f $tmp/ner_sed_pattern.tmp \

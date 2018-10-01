@@ -66,7 +66,7 @@ half = Optimize[rewrite_half05 @ rewrite_half1];
 #export half = rewrite_half05 | rewrite_half1 | half2;
 
 # Rewrite 2° and 2°c to 2 degrees. They usually don't say celsíus in Althingi
-deg = ("º".utf8"c".utf8? | "°".utf8"c".utf8?) : (" gráða".utf8 | " gráðu".utf8 |
+deg = ("º".utf8("c".utf8|"C".utf8)? | "°".utf8("c".utf8|"C".utf8)?) : (" gráða".utf8 | " gráðu".utf8 |
 (" gráður".utf8 <-1.0>) | " gráðum".utf8);
 expanddeg = CDRewrite[
   deg,

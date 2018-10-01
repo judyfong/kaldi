@@ -327,6 +327,13 @@ rm_space_bf_punct = CDRewrite[delspace,
                 'ltr',
                 'obl'];
 
+celsius = CDRewrite[(" á".utf8?" Celsíus".utf8 : "C".utf8),
+                "°".utf8,
+                ("[EOS]".utf8 | " ".utf8),
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
+
 url1 = CDRewrite[(" ".utf8 : "://".utf8),
                 "http".utf8 "s".utf8?,
                 "www".utf8,
@@ -382,7 +389,7 @@ dr = CDRewrite[("doktor".utf8 : "dr".utf8),
                 'obl'];
 
 DENORM = Optimize[name_casing @ acro_denorm @ law_nr @ dash @ kl @ decimal1 @ decimal2 @
-decimal2 @ decimal2 @ ratio1 @ ratio2 @ rm_space_bf_punct @ url1 @
+decimal2 @ decimal2 @ ratio1 @ ratio2 @ rm_space_bf_punct @ celsius @ url1 @
 url2 @ url3 @ ogeda @ committee @ minister @ dr];
 
 export ABBR_AND_DENORM = ArcSort[

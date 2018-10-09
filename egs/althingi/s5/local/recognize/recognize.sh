@@ -133,7 +133,7 @@ if [ $stage -le 3 ]; then
 
   echo "Segment audio data"
   local/recognize/segment_audio.sh ${wdir} ${wdir}_segm || exit 1;
-  mv -t $outdir/intermediate ${wdir}_segm/*silence.txt
+  [ -f ${wdir}_segm/*silence.txt ] && mv -t $outdir/intermediate ${wdir}_segm/*silence.txt
 fi
 
 if [ $stage -le 4 ]; then

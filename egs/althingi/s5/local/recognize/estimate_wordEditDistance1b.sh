@@ -20,7 +20,7 @@ normlistdir=$(ls -td $root_text_norm_listdir/thraxgrammar_lex.* | head -n1)
 
 if [ $# -ne 3 ]; then
     echo "Usage: $0 [options] <textfile1> <textfile2> <output-dir>"
-    echo "e.g.:  local/recognize/estimate_wordEditDistance2.sh \\"
+    echo "e.g.:  local/recognize/estimate_wordEditDistance1b.sh \\"
     echo "  recognize/notendaprof2/Lestur/rad20180219T150803.xml \\"
     echo "  recognize/notendaprof2/ASR/rad20180219T150803.txt recognize/notendaprof2/edit_dist/rad20180219T150803_A_B"
     exit 1;
@@ -41,7 +41,7 @@ base="${base%.*}"
 n=0
 for file in $textfile1 $textfile2; do
   n=$[$n+1]
-  # 1) Remove newlines and xml tags
+  # 1) Remove newlines, xml tags and carriage return
   # 2) Rewrite weird invisible dashes and underscore to a space and add space around the other ones
   # 3) Remove the period after abbreviated middle names
   # 4) For a few abbreviations that often stand at the end of sentences, add a space between the abbr and the period
@@ -52,8 +52,8 @@ for file in $textfile1 $textfile2; do
   # 9) Move EOS punctuation away from the previous word and lowercase what comes after
   # 10) Insert a utt ID att the beginning and change spaces to one
   tr "\n" " " < $file | sed -re 's:</mgr></ræðutexti></ræða> <ræðutexti><mgr>: :g' -e 's:(.*)?<ræðutexti>(.*)</ræðutexti>(.*):\2:' \
-    -e 's:<mgr>//[^/<]*?//</mgr>|<!--[^>]*?-->|http[^<> )]*?|<[^>]*?>\:[^<]*?ritun[^<]*?</[^>]*?>|<mgr>[^/]*?//</mgr>|<ræðutexti> +<mgr>[^/]*?/</mgr>|<ræðutexti> +<mgr>til [0-9]+\.[0-9]+</mgr>|<truflun>[^<]*?</truflun>|<atburður>[^<]*?</atburður>|<málsheiti>[^<]*?</málsheiti>: :g' \
-    -e 's:<[^<>]*?>: :g' \
+    -e 's:<mgr>//[^/<]*?//</mgr>|<!--[^>]*?-->|http[^<> )]*?|<[^>]*?>\:[^<]*?ritun[^<]*?</[^>]*?>|<mgr>[^/]*?//</mgr>|<ræðutexti> +<mgr>[^/]*?/</mgr>|<ræðutexti> +<mgr>til [0-9]+\.[0-9]+</mgr>|<truflun>[^<]*?</truflun>|<atburður>[^<]*?</atburður>|<málsheiti>[^<]*?</málsheiti>: :g' -e `echo "s/\r//"` \
+    -e 's: *<[^<>]*?>: :g' \
     -e 's:­| |_: :g' -e 's:([—-]): \1 :g' \
     -e 's:([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+) ([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]?)\. ([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+):\1 \2 \3:g' \
     -e 's: (gr|umr|sl|millj|nk|mgr)([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \2 \3:g' \

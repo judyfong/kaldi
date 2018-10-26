@@ -2,6 +2,8 @@
 
 set -o pipefail
 
+audio_only=false
+
 . ./path.sh # $data defined here
 . parse_options.sh || exit 1;
 
@@ -18,6 +20,7 @@ start=$1; shift #146
 stop=$1; #148
 
 datadir=$data/data_extraction/althingi_info
+mkdir -p $corpusdir/{audio,text_endanlegt} $datadir
 
 tmp=$(mktemp -d)
 cleanup () {
@@ -51,15 +54,24 @@ if [ -s $tmp/ids_in_use ]; then
     comm -13 <(sort -u $tmp/used.tmp) <(sort -u ${datadir}/thing${session}_mp3_xml_all.txt) > ${datadir}/thing${session}_mp3_xml_new.txt
   done
 else
-  mv ${datadir}/thing${session}_mp3_xml_all.txt ${datadir}/thing${session}_mp3_xml_new.txt
+  cp ${datadir}/thing${session}_mp3_xml_all.txt ${datadir}/thing${session}_mp3_xml_new.txt
 fi
 
-# Download the corresponding audio and xml
-for session in $(seq $start $stop); do
-    # Make sure all the files contain xml files
-    awk -F $'\t' 'NF==4{print}{}' ${datadir}/thing${session}_mp3_xml_new.txt > $tmp/withXML.tmp && mv $tmp/withXML.tmp ${datadir}/thing${session}_mp3_xml_new.txt
-    srun --time=0-12 --nodelist=terra sh -c "php local/data_extraction/scrape_althingi_xml_mp3.php ${datadir}/thing${session}_mp3_xml_new.txt /data/althingi/corpus_jun2018/audio/ /data/althingi/corpus_jun2018/text_endanlegt/ &> ${datadir}/log/extraction_thing${session}.log" &
-done
+if $audio_only ; then
+  # Download the corresponding audio
+  for session in $(seq $start $stop); do
+    # Remove newline at EOF
+    perl -pi -e 'chomp if eof' ${datadir}/thing${session}_mp3_xml_new.txt
+    srun --time=0-12 --nodelist=terra sh -c "php local/data_extraction/scrape_althingi_mp3.php ${datadir}/thing${session}_mp3_xml_new.txt ${corpusdir}/audio &> ${datadir}/log/extraction_thing${session}_audio.log" &
+  done
+else
+  # Download the corresponding audio and xml
+  for session in $(seq $start $stop); do
+    # Make sure all the files contain xml files and remove newline at EOF
+    awk -F $'\t' 'NF==4{print}{}' ${datadir}/thing${session}_mp3_xml_new.txt | perl -pe 'chomp if eof' > ${datadir}/thing${session}_mp3_with_xml.txt
+    srun --time=0-12 --nodelist=terra sh -c "php local/data_extraction/scrape_althingi_xml_mp3.php ${datadir}/thing${session}_mp3_with_xml.txt ${corpusdir}/audio ${corpusdir}/text_endanlegt &> ${datadir}/log/extraction_thing${session}.log" &
+  done
+fi
 
 # I got almost 12000 errors of the form: <html><body>Það hefur komið upp villa. Reyndu aftur síðar.</body></html>, error status 403. Fetching them again worked for a lot of them.
 

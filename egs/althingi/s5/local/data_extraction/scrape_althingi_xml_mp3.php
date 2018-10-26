@@ -22,7 +22,7 @@ if ($file_handle = fopen($ifile, "r")) {
 
         // Extract the audio
         $ch = curl_init($mp3);
-	    $audio_file_name = $audiopath . $rad . '.mp3';
+	    $audio_file_name = $audiopath . '/' . $rad . '.mp3';
 	    curl_setopt($ch, CURLOPT_HEADER, 0);
         curl_setopt($ch, CURLOPT_NOBODY, 0);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT ,0); 
@@ -52,7 +52,7 @@ if ($file_handle = fopen($ifile, "r")) {
         
 	    // Extract the text
 	    $ch = curl_init($text);
-	    $text_file_name = $textpath . $rad . '.xml';
+	    $text_file_name = $textpath . '/' . $rad . '.xml';
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT ,0); 
         curl_setopt($ch, CURLOPT_TIMEOUT, 600);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);

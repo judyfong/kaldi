@@ -15,13 +15,13 @@ if ($file_handle = fopen($ifile, "r")) {
         $line = fgets($file_handle);
         
         # Split the line on tabs
-        list($rad,$name,$mp3,$text) = preg_split('/\t+/', $line);
-        $text = str_replace("\n", '', $text);
+        list($rad,$name,$mp3) = preg_split('/\t+/', $line);
+        $mp3 = str_replace("\n", '', $mp3);
         //$rad=basename($text, ".xml");
 
         // Extract the audio
         $ch = curl_init($mp3);
-	    $audio_file_name = $audiopath . $rad . '.mp3';
+	    $audio_file_name = $audiopath . '/' . $rad . '.mp3';
 	    curl_setopt($ch, CURLOPT_HEADER, 0);
         curl_setopt($ch, CURLOPT_NOBODY, 0);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT ,0); 

@@ -177,7 +177,6 @@ if __name__ == "__main__":
         total_neg_log_likelihood = 0
         total_num_output_samples = 0
         iteration = 0
-        LR_DECAY
         learning_rate = np.float32(initial_learning_rate * np.exp(-LR_DECAY*epoch))
         print "Learning rate is %s" % np.round(learning_rate, 5)
         

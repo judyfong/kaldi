@@ -8,7 +8,6 @@ small=false # pruned or not
 pruning=
 carpa=true
 
-. ./cmd.sh
 . ./path.sh
 . parse_options.sh || exit 1;
 . ./local/utils.sh

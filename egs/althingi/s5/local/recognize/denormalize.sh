@@ -93,8 +93,20 @@ fststringcompile ark:"sed 's:.*:1 &:' ${intermediate}/punctuator_out_wPuncts.tmp
   | tr "\n" " " | sed -re "s/ +/ /g" -e 's:([^.?!])\s*$:\1.:' \
   > ${intermediate}/punctuator_out_wPeriods.tmp || error 8 ${error_array[8]};
 
+# Abbreviate "háttvirtur", "hæstvirtur" and "þingmaður" in some cases
+sed -re 's:([Hh]æstv)irtur forseti:\1\. forseti:g' \
+    -e 's:([Hh])áttv[^ ]+ (þingm[^ .?:eö]+ [A-ZÁÐÉÍÓÚÝÞÆÖ]):\1v\. \2:g' \
+    -e 's:([Hh]v\. ([0-9]+\. )?)þingm[^ .?:eö]+ ([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1þm. \3:g' \
+    -e 's:([0-9]+\.) þingm[^ .?:eö]+ ([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 þm. \2:g' \
+    -e 's:(þm\. Norð[av][ue]st)urkjördæmis?:\1.:g' \
+    -e 's:þm\. Reykjavíkurkjördæmis? ([ns])[^ ]+?:þm. Reykv. \1.:g' \
+    -e 's:(þm\. Suðurk)jördæmis?:\1.:g' \
+    -e 's:(þm\. Suðvest)urkjördæmis?:\1.:g' \
+    < ${intermediate}/punctuator_out_wPeriods.tmp \
+    > ${intermediate}/hv_hæstv_abbreviated.tmp || error 1 "Error while abbreviating to hv., hæstv. and þm.";
+
 echo "Insert paragraph breaks using a paragraph model"
-cat ${intermediate}/punctuator_out_wPeriods.tmp \
+cat ${intermediate}/hv_hæstv_abbreviated.tmp \
   | THEANO_FLAGS='device=cpu' python paragraph/paragrapher.py \
     $paragraph_model ${intermediate}/paragraphed_tokens.tmp \
   || error 10 ${error_array[10]};
@@ -103,13 +115,6 @@ python paragraph/convert_to_readable.py \
   ${intermediate}/paragraphed_tokens.tmp \
   $ofile 1 || exit 1;
 
-#sed -r 's:\. ([^ ]+ forseti\.):\.\n\1:g' ${intermediate}/paragraphed_tokens.tmp > $ofile
-
-# # Maybe fix the casing of prefixes?
-# cat /data/althingi/lists/forskeyti.txt /data/althingi/lists/forskeyti.txt | sort | awk 'ORS=NR%2?":":"\n"' | sed -re 's/^.*/s:&/' -e 's/$/:gI/g' > prefix_sed_pattern.tmp
-
-# # Fix the casing of known named entities
-# /bin/sed -f ${intermediate}/ner_sed_pattern.tmp file > file_out
 
 #if [[ $(hostname -f) == terra.hir.is ]]; then
   source $CONDAPATH/deactivate

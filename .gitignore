@@ -104,6 +104,8 @@ egs/*/s*/paragraph/processed_data
 egs/*/s*/local/auxiliary
 egs/*/s*/local/handling_new_speeches
 egs/*/s*/local/recognize/auxiliary
+egs/*/s*/local/punctuation/processed_data*
+egs/*/s*/local/punctuation/auxiliary
 egs/althingi/s5/ivector_clustering
 
 # /tools/

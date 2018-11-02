@@ -110,7 +110,7 @@ if [ $stage -le 1 ]; then
   for n in upphaflegt endanlegt; do
     (
       utils/slurm.pl --time 0-06:00 $outdir/log/extract_text_${n}.log \
-		     python3 local/extract_text.py $corpusdir/text_${n} $outdir/text_orig_${n}.txt
+        python3 local/extract_text.py $corpusdir/text_${n} $outdir/text_orig_${n}.txt
       ret=$?
       if [ $ret -ne 0 ]; then
         error 1 $LINENO "extract_text.py failed";
@@ -256,7 +256,8 @@ if [ $stage -le 4 ]; then
   # 30) Fix spacing around % and degrees celsius and add space in a number starting with a zero
   # 31) Remove "lauk á fyrri spólu"
   # 32) Split into two words, words that are often incorrectly written as one.
-  # 33) Remove punctuations that we don't want to learn, map remaining weird words to <unk> and fix spacing
+  # 33) Fix if the first letter in an acronym has been lowercased.
+  # 34) Remove punctuations that we don't want to learn, map remaining weird words to <unk> and fix spacing
   for n in upphaflegt endanlegt; do
     sed -re 's:\[[^]]*?\]: :g' \
 	-e 's/([0-9]):([0-9][0-9])/\1 \2/g' \
@@ -276,7 +277,7 @@ if [ $stage -le 4 ]; then
       | sed -re 's:¼: einn 4. :g' -e 's:¾: 3 fjórðu:g' -e 's:([0-9])½:\1,5 :g' -e 's: ½: 0,5 :g' \
             -e 's:([,;])([^0-9]|\s*$): \1 \2:g' -e 's:([^0-9]),:\1 ,:g' \
             -e 's:([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+) ([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]?)\. ([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+):\1 \2 \3:g' \
-            -e 's: (gr|umr|sl|millj|nk|mgr|kr)([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \2 \l\3:g' \
+            -e 's: (gr|umr|sl|millj|nk|mgr|kr|osfrv)([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \2 \l\3:g' \
             -e 's:\.([a-záðéíóúýþæö]):\1:g' \
             -e 's:([0-9,.]{3,})([.:?!]+) *([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \2 \l\3:g' -e 's:([0-9]%)([.:?!]+) *([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \2 \l\3:g' -e 's:([0-9.,]{4,})([.:?!]+) :\1 \2 :g' -e 's:([0-9]%)([.:?!]+) *:\1 \2 :g' -e 's:([.:?!]+)\s*$: \1:g' \
             -e "s:(\b$(cat $tmp/abbr_pattern.tmp))\.:\1:g" \
@@ -291,6 +292,7 @@ if [ $stage -le 4 ]; then
             -e 's: *%:% :g' -e 's:([°º]) c :\1c :g' -e 's: 0([0-9]): 0 \1:g' \
 	    -e 's:lauk á (f|fyrri) ?sp.*::' \
 	    -e 's:\b(enn|fram|fyrir|meiri|minni)(fremur|þá|hjá|fram|háttar|hlut[ia])\b:\1 \2:gI' \
+            -e 's:\b([a-záðéíóúýþæö][A-ZÁÐÉÍÓÚÝÞÆÖ][^a-záðéíóúýþæö]):\u\1:g' \
             -e 's/[^A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö0-9\.,?!:; %‰°º²³]+//g' -e 's/ [^ ]*[A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö]+[0-9]+[^ ]*/ <unk>/g' -e 's: [0-9]{10,}: <unk>:g' -e 's/ +/ /g' \
             > ${outdir}/text_noPuncts_${n}.txt || error 13 $LINENO ${error_array[13]};
   done
@@ -342,15 +344,14 @@ if [ $stage -le 5 ]; then
     | sed '$s/|$//' \
     | perl -pe "s:\|:\\\b\|\\\b:g" \
     | sed 's:.*:\L&:' \
-	  > ${tmp}/acronyms_as_words_pattern.tmp || error 14 $LINENO ${error_array[14]};
+  > ${tmp}/acronyms_as_words_pattern.tmp || error 14 $LINENO ${error_array[14]};
 
   for n in upphaflegt endanlegt; do
-
     # Capitalize 
     sed -re 's:(\b'$(cat ${tmp}/acronyms_as_words_pattern.tmp)'\b):\U\1:g' \
-	-e 's:\b([a-záðéíóúýþæö][A-ZÁÐÉÍÓÚÝÞÆÖ]+)\b:\u\1:g' \
-	< ${intermediate}/text_exp1_${n}.txt \
-	> ${intermediate}/text_exp1_${n}_acroCS.txt || error 14 $LINENO ${error_array[14]};
+        -e 's:\b([a-záðéíóúýþæö][A-ZÁÐÉÍÓÚÝÞÆÖ]+)\b:\u\1:g' \
+        < ${intermediate}/text_exp1_${n}.txt \
+        > ${intermediate}/text_exp1_${n}_acroCS.txt || error 14 $LINENO ${error_array[14]};
     
     # Use Anna's code to expand many instances of hv, þm og hæstv
     python3 local/althingi_replace_plain_text.py \
@@ -368,25 +369,25 @@ if [ $stage -le 5 ]; then
 
   # Add spaces into acronyms pronounced as letters
   egrep -o "[A-ZÁÐÉÍÓÚÝÞÆÖ]{2,}\b" \
-	< ${intermediate}/text_exp2_{upphaflegt,endanlegt}.txt \
+    < ${intermediate}/text_exp2_{upphaflegt,endanlegt}.txt \
     | cut -d":" -f2 | sort -u > $tmp/acro.tmp || error 14 $LINENO ${error_array[14]};
   
   egrep "\b[AÁEÉIÍOÓUÚYÝÆÖ]+\b|\b[QWRTPÐSDFGHJKLZXCVBNM]+\b" \
-	< $tmp/acro.tmp > $tmp/asletters.tmp || error 14 $LINENO ${error_array[14]};
+    < $tmp/acro.tmp > $tmp/asletters.tmp || error 14 $LINENO ${error_array[14]};
   
   cat $tmp/asletters.tmp $abbr_acro_as_letters \
     | sort -u > $tmp/asletters_tot.tmp || error 14 $LINENO ${error_array[14]};
 
   # Create a table where the 1st col is the acronym and the 2nd one is the acronym with with spaces between the letters
   paste <(cat $tmp/asletters_tot.tmp \
-	     | awk '{ print length, $0 }' \
-	     | sort -nrs | cut -d" " -f2) \
-	<(cat $tmp/asletters_tot.tmp \
-	     | awk '{ print length, $0 }' \
-	     | sort -nrs | cut -d" " -f2 \
-	     | sed -re 's/./\l& /g' -e 's/ +$//') \
-    | tr '\t' ' ' | sed -re 's: +: :g' \
-			> $tmp/insert_space_into_acro.tmp || error 14 $LINENO ${error_array[14]};
+     | awk '{ print length, $0 }' \
+     | sort -nrs | cut -d" " -f2) \
+  <(cat $tmp/asletters_tot.tmp \
+     | awk '{ print length, $0 }' \
+     | sort -nrs | cut -d" " -f2 \
+     | sed -re 's/./\l& /g' -e 's/ +$//') \
+     | tr '\t' ' ' | sed -re 's: +: :g' \
+  > $tmp/insert_space_into_acro.tmp || error 14 $LINENO ${error_array[14]};
   
   # Create a sed pattern file: Change the first space to ":"
   sed -re 's/ /\\b:/' -e 's/^.*/s:\\b&/' -e 's/$/:g/g' \
@@ -395,7 +396,7 @@ if [ $stage -le 5 ]; then
   
   for n in upphaflegt endanlegt; do
     /bin/sed -f $tmp/acro_sed_pattern.tmp ${intermediate}/text_exp2_${n}.txt \
-	     > ${intermediate}/text_exp3_${n}.txt || error 14 $LINENO ${error_array[14]};
+    > ${intermediate}/text_exp3_${n}.txt || error 14 $LINENO ${error_array[14]};
   done
 fi
 
@@ -535,7 +536,7 @@ if [ $stage -le 8 ]; then
       -e 's:(\b'$(cat $tmp/ambiguous_personal_names_pattern.tmp)'\b) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\u\1 \2:g' \
       -e 's:(\b'$(cat $tmp/ambiguous_personal_names_pattern.tmp)'\b) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]*) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\u\1 \2 \3:g' \
       -e 's:\b([A-ZÁÐÉÍÓÚÝÞÆÖ])\b:\l\1:g' -e 's:([º°])c:\1C:g' \
-      < $intermediate/text_case2.txt > $intermediate/text_case3.txt
+      < $intermediate/text_case2.txt > $intermediate/text_case3.txt || error 14 $LINENO ${error_array[14]};
 
   # Fix named entities that are incorrectly lowercased
   cat $named_entities $named_entities \
@@ -545,7 +546,7 @@ if [ $stage -le 8 ]; then
 
   /bin/sed -f $tmp/ner_sed_pattern.tmp \
 	   < $intermediate/text_case3.txt \
-	   > ${intermediate}/text_SpellingFixed_CasingFixed.txt
+	   > ${intermediate}/text_SpellingFixed_CasingFixed.txt || error 14 $LINENO ${error_array[14]};
   
   # Do the same for the punctuation text
   sed -r 's:(\b'$(cat $tmp/to_lowercase_pattern.tmp)'\b):\l\1:g' \
@@ -561,11 +562,11 @@ if [ $stage -le 8 ]; then
       -e 's:(\b'$(cat $tmp/ambiguous_personal_names_pattern.tmp)'\b) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\u\1 \2:g' \
       -e 's:(\b'$(cat $tmp/ambiguous_personal_names_pattern.tmp)'\b) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]*) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\u\1 \2 \3:g' \
       -e 's:\b([A-ZÁÐÉÍÓÚÝÞÆÖ])\b:\l\1:g' -e 's:([º°])c:\1C:g' \
-      < $intermediate/text_case2_forPunct.txt > $intermediate/text_case3_forPunct.txt
+      < $intermediate/text_case2_forPunct.txt > $intermediate/text_case3_forPunct.txt || error 14 $LINENO ${error_array[14]};
 
   /bin/sed -f $tmp/ner_sed_pattern.tmp \
 	   < $intermediate/text_case3_forPunct.txt \
-	   > $punct_textout
+	   > $punct_textout || error 14 $LINENO ${error_array[14]};
 fi
 
 if [ $stage -le 8 ]; then

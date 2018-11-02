@@ -15,7 +15,7 @@ carpa=true
 d=$(date +'%Y%m%d')
 
 prondict=$(ls -t $root_lexicon/prondict.*.txt | head -n1)
-lm_trainingset=$(ls -t $root_lm_datadir/training/* | head -n1) #LMtext_2004-March2018.txt
+lm_trainingset=$(ls -t $root_lm_training/* | head -n1)
 lm_modeldir=$root_lm_modeldir/$d
 localdict=$root_localdict
 
@@ -48,12 +48,11 @@ if [ $stage -le 2 ]; then
 
   echo "Creating a $size ${order}-gram language model, $type"
   mkdir -p $lm_modeldir/log
-  utils/slurm.pl --mem 8G $lm_modeldir/log/make_LM_${order}g_${size}.log \
-    local/make_LM.sh \
-      --order $order --small $small --carpa $carpa \
-      $lm_trainingset $lm_modeldir/lang \
-      $localdict/lexicon.txt $lm_modeldir \
-    || error 1 "Failed creating a $size ${order}-gram language model"
+  local/make_LM.sh \
+    --order $order --small $small --carpa $carpa \
+    $lm_trainingset $lm_modeldir/lang \
+    $localdict/lexicon.txt $lm_modeldir \
+  || error 1 "Failed creating a $size ${order}-gram language model"
   
 fi
 

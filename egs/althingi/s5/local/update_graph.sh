@@ -36,7 +36,4 @@ for f in cmvn_opts extractor final.ie.id final.mdl frame_subsampling_factor tree
 done
 ln -s $(dirname $decoding_lang) $outdir/lmdir
 
-echo "Update latest"
-local/update_latest.sh
-
 exit 0;

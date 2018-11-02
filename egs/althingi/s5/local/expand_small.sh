@@ -38,42 +38,46 @@ outfile=$2
 dir=$(dirname $infile);
 mkdir -p ${dir}/split$nj/
 
-for f in $infile ${base_norm_data}/{numbertexts_althingi100.txt.gz,words_numbertexts_althingi100.txt} \
+for f in $infile ${base_norm_data}/numbertexts_althingi100.txt.gz \
   ${text_norm_lex}/abbr_lexicon.txt $base_norm_model/{baseLM_words.txt,base_expand_to_words.fst,base_expansionLM_${order}g.fst}; do
   [ ! -f $f ] && echo "$0: expected $f to exist" && exit 1;
 done  
 
 if [ $stage -le 1 ]; then
-  echo "We want to process it in parallel."
-  IFS=$' \t\n'
-  split_text=$(for j in `seq 1 $nj`; do printf "${dir}/split%s/cleantext.%s.txt " $nj $j; done)
-  # The upper condition applies to the ASR training/testing texts and
-  # the lower one applies to the LM training texts.
-  if grep -q "rad[0-9]" ${infile}; then
-    utils/split_scp.pl $infile $split_text || exit 1; # the field separator has to be correct
+  if [ $nj -gt 1 ]; then
+    echo "We want to process it in parallel."
+    IFS=$' \t\n'
+    split_text=$(for j in `seq 1 $nj`; do printf "${dir}/split%s/cleantext.%s.txt " $nj $j; done)
+    # The upper condition applies to the ASR training/testing texts and
+    # the lower one applies to the LM training texts.
+    if grep -q "rad[0-9]" ${infile}; then
+      utils/split_scp.pl $infile $split_text || exit 1; # the field separator has to be correct
+    else
+      # I need to add IDs to get the utterances on a Kaldi format
+      awk '{printf("%010d %s\n", NR, $0)}' $infile > ${dir}/cleantext_wID.txt
+      utils/split_scp.pl ${dir}/cleantext_wID.txt $split_text || exit 1;
+    fi
   else
-    # I need to add IDs to get the utterances on a Kaldi format
-    awk '{printf("%010d %s\n", NR, $0)}' $infile > ${dir}/cleantext_wID.txt
-    utils/split_scp.pl ${dir}/cleantext_wID.txt $split_text || exit 1;
+    cp $infile ${dir}/split1/cleantext.1.txt
   fi
 fi
 
 if [ $stage -le 2 ]; then
   echo "Make a list over all the words in numbertexts if necessary"
-  if [ ! -f ${base_norm_data}/words_numbertexts_althingi100.txt ]; then
-    gzip -cd ${base_norm_data}/numbertexts_althingi100.txt.gz | cut -d" " -f2- | tr " " "\n" | grep -v "^\s*$" | sort -u > ${base_norm_data}/words_numbertexts_althingi100.txt
-  elif [ ${base_norm_data}/words_numbertexts_althingi100.txt -ot ${base_norm_data}/numbertexts_althingi100.txt.gz ]; then
-    gzip -cd ${base_norm_data}/numbertexts_althingi100.txt.gz | cut -d" " -f2- | tr " " "\n" | grep -v "^\s*$" | sort -u > ${base_norm_data}/words_numbertexts_althingi100.txt
+  if [ ! -f ${base_norm_data}/wordlist_numbertexts_althingi100.txt ]; then
+    gzip -cd ${base_norm_data}/numbertexts_althingi100.txt.gz | cut -d" " -f2- | tr " " "\n" | grep -v "^\s*$" | sort -u > ${base_norm_data}/wordlist_numbertexts_althingi100.txt
+  elif [ ${base_norm_data}/wordlist_numbertexts_althingi100.txt -ot ${base_norm_data}/numbertexts_althingi100.txt.gz ]; then
+    gzip -cd ${base_norm_data}/numbertexts_althingi100.txt.gz | cut -d" " -f2- | tr " " "\n" | grep -v "^\s*$" | sort -u > ${base_norm_data}/wordlist_numbertexts_althingi100.txt
   fi
 fi
 
 if [ $stage -le 3 ]; then
-  echo "Extract words that are only in the althingi texts, excluding unexpanded abbrs and numbers."
+  echo "Extract words that are only in the althingi texts, excluding unexpanded abbrs, numbers and punctuations."
   echo "Map words which are not seen in context in numbertexts to <word>."
   for i in `seq 1 $nj`; do
     cut -d" " -f2- ${dir}/split${nj}/cleantext.${i}.txt | tr " " "\n" | grep -v "^\s*$" | sort -u > ${dir}/split${nj}/words_cleantext.${i}.tmp
-    # Extract words that are only in the althingi texts, excluding unexpanded abbrs and numbers
-    comm -23 <(comm -23 ${dir}/split${nj}/words_cleantext.${i}.tmp ${base_norm_data}/words_numbertexts_althingi100.txt | egrep -v "[0-9]") <(cut -f1 ${text_norm_lex}/abbr_lexicon.txt | sort -u) > ${dir}/split${nj}/words_job${i}_only.tmp
+    # Extract words that are only in the althingi texts, excluding unexpanded abbrs, numbers and punctuations
+    comm -23 <(comm -23 ${dir}/split${nj}/words_cleantext.${i}.tmp ${base_norm_data}/wordlist_numbertexts_althingi100.txt | egrep -v "[^A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö]") <(cut -f1 ${text_norm_lex}/abbr_lexicon.txt | sort -u) > ${dir}/split${nj}/words_job${i}_only.tmp
   done
 
   # Map words which are not seen in context in numbertexts to <word>
@@ -82,7 +86,7 @@ if [ $stage -le 3 ]; then
   utils/slurm.pl JOB=1:$nj ${dir}/split${nj}/log/save-OOVwords.JOB.log python3 local/save_OOVwords.py ${dir}/split${nj}/cleantext.JOB.txt ${dir}/split${nj}/words_jobJOB_only.tmp ${dir}/split${nj}/cleantext_afterWordMapping.JOB.txt ${dir}/split${nj}/mappedWords_jobJOB.txt
   # I get problems if encounter more than one space between words after the thrax step. Temporary fix is this:
   for i in `seq 1 $nj`; do
-    sed -r -i 's: (%|‰|\.):\1:g' ${dir}/split${nj}/cleantext_afterWordMapping.${i}.txt
+    sed -r -i 's:([0-9]) (%|‰|\.):\1\2:g' ${dir}/split${nj}/cleantext_afterWordMapping.${i}.txt
   done
   deactivate
 fi
@@ -101,7 +105,11 @@ if [ $stage -le 5 ]; then
   echo "Check if all the speeches were expanded"
   join -1 1 -2 1 <(egrep "(^[0-9]{10} *$)|(rad[0-9T]+ *$)" ${dir}/split${nj}/text_expanded_${order}g.*.txt | sed 's/ *//g' | sort) <(sort ${dir}/split${nj}/cleantext_afterWordMapping.*.txt) > ${dir}/split${nj}/text_notexpanded_${order}g.txt
   # Ignore lines which were not expanded
-  grep -vF <(cut -d" " -f1 ${dir}/split${nj}/text_notexpanded_${order}g.txt) ${dir}/split${nj}/text_expanded_${order}g.*.wOOV.txt | cut -d":" -f2- | sort -n > ${dir}/split${nj}/text_expanded_${order}g_wOOV.txt
+  if [ $nj -eq 1 ]; then
+    grep -vFf <(cut -d" " -f1 ${dir}/split${nj}/text_notexpanded_${order}g.txt) ${dir}/split${nj}/text_expanded_${order}g.*.wOOV.txt | sort -n > ${dir}/split${nj}/text_expanded_${order}g_wOOV.txt
+  else
+    grep -vFf <(cut -d" " -f1 ${dir}/split${nj}/text_notexpanded_${order}g.txt) ${dir}/split${nj}/text_expanded_${order}g.*.wOOV.txt | cut -d":" -f2- | sort -n > ${dir}/split${nj}/text_expanded_${order}g_wOOV.txt
+  fi
   
   if [[ -s ${dir}/split${nj}/text_notexpanded_${order}g.txt ]]; then
     n=$(cat ${dir}/split${nj}/text_notexpanded_${order}g.txt | wc -l)

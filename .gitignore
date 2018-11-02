@@ -102,7 +102,7 @@ egs/*/s*/punctuator/theano-env.tar.gz
 egs/*/s*/paragraph/log
 egs/*/s*/paragraph/processed_data
 egs/*/s*/local/auxiliary
-egs/*/s*/local/handling_new_speeches
+egs/*/s*/local/new_speeches/auxiliary
 egs/*/s*/local/recognize/auxiliary
 egs/althingi/s5/ivector_clustering
 

@@ -131,7 +131,7 @@ if [ $stage -le 1 ]; then
 
   echo "Compile Thrax grammar into FSTs, used both for text normalization and de-normalization"
   mkdir -p $norm_modeldir/$d
-  local/compile_grammar.sh local/thraxgrammar $norm_modeldir/$d
+  local/compile_grammar.sh local/thraxgrammar $norm_modeldir/$d || error 1 "ERROR: compile_grammar.sh failed"
 
 fi
 
@@ -147,7 +147,7 @@ if [ $stage -le 2 ]; then
   echo "fix spelling errors and casing in the text"
   mkdir -p $outdir/log
   utils/slurm.pl --mem 4G $outdir/log/prep_althingi_data.log \
-		 local/prep_althingi_data.sh ${corpusdir} ${outdir} ${outdir}/text_PunctuationTraining.txt ${outdir}/text_prepared
+		 local/prep_althingi_data.sh ${corpusdir} ${outdir} ${outdir}/text_PunctuationTraining.txt ${outdir}/text_prepared || error 1 "ERROR: prep_althingi_data.sh failed"
 
   # # prep_althingi_data.sh returns an additional text, which is fit for punctuation model preprocessing
   # mkdir -p $punct_datadir/first_stage
@@ -168,7 +168,7 @@ if [ $stage -le 3 ]; then
       [ ! -f $f ] || echo "expected $f to exist" && exit 1;
     done
     mkdir -p $base_expansionLM_datadir/log
-    utils/slurm.pl $base_expansionLM_datadir/log/prep_base_expansion_training_subset.log local/prep_expansionLM_training_subset_Leipzig.sh $Leipzig_corpus $manually_fixed_data $prondict
+    utils/slurm.pl $base_expansionLM_datadir/log/prep_base_expansion_training_subset.log local/prep_expansionLM_training_subset_Leipzig.sh $Leipzig_corpus $manually_fixed_data $prondict || error 1 "ERROR: prep_expansionLM_training_subset_Leipzig.sh failed"
   fi
   
 fi
@@ -176,10 +176,10 @@ fi
 if [ $stage -le 4 ]; then
   
   echo "Expand numbers and abbreviations"
-  utils/slurm.pl $outdir/log/expand_big.log local/expand_big.sh ${outdir}/text_prepared ${outdir}/text_expanded || error 1 "Expansion failed";
+  utils/slurm.pl $outdir/log/expand_big.log local/expand_big.sh ${outdir}/text_prepared ${outdir}/text_expanded || error 1 "ERROR: expand_big.sh failed";
   # Sometimes the "og" in e.g. "hundrað og sextíu" is missing
   perl -pe 's/(hundr[au]ð) ([^ ]+tíu|tuttugu) (?!og)/$1 og $2 $3/g' \
-       < ${outdir}/text_expanded > $tmp/tmp && mv $tmp/tmp ${outdir}/text_expanded
+       < ${outdir}/text_expanded > $tmp/tmp && mv $tmp/tmp ${outdir}/text_expanded || exit 1;
   
   # NOTE! The ${outdir}/text_expanded utterances fit for use in the stage 2 punctuation training
   
@@ -221,7 +221,7 @@ if [ $stage -le 3 ]; then
   local/prep_lang.sh \
     $prondict        \
     $localdict   \
-    $lm_modeldir/lang
+    $lm_modeldir/lang || error 1 "ERROR: prep_lang.sh failed"
 fi
 
 if [ $stage -le 4 ]; then
@@ -230,13 +230,13 @@ if [ $stage -le 4 ]; then
   # I use a small tri2 model, trained on ~60 hrs of data to
   # transcribe the audio so that I can align the new data	
   echo "Segment the data using and in-domain recognizer"
-  utils/slurm.pl --mem 8G ${outdir}/log/segmentation.log local/run_segmentation.sh ${outdir} $lm_modeldir/lang $tri2 ${outdir}_reseg
+  utils/slurm.pl --mem 8G ${outdir}/log/segmentation.log local/run_segmentation.sh ${outdir} $lm_modeldir/lang $tri2 ${outdir}_reseg || error 1 "ERROR: run_segmentation.sh failed"
 
   # Filter away segments with extreme word-per-second values # Should be unnecessary
   # echo "Analyze the segments and filter based on a words/sec ratio"
-  local/words-per-second.sh ${outdir}_reseg
+  local/words-per-second.sh ${outdir}_reseg || error 1 "ERROR: words-per-second.sh failed" 
   # #local/hist/wps_perSegment_hist.py ${outdir}_reseg/wps.txt  
-  local/filter_segments.sh ${outdir}_reseg ${outdir}_reseg_filtered
+  local/filter_segments.sh ${outdir}_reseg ${outdir}_reseg_filtered || error 1 "ERROR: filter_segments.sh failed"
 
   # Copy the "$outdir" directory to the home drive to save for possible later uses
   if [ ! -d $all_intermediate/$(basename $outdir) ]; then

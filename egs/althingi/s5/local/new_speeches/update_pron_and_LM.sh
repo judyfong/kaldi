@@ -3,8 +3,12 @@
 set -o pipefail
 
 # Run from the s5 directory
-# Take in all new words, confirmed by editors, and update the pronunctiation dictionary,
+# Take in new speech transcripts cleaned for language modelling and new words,
+# confirmed by editors, and update the pronunctiation dictionary,
 # the language models, the decoding graph and the latest bundle.
+
+# As this script is written, it is asumed that it will not be run when many the editors are working.
+# Otherwise some vocab could be moved straight to the archive and not to the pron dict.
 
 . ./path.sh # the $root_* variable are defined here
 . parse_options.sh || exit 1;
@@ -19,6 +23,7 @@ vocab_archive=$root_confirmed_vocab_archive
 prondir=$root_lexicon
 current_prondict=$(ls -t $prondir/prondict.*.txt | head -n1)
 lm_transcript_dir=$root_lm_transcripts
+lm_transcripts_archive=$root_lm_transcripts_archive
 lm_training_dir=$root_lm_training
 current_LM_training_texts=$(ls -t $lm_training_dir/*.txt | head -n1)
 lm_modeldir=$root_lm_modeldir/$d
@@ -41,26 +46,41 @@ cleanup () {
 }
 trap cleanup EXIT
 
-# I need to gather all new confirmed vocab and relevant new transcripts in the lm dir (I can match them by their file names (speechname.txt))
-
 if [ $stage -le 1 ]; then
+
+  if [ "$(ls -A $lm_transcript_dir)" ]; then
+    echo "Update the LM training texts"
+    cat $current_LM_training_texts $lm_transcript_dir/*.txt > $lm_training_dir/LMtext.${d}.txt
+    mv $lm_transcript_dir/*.txt $lm_transcripts_archive/
+  else
+    echo "There are no new transcripts to add to the language models"
+    exit 1;
+  fi
+
+  # Update the prondict if there is new confirmed vocabulary, and move those vocab files to the archive
+  if [ "$(ls -A $confirmed_vocab_dir)" ]; then
+    echo "Update the pronunciation dictionary"
+    cat $confirmed_vocab_dir/*.txt $current_prondict | sort -u > $prondir/prondict.${d}.txt
+    mv $confirmed_vocab_dir/*.txt $vocab_archive/$f   
+  fi
+    
+  # # Select all language models training texts from the last time the language model was updated
+  # if [ -f $newest -a -f $archive_newest ]; then
+  #   n1=$(grep -n $archive_newest $tmp/lm_transcript_list.tmp | cut -d':' -f1)
+  #   n2=$(grep -n $newest $tmp/lm_transcript_list.tmp | cut -d':' -f1)
+  #   head -n $[$n1-1] $tmp/lm_transcript_all.tmp | tail -n +$n2 > $tmp/lm_texts_list.tmp
+  # elif [ -f $newest -a ! -f $archive_newest ]; then
+  #   n1=$(grep -n $oldest $tmp/lm_transcript_list.tmp | cut -d':' -f1)
+  #   n2=$(grep -n $newest $tmp/lm_transcript_list.tmp | cut -d':' -f1)
+  #   head -n $n1 $tmp/lm_transcript_all.tmp | tail -n +$n2 > $tmp/lm_texts_list.tmp
+  # elif [ ! -f $newest -a -f $archive_newest ]; then
+  #   n1=$(grep -n $archive_newest $tmp/lm_transcript_list.tmp | cut -d':' -f1)
+  #   head -n $[$n1-1] $tmp/lm_transcript_all.tmp > $tmp/lm_texts_list.tmp    
+  # else
+  #   echo "No new or former new vocabulary files to base the language text selection on"
+  #   exit 1;
+  # fi
   
-  # Update the prondict
-  cat $confirmed_vocab_dir/*.txt $current_prondict | sort -u > $prondir/prondict.${d}.txt
-
-  # Use a list of speeches with new vocab, to extract the relevant texts
-  # NOTE! If I do it like this then I need to constantly remove from the
-  # $root_confirmed_vocab dir what has already been added to the prondict
-  # Maybe I should find another solution. I could also move the files I'm using into another archive directory and keep this one for new confirmed vocab.
-  ls $confirmed_vocab_dir/*.txt > $tmp/confirmed_vocab_list.tmp
-
-  for f in $(cat $tmp/confirmed_vocab_list.tmp); do
-    cat $lm_transcript_dir/$f >> $tmp/new_texts.tmp
-    mv $confirmed_vocab_dir/$f $vocab_archive/$f
-  done
-
-  # Update the LM training texts
-  cat $tmp/new_texts.tmp $current_LM_training_texts > $lm_training_dir/LMtext.${d}.txt
 fi
 
 if [ $stage -le 2 ]; then
@@ -91,3 +111,5 @@ if [ $stage -le 4 ]; then
   local/update_latest.sh || error 1 "ERROR: update_latest.sh failed"
 
 fi
+
+exit 0;

@@ -187,18 +187,18 @@ if [ $stage -le 3 ]; then
   cp ${intermediate}/text_exp2.txt ${intermediate}/text_exp2_forPunct.txt || error 14 $LINENO ${error_array[14]};
 
   # Add spaces into acronyms pronounced as letters
-  if [ egrep -q "[A-ZÁÐÉÍÓÚÝÞÆÖ]{2,}\b" ${intermediate}/text_exp2.txt ]; then  
+  if egrep -q "[A-ZÁÐÉÍÓÚÝÞÆÖ]{2,}\b" ${intermediate}/text_exp2.txt ; then  
     egrep -o "[A-ZÁÐÉÍÓÚÝÞÆÖ]{2,}\b" \
       < ${intermediate}/text_exp2.txt \
-      > $tmp/acro.tmp
+      > $tmp/acro.tmp || error 14 ${error_array[14]};
 
     egrep "\b[AÁEÉIÍOÓUÚYÝÆÖ]+\b|\b[QWRTPÐSDFGHJKLZXCVBNM]+\b" \
-      < $tmp/acro.tmp > $tmp/asletters.tmp
+      < $tmp/acro.tmp > $tmp/asletters.tmp || error 14 ${error_array[14]};
   
     cat $tmp/asletters.tmp $abbr_acro_as_letters \
-      | sort -u > $tmp/asletters_tot.tmp
+      | sort -u > $tmp/asletters_tot.tmp || error 14 ${error_array[14]};
   else
-    cp $abbr_acro_as_letters $tmp/asletters_tot.tmp
+    cp $abbr_acro_as_letters $tmp/asletters_tot.tmp || error 14 ${error_array[14]};
   fi
 
   # Create a table where the 1st col is the acronym and the 2nd one is the acronym with with spaces between the letters

@@ -65,9 +65,9 @@ fi
 if [ $stage -le 2 ]; then
   echo "Make a list over all the words in numbertexts if necessary"
   if [ ! -f ${base_norm_data}/wordlist_numbertexts_althingi100.txt ]; then
-    gzip -cd ${base_norm_data}/numbertexts_althingi100.txt.gz | cut -d" " -f2- | tr " " "\n" | grep -v "^\s*$" | sort -u > ${base_norm_data}/wordlist_numbertexts_althingi100.txt
+    gzip -cd ${base_norm_data}/numbertexts_althingi100.txt.gz | cut -d" " -f2- | tr " " "\n" | grep -v "^\s*$" | sort -u > ${base_norm_data}/wordlist_numbertexts_althingi100.txt || exit 1;
   elif [ ${base_norm_data}/wordlist_numbertexts_althingi100.txt -ot ${base_norm_data}/numbertexts_althingi100.txt.gz ]; then
-    gzip -cd ${base_norm_data}/numbertexts_althingi100.txt.gz | cut -d" " -f2- | tr " " "\n" | grep -v "^\s*$" | sort -u > ${base_norm_data}/wordlist_numbertexts_althingi100.txt
+    gzip -cd ${base_norm_data}/numbertexts_althingi100.txt.gz | cut -d" " -f2- | tr " " "\n" | grep -v "^\s*$" | sort -u > ${base_norm_data}/wordlist_numbertexts_althingi100.txt || exit 1;
   fi
 fi
 
@@ -75,7 +75,7 @@ if [ $stage -le 3 ]; then
   echo "Extract words that are only in the althingi texts, excluding unexpanded abbrs, numbers and punctuations."
   echo "Map words which are not seen in context in numbertexts to <word>."
   for i in `seq 1 $nj`; do
-    cut -d" " -f2- ${dir}/split${nj}/cleantext.${i}.txt | tr " " "\n" | grep -v "^\s*$" | sort -u > ${dir}/split${nj}/words_cleantext.${i}.tmp
+    cut -d" " -f2- ${dir}/split${nj}/cleantext.${i}.txt | tr " " "\n" | grep -v "^\s*$" | sort -u > ${dir}/split${nj}/words_cleantext.${i}.tmp || exit 1;
     # Extract words that are only in the althingi texts, excluding unexpanded abbrs, numbers and punctuations
     comm -23 <(comm -23 ${dir}/split${nj}/words_cleantext.${i}.tmp ${base_norm_data}/wordlist_numbertexts_althingi100.txt | egrep -v "[^A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö]") <(cut -f1 ${text_norm_lex}/abbr_lexicon.txt | sort -u) > ${dir}/split${nj}/words_job${i}_only.tmp
   done
@@ -86,7 +86,7 @@ if [ $stage -le 3 ]; then
   utils/slurm.pl JOB=1:$nj ${dir}/split${nj}/log/save-OOVwords.JOB.log python3 local/save_OOVwords.py ${dir}/split${nj}/cleantext.JOB.txt ${dir}/split${nj}/words_jobJOB_only.tmp ${dir}/split${nj}/cleantext_afterWordMapping.JOB.txt ${dir}/split${nj}/mappedWords_jobJOB.txt
   # I get problems if encounter more than one space between words after the thrax step. Temporary fix is this:
   for i in `seq 1 $nj`; do
-    sed -r -i 's:([0-9]) (%|‰|\.):\1\2:g' ${dir}/split${nj}/cleantext_afterWordMapping.${i}.txt
+    sed -i -re 's:([0-9]) (%|‰):\1\2:g' -e 's: ([0-9]{1,3}) (\.):\1\2:g' ${dir}/split${nj}/cleantext_afterWordMapping.${i}.txt
   done
   deactivate
 fi

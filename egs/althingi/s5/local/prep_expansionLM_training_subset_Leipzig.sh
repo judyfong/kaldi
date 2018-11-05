@@ -152,7 +152,7 @@ if [ $stage -le 5 ]; then
   
   # We select a subset of the vocabulary that also exists in our pronunciation
   # dictionary. Since a lot of the words in the Leipzig corpora are not real words
-  comm -12 <(sort -u $intermediatelc/words_numbertexts_lc.txt) <(cut -f1 $prondict | sed -r 's:.*:\L&:' | sort -u) > $outdirlc/wordlist_numbertexts_lc.txt
+  comm -12 <(sort -u $intermediatelc/words_numbertexts_lc.txt) <(cut -f1 $prondict | sed -r 's:.*:\L&:' | sort -u) | sort -u > $outdirlc/wordlist_numbertexts_lc.txt
   
 fi
 
@@ -181,7 +181,7 @@ if [ $stage -le 7 ]; then
 
     # We select a subset of the vocabulary that also exists in our pronunciation
     # dictionary. Since a lot of the words in the Leipzig corpora are not real words
-    comm -12 <(sort -u $intermediate/words_numbertexts_cs.txt) <(cut -f1 $prondict | sort -u) > $outdir/wordlist_numbertexts_cs.txt
+    comm -12 <(sort -u $intermediate/words_numbertexts_cs.txt) <(cut -f1 $prondict | sort -u) | sort -u > $outdir/wordlist_numbertexts_cs.txt
     
     wordlist=$outdir/wordlist_numbertexts_cs.txt
   fi
@@ -203,7 +203,7 @@ if [ $stage -le 7 ]; then
   cut -f2 $text_norm_lex_dir/ordinals_*?_lexicon.txt >> $outdir/wordlist_numbertexts_althingi100.txt
   cut -f2 $text_norm_lex_dir/units_lexicon.txt >> $outdir/wordlist_numbertexts_althingi100.txt
   echo -e "\.\n,\n\?\n\!\n:\n;\n\-\n–\n\/\n<word>" \
-       > $tmp/puncts && sed -r 's:\\::g' $tmp/puncts \
+       > $tmp/puncts && sed -r 's:\\::g' $tmp/puncts | sort -u \
        >> $outdir/wordlist_numbertexts_althingi100.txt
 fi
 

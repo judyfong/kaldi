@@ -94,8 +94,8 @@ fststringcompile ark:"sed 's:.*:1 &:' ${intermediate}/punctuator_out_wPuncts.tmp
   > ${intermediate}/punctuator_out_wPeriods.tmp || error 8 ${error_array[8]};
 
 # Abbreviate "háttvirtur", "hæstvirtur" and "þingmaður" in some cases
-sed -re 's:([Hh]æstv)irtur forseti:\1\. forseti:g' \
-    -e 's:([Hh])áttv[^ ]+ (þingm[^ .?:eö]+ [A-ZÁÐÉÍÓÚÝÞÆÖ]):\1v\. \2:g' \
+sed -re 's:([Hh]æstv)irt[^ ]*\b:\1\.:g' \
+    -e 's:([Hh])áttv[^ ]+ (þingm[^ ]+):\1v\. \2:g' \
     -e 's:([Hh]v\. ([0-9]+\. )?)þingm[^ .?:eö]+ ([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1þm. \3:g' \
     -e 's:([0-9]+\.) þingm[^ .?:eö]+ ([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 þm. \2:g' \
     -e 's:(þm\. Norð[av][ue]st)urkjördæmis?:\1.:g' \

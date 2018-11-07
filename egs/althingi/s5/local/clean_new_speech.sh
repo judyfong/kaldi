@@ -73,7 +73,7 @@ for line in text:
     tmpline=[]
     for match in match_list:
         for word in line:
-            number = [re.sub(match,str(roman.fromRoman(match)),word) for elem in re.findall(r'\b(X{0,3}IX|X{0,3}IV|X{0,3}V?I{0,3})\.?,?\b', word) if len(elem)>0]
+            number = [re.sub(match,roman.fromRoman(match).encode('utf-8'),word) for elem in re.findall(r'\b(X{0,3}IX|X{0,3}IV|X{0,3}V?I{0,3})\.?,?\b', word) if len(elem)>0]
             if len(number)>0:
                 tmpline.extend(number)
             else:
@@ -85,7 +85,7 @@ for line in text:
 text.close()
 text_out.close()
 " || error 1 $LINENO "Error while rewriting roman numerals";
-
+  
 fi
 
 if [ $stage -le 2 ]; then

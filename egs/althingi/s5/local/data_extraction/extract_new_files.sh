@@ -3,6 +3,7 @@
 set -o pipefail
 
 audio_only=false
+xml_only=false
 
 . ./path.sh # $data defined here
 . parse_options.sh || exit 1;
@@ -64,6 +65,11 @@ if $audio_only ; then
     perl -pi -e 'chomp if eof' ${datadir}/thing${session}_mp3_xml_new.txt
     srun --time=0-12 --nodelist=terra sh -c "php local/data_extraction/scrape_althingi_mp3.php ${datadir}/thing${session}_mp3_xml_new.txt ${corpusdir}/audio &> ${datadir}/log/extraction_thing${session}_audio.log" &
   done
+elif $xml_only ; then
+  for session in $(seq $start $stop); do
+    # Make sure all the files contain xml files and remove newline at EOF
+    awk -F $'\t' 'NF==4{print}{}' ${datadir}/thing${session}_mp3_xml_new.txt | perl -pe 'chomp if eof' > ${datadir}/thing${session}_mp3_with_xml.txt
+    srun --time=0-12 --nodelist=terra sh -c "php local/data_extraction/scrape_althingi_xml.php ${datadir}/thing${session}_mp3_with_xml.txt ${corpusdir}/text_endanlegt &> ${datadir}/log/extraction_thing${session}_xml.log" &
 else
   # Download the corresponding audio and xml
   for session in $(seq $start $stop); do

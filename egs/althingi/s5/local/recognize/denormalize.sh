@@ -93,8 +93,6 @@ fststringcompile ark:"sed 's:.*:1 &:' ${intermediate}/punctuator_out_wPuncts.tmp
   | tr "\n" " " | sed -re 's: +: :g' -e 's:\s*$::' -e 's:([^.?!])$:\1.:' \
   > ${intermediate}/punctuator_out_wPeriods.tmp || error 8 ${error_array[8]};
 
-cat ${intermediate}/punctuator_out_wPeriods.tmp
-
 # Abbreviate "háttvirtur", "hæstvirtur" and "þingmaður" in some cases
 sed -re 's:([Hh]æstv)irt[^ ]*\b:\1\.:g' \
     -e 's:([Hh])áttv[^ ]+ (þingm[^ ]+):\1v\. \2:g' \
@@ -105,12 +103,10 @@ sed -re 's:([Hh]æstv)irt[^ ]*\b:\1\.:g' \
     -e 's:(þm\. Suðurk)jördæmis?:\1.:g' \
     -e 's:(þm\. Suðvest)urkjördæmis?:\1.:g' \
     < ${intermediate}/punctuator_out_wPeriods.tmp \
-    > ${intermediate}/hv_hæstv_abbreviated.tmp || error 1 "Error while abbreviating to hv., hæstv. and þm.";
-
-cat ${intermediate}/hv_hæstv_abbreviated.tmp
+    > ${intermediate}/hv_abbreviated.tmp || error 1 "Error while abbreviating to hv., hæstv. and þm.";
 
 echo "Insert paragraph breaks using a paragraph model"
-cat ${intermediate}/hv_hæstv_abbreviated.tmp \
+cat ${intermediate}/hv_abbreviated.tmp \
   | THEANO_FLAGS='device=cpu' python paragraph/paragrapher.py \
     $paragraph_model ${intermediate}/paragraphed_tokens.tmp \
   || error 10 ${error_array[10]};

@@ -190,15 +190,17 @@ if [ $stage -le 3 ]; then
   if egrep -q "[A-ZÁÐÉÍÓÚÝÞÆÖ]{2,}\b" ${intermediate}/text_exp2.txt ; then  
     egrep -o "[A-ZÁÐÉÍÓÚÝÞÆÖ]{2,}\b" \
       < ${intermediate}/text_exp2.txt \
-      > $tmp/acro.tmp || error 14 ${error_array[14]};
+      > $tmp/acro.tmp || error 14 $LINENO ${error_array[14]};
 
-    egrep "\b[AÁEÉIÍOÓUÚYÝÆÖ]+\b|\b[QWRTPÐSDFGHJKLZXCVBNM]+\b" \
-      < $tmp/acro.tmp > $tmp/asletters.tmp || error 14 ${error_array[14]};
-  
-    cat $tmp/asletters.tmp $abbr_acro_as_letters \
-      | sort -u > $tmp/asletters_tot.tmp || error 14 ${error_array[14]};
+    if egrep -q "\b[AÁEÉIÍOÓUÚYÝÆÖ]+\b|\b[QWRTPÐSDFGHJKLZXCVBNM]+\b" $tmp/acro.tmp; then
+      egrep "\b[AÁEÉIÍOÓUÚYÝÆÖ]+\b|\b[QWRTPÐSDFGHJKLZXCVBNM]+\b" \
+            < $tmp/acro.tmp > $tmp/asletters.tmp || error 14 $LINENO ${error_array[14]};
+      
+      cat $tmp/asletters.tmp $abbr_acro_as_letters \
+      | sort -u > $tmp/asletters_tot.tmp || error 14 $LINENO ${error_array[14]};
+    fi
   else
-    cp $abbr_acro_as_letters $tmp/asletters_tot.tmp || error 14 ${error_array[14]};
+    cp $abbr_acro_as_letters $tmp/asletters_tot.tmp || error 14 $LINENO ${error_array[14]};
   fi
 
   # Create a table where the 1st col is the acronym and the 2nd one is the acronym with with spaces between the letters
@@ -307,11 +309,11 @@ if [ $stage -le 4 ]; then
       -e 's:\b([A-ZÁÐÉÍÓÚÝÞÆÖ])\b:\l\1:g' -e 's:[º°]c:°C:g' \
       < $intermediate/text_case2.txt > $textout || error 13 $LINENO ${error_array[13]};  
 
-  # And for the punctuation text:
+  # And for the punctuation text (add a newline at the end):
   sed -re 's:\b([^ ]+) (([eo])?hf)\b:\u\1 \2:g' \
       -e 's:(\b'$(cat $tmp/ambiguous_personal_names_pattern.tmp)'\b) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\u\1 \2:g' \
       -e 's:(\b'$(cat $tmp/ambiguous_personal_names_pattern.tmp)'\b) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]*) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\u\1 \2 \3:g' \
-      -e 's:\b([A-ZÁÐÉÍÓÚÝÞÆÖ])\b:\l\1:g' -e 's:[º°]c:°C:g' \
+      -e 's:\b([A-ZÁÐÉÍÓÚÝÞÆÖ])\b:\l\1:g' -e 's:[º°]c:°C:g' -e '$a\' \
       < $intermediate/text_case2_forPunct.txt > $punct_textout || error 13 $LINENO ${error_array[13]};
   
 fi

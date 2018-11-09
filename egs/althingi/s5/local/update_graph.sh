@@ -28,7 +28,7 @@ outdir=$ampath/$d
 mkdir -p $outdir/log
 
 echo "Make a small 3-gram graph"
-utils/slurm.pl --mem 8G $outdir/log/mkgraph.log utils/mkgraph.sh --self-loop-scale 1.0 $decoding_lang $am_model $outdir/graph_3gsmall
+$train_cmd --mem 8G $outdir/log/mkgraph.log utils/mkgraph.sh --self-loop-scale 1.0 $decoding_lang $am_model $outdir/graph_3gsmall
 
 # Create symlinks in the new model dir to the old one
 for f in cmvn_opts extractor final.ie.id final.mdl frame_subsampling_factor tree ; do

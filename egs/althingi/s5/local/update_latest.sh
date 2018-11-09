@@ -26,18 +26,7 @@ set -o pipefail
 # punctuation_model
 # paragraph_model
 
-# NOTE! I need to make an easy way of updating the LMs and then the graph needs to be updated as well.
-# Where will I store the graph?
-
-  # graph is dependent on decoding_lang and the acoustic model.
-  # rescoring and decoding LMs need to be compatible
-  # All the files used in denormalize are independent of each other so latest can be updated
-  # if any one of those is updated
-  # If the LM's are updated, latest can be updated, given that mkgraph.sh is run if needed
-  # If rescoring_lang_rnn is not updated but the other ones are, then I need to change
-  # recognize.sh such that if rnnlm=true then the latest bunch containing it will be used
-  # I will make it available to not use the newest version of everything. Then the preferred version
-  # can be given as an option
+# NOTE! Temporary for now: The graph is updated in update_graph.sh, prep_lang.sh and then make_LM.sh can be used to update the LMs or update_pron_and_LM.sh if used in production.
 
 extractor=
 acoustic_model=
@@ -76,13 +65,6 @@ graph=$acoustic_model/graph_3gsmall \
 [ -z $text_norm ] && text_norm=$(ls -td $root_text_norm_modeldir/2* | head -n1) \
     || error 1 "Failed setting text_norm variable";
 
-# bundle_graph= && if [ -e $root_bundle/*/graph]; then bundle_graph=$root_bundle/*/graph; fi
-# newest_graph=$(ls -td $acoustic_model/graph_3gsmall $bundle_graph | head -n1)
-# if [ $lmdir/lang_3gsmall/words.txt -nt $newest_graph/words.txt ]; then
-#   echo "Make a small 3-gram graph"
-#   utils/mkgraph.sh --self-loop-scale 1.0 $lmdir/lang_3gsmall $acoustic_model $thisbundle/graph || error 1 "utils/mkgraph.sh failed!";
-# fi
-
 amb_pers_names=$(ls -t $root_capitalization/ambiguous_personal_names.*.txt | head -n1) \
   || error 1 "Failed setting amb_pers_names variable";
 utf8syms=$root_listdir/utf8.syms \
@@ -109,7 +91,7 @@ else
 fi
 
 # ! cmp $thisbundle/decoding_lang/words.txt <(egrep -v "<brk>" $rnnlmdir/config/words.txt) && \
-#   echo "$0: Warning: decoding and rnn rescoring LM vocabularies may be incompatible."
+#   echo "$0: ERROR: decoding and rnn rescoring LM vocabularies are incompatible." && exit 1;
 # ln -s $rnnlmdir $thisbundle/rescoring_lang_rnn || error 1 "Failed creating rnn lm symlink";
 
 # Let $latest point to $thisbundle

@@ -15,12 +15,11 @@ order=4
 echo "$0 $@"  # Print the command line for logging
 
 . ./cmd.sh
-. ./path.sh
+. ./path.sh # Defines also $root_* and $data,$exp
 . utils/parse_options.sh
 . local/utils.sh
-. ./conf/path.conf
 
-text_norm_lex=local/thraxgrammar/lex
+text_norm_lex=$(ls -td $root_text_norm_listdir/thraxgrammar_lex.* | head -n1)
 base_norm_data=$root_expansionLM_cs_data
 base_norm_model=$root_base_text_norm_model
 
@@ -58,6 +57,7 @@ if [ $stage -le 1 ]; then
       utils/split_scp.pl ${dir}/cleantext_wID.txt $split_text || exit 1;
     fi
   else
+    # Can happen if we are processing single speeches. They come with an uttID.
     cp $infile ${dir}/split1/cleantext.1.txt
   fi
 fi
@@ -75,32 +75,52 @@ if [ $stage -le 3 ]; then
   echo "Extract words that are only in the althingi texts, excluding unexpanded abbrs, numbers and punctuations."
   echo "Map words which are not seen in context in numbertexts to <word>."
   for i in `seq 1 $nj`; do
-    cut -d" " -f2- ${dir}/split${nj}/cleantext.${i}.txt | tr " " "\n" | grep -v "^\s*$" | sort -u > ${dir}/split${nj}/words_cleantext.${i}.tmp || exit 1;
-    # Extract words that are only in the althingi texts, excluding unexpanded abbrs, numbers and punctuations
-    comm -23 <(comm -23 ${dir}/split${nj}/words_cleantext.${i}.tmp ${base_norm_data}/wordlist_numbertexts_althingi100.txt | egrep -v "[^A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö]") <(cut -f1 ${text_norm_lex}/abbr_lexicon.txt | sort -u) > ${dir}/split${nj}/words_job${i}_only.tmp
+    (
+      cut -d" " -f2- ${dir}/split${nj}/cleantext.${i}.txt | tr " " "\n" | grep -v "^\s*$" | sort -u > ${dir}/split${nj}/words_cleantext.${i}.tmp || exit 1;
+      # Extract words that are only in the althingi texts, excluding unexpanded abbrs, numbers and punctuations
+      comm -23 <(comm -23 ${dir}/split${nj}/words_cleantext.${i}.tmp ${base_norm_data}/wordlist_numbertexts_althingi100.txt | egrep -v "[^A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö]") <(cut -f1 ${text_norm_lex}/abbr_lexicon.txt | sort -u) > ${dir}/split${nj}/words_job${i}_only.tmp
+    ) &
   done
-
-  # Map words which are not seen in context in numbertexts to <word>
-  source venv3/bin/activate
-  #pip install nltk
-  utils/slurm.pl JOB=1:$nj ${dir}/split${nj}/log/save-OOVwords.JOB.log python3 local/save_OOVwords.py ${dir}/split${nj}/cleantext.JOB.txt ${dir}/split${nj}/words_jobJOB_only.tmp ${dir}/split${nj}/cleantext_afterWordMapping.JOB.txt ${dir}/split${nj}/mappedWords_jobJOB.txt
-  # I get problems if encounter more than one space between words after the thrax step. Temporary fix is this:
+  wait
+  
   for i in `seq 1 $nj`; do
-    sed -i -re 's:([0-9]) (%|‰):\1\2:g' -e 's: ([0-9]{1,3}) (\.):\1\2:g' ${dir}/split${nj}/cleantext_afterWordMapping.${i}.txt
+    (
+      if [ -s ${dir}/split${nj}/words_job${i}_only.tmp ]; then
+        # Map words which are not seen in context in numbertexts to <word>
+        source venv3/bin/activate
+        #pip install nltk
+        $train_cmd ${dir}/split${nj}/log/save-OOVwords.${i}.log python3 local/save_OOVwords.py ${dir}/split${nj}/cleantext.${i}.txt ${dir}/split${nj}/words_job${i}_only.tmp ${dir}/split${nj}/cleantext_afterWordMapping.${i}.txt ${dir}/split${nj}/mappedWords_job${i}.txt
+        deactivate
+      else
+        cp ${dir}/split${nj}/cleantext.${i}.txt ${dir}/split${nj}/cleantext_afterWordMapping.${i}.txt
+      fi
+      # I get problems if encounter more than one space between words after the thrax step. Temporary fix is this:
+      sed -i -re 's:([0-9]) (%|‰):\1\2:g' -e 's: +: :g' ${dir}/split${nj}/cleantext_afterWordMapping.${i}.txt
+    ) &
   done
-  deactivate
+  wait;
+  
 fi
 
 if [ $stage -le 4 ]; then
   echo "Expand"
-  utils/slurm.pl --mem 4G JOB=1:$nj ${dir}/log/expand-numbers.JOB.log expand-numbers --word-symbol-table=$base_norm_model/baseLM_words.txt ark,t:$dir/split${nj}/cleantext_afterWordMapping.JOB.txt $base_norm_model/base_expand_to_words.fst $base_norm_model/base_expansionLM_${order}g.fst ark,t:$dir/split${nj}/text_expanded_${order}g.JOB.txt
+  $decode_cmd JOB=1:$nj ${dir}/log/expand-numbers.JOB.log expand-numbers --word-symbol-table=$base_norm_model/baseLM_words.txt ark,t:$dir/split${nj}/cleantext_afterWordMapping.JOB.txt $base_norm_model/base_expand_to_words.fst $base_norm_model/base_expansionLM_${order}g.fst ark,t:$dir/split${nj}/text_expanded_${order}g.JOB.txt
 
 fi
 
 if [ $stage -le 5 ]; then
 
   echo "Insert words back"
-  utils/slurm.pl --time 0-16 JOB=1:$nj ${dir}/log/re-insert-oov.JOB.log local/re-insert-oov.sh ${dir}/split${nj}/text_expanded_${order}g.JOB.txt ${dir}/split${nj}/mappedWords_jobJOB.txt
+  for i in `seq 1 $nj`; do
+    (
+      if [ -s ${dir}/split${nj}/mappedWords_job${i}.txt ]; then
+        $train_cmd --time 0-16 ${dir}/log/re-insert-oov.${i}.log local/re-insert-oov.sh ${dir}/split${nj}/text_expanded_${order}g.${i}.txt ${dir}/split${nj}/mappedWords_job${i}.txt
+      else
+        cp ${dir}/split${nj}/text_expanded_${order}g.${i}.txt ${dir}/split${nj}/text_expanded_${order}g.${i}.wOOV.txt
+      fi
+    ) &
+  done
+  wait;
   
   echo "Check if all the speeches were expanded"
   join -1 1 -2 1 <(egrep "(^[0-9]{10} *$)|(rad[0-9T]+ *$)" ${dir}/split${nj}/text_expanded_${order}g.*.txt | sed 's/ *//g' | sort) <(sort ${dir}/split${nj}/cleantext_afterWordMapping.*.txt) > ${dir}/split${nj}/text_notexpanded_${order}g.txt

@@ -10,7 +10,10 @@ set -o pipefail
 # As this script is written, it is asumed that it will not be run when many the editors are working.
 # Otherwise some vocab could be moved straight to the archive and not to the pron dict.
 
+stage=0
+
 . ./path.sh # the $root_* variable are defined here
+. ./cmd.sh
 . parse_options.sh || exit 1;
 . ./local/utils.sh
 . ./local/array.sh
@@ -35,11 +38,6 @@ for f in $current_prondict $current_LM_training_texts; do
   [ ! -f $f ] && echo "$0: expected $f to exist" && exit 1;
 done
 
-# Do I want to overwrite or not?
-[ -f $prondir/prondict.${d}.txt ] && \
-  echo "$0: $prondir/prondict.${d}.txt already exists. Are you sure you want to overwrite it?" \
-  && exit 1;
-
 tmp=$(mktemp -d)
 cleanup () {
     rm -rf "$tmp"
@@ -47,6 +45,11 @@ cleanup () {
 trap cleanup EXIT
 
 if [ $stage -le 1 ]; then
+
+  # Do I want to overwrite or not?
+  [ -f $prondir/prondict.${d}.txt ] && \
+  echo "$0: $prondir/prondict.${d}.txt already exists. Are you sure you want to overwrite it?" \
+  && exit 1;
 
   if [ "$(ls -A $lm_transcript_dir)" ]; then
     echo "Update the LM training texts"
@@ -61,7 +64,7 @@ if [ $stage -le 1 ]; then
   if [ "$(ls -A $confirmed_vocab_dir)" ]; then
     echo "Update the pronunciation dictionary"
     cat $confirmed_vocab_dir/*.txt $current_prondict | sort -u > $prondir/prondict.${d}.txt
-    mv $confirmed_vocab_dir/*.txt $vocab_archive/$f   
+    mv $confirmed_vocab_dir/*.txt $vocab_archive/ 
   fi
     
   # # Select all language models training texts from the last time the language model was updated
@@ -85,17 +88,36 @@ fi
 
 if [ $stage -le 2 ]; then
 
-  echo "Update the lang dir and the language models"
+  echo "Update the lang dir"
+
+  # Make lang dir
+  prondict=$(ls -t $prondir/prondict.*.txt | head -n1)
+  [ -d $localdict ] && rm -r $localdict
+  mkdir -p $localdict $lm_modeldir/lang
+  
+  local/prep_lang.sh \
+    $prondict        \
+    $localdict   \
+    $lm_modeldir/lang
+
+  echo "Preparing a pruned trigram language model"
   mkdir -p $lm_modeldir/log
-  utils/slurm.pl --mem 8G $lm_modeldir/log/make_lang_and_LM_3gsmall.log \
-    local/update_lm.sh \
+  $train_cmd --mem 12G $lm_modeldir/log/make_LM_3gsmall.log \
+    local/make_LM.sh \
       --order 3 --small true --carpa false \
-    || error 1 "ERROR: Failed creating a pruned trigram language model"
-		 
-  utils/slurm.pl --mem 12G $lm_modeldir/log/make_LM_5g.log \
-    local/update_lm.sh \
-      --stage 2 --order 5 --small false --carpa true \
-    || error 1 "ERROR: Failed creating an unpruned 5-gram language model"
+      $lm_training_dir/LMtext.${d}.txt $lm_modeldir/lang \
+      $localdict/lexicon.txt $lm_modeldir \
+    || error 1 "Failed creating a pruned trigram language model"
+  
+  echo "Preparing an unpruned 5g LM"
+  mkdir -p $lm_modeldir/log
+  $train_cmd --mem 20G $lm_modeldir/log/make_LM_5g.log \
+    local/make_LM.sh \
+      --order 5 --small false --carpa true \
+      $lm_training_dir/LMtext.${d}.txt $lm_modeldir/lang \
+      $localdict/lexicon.txt $lm_modeldir \
+    || error 1 "Failed creating an unpruned 5-gram language model"
+  
 fi
 
 if [ $stage -le 3 ]; then

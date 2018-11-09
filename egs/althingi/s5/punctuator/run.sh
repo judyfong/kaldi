@@ -29,6 +29,19 @@ datadir_2nd_stage=$root_punctuation_datadir/$d/second_stage$id
 mkdir -p $datadir/log $modeldir/log
 $two_stage && mkdir -p $datadir_2nd_stage/log
 
+# Save the info on the model in a file called info in the modeldir
+if [ $two_stage = true ]; then
+  echo "two stage training" > $modeldir/info
+else
+  echo "one stage training" > $modeldir/info
+fi
+
+if [ $ignore_commas = true ]; then
+  echo "without commas" >> $modeldir/info
+else
+  echo "with commas" >> $modeldir/info
+fi
+
 # NOTE! Review! This is what I used for my test:
 # Input data for 2nd stage training
 input_2nd_stage=$root_intermediate/all_sept2017

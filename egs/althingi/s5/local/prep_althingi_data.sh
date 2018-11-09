@@ -557,11 +557,12 @@ if [ $stage -le 8 ]; then
       < ${intermediate}/text_case1_forPunct.txt \
       > ${intermediate}/text_case2_forPunct.txt || error 14 $LINENO ${error_array[14]};
 
+  # The last regex puts a newline at the end of the speech
   sed -re 's:\byou ?tube\b:YouTube:gI' \
       -e 's:\b([^ ]+) (([eo])?hf)\b:\u\1 \2:g' \
       -e 's:(\b'$(cat $tmp/ambiguous_personal_names_pattern.tmp)'\b) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\u\1 \2:g' \
       -e 's:(\b'$(cat $tmp/ambiguous_personal_names_pattern.tmp)'\b) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]*) ([A-ZÁÉÍÓÚÝÞÆÖ][^ ]+(s[oy]ni?|dótt[iu]r|sen))\b:\u\1 \2 \3:g' \
-      -e 's:\b([A-ZÁÐÉÍÓÚÝÞÆÖ])\b:\l\1:g' -e 's:([º°])c:\1C:g' \
+      -e 's:\b([A-ZÁÐÉÍÓÚÝÞÆÖ])\b:\l\1:g' -e 's:([º°])c:\1C:g' -e '$a\' \
       < $intermediate/text_case2_forPunct.txt > $intermediate/text_case3_forPunct.txt || error 14 $LINENO ${error_array[14]};
 
   /bin/sed -f $tmp/ner_sed_pattern.tmp \

@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# Need to install beautifulsoup4 and lxml
+
 import sys
 import codecs
 import re

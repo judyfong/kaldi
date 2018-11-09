@@ -177,7 +177,7 @@ if [ $stage -le 6 ]; then
   if $rnnlm; then
     echo "RNN-LM rescoring"
     rnnlm/lmrescore_pruned.sh \
-      --cmd "utils/slurm.pl --mem 8G" \
+      --cmd "$train_cmd --mem 8G" \
       --weight 0.5 --max-ngram-order $ngram_order \
       --skip-scoring true \
       ${oldLMdir} $rnnlmdir \

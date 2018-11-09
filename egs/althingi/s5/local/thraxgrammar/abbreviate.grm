@@ -5,7 +5,7 @@
 #
 # This grammar can be interactively tested by doing:
 #
-# thraxrewrite-tester --far=local/abbreviate.far --rules=ABBREVIATE --noutput=1 --input_mode=utf8 --output_mode=utf8
+# thraxrewrite-tester --far=local/thraxgrammar/abbreviate.far --rules=ABBR_AND_DENORM --noutput=1 --input_mode=utf8 --output_mode=utf8
 
 # It can also be tested in the following way:
 # thraxrewrite-fileio --far=local/abbreviate.far --rules=ABBREVIATE

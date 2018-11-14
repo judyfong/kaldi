@@ -278,7 +278,7 @@ law_nr3 = CDRewrite[(" ".utf8 : "/".utf8) | (" frá ".utf8 : "/".utf8),
 
 law_nr = Optimize[law_nr1 @ law_nr2 @ law_nr3];
 
-dash = CDRewrite[(" til ".utf8 : "–".utf8),
+endash = CDRewrite[(" til ".utf8 : "–".utf8),
                 c.Digits+,
                 c.Digits+,
                 c.whole_alphabet*,
@@ -381,6 +381,27 @@ minister = CDRewrite[("".utf8 : "-".utf8),
                 'ltr',
                 'obl'];
 
+ministry = CDRewrite[("".utf8 : "-".utf8),
+                ("atvinnu".utf8 | "atvinnuvega".utf8 | "auðlinda".utf8
+                | "byggða".utf8 | "dóms".utf8 | "dómsmála".utf8 | "efnahags".utf8
+                | "félags".utf8 | "fjármála".utf8 | "forsætis".utf8
+                | "heilbrigðis".utf8 | "iðnaðar".utf8 | "innanríkis".utf8 | "landbúnaðar".utf8
+                | "mennta".utf8 | "samgöngu".utf8 | "sjávarútvegs".utf8
+                | "umhverfis".utf8 | "velferðar".utf8| "viðskipta".utf8),
+                " og ".utf8 c.alphabet+ "ráðuneyt".utf8,
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
+
+# Add dash into words, e.g. "EFTA-þjóðirnar"
+dash = Optimize[StringFile['local/thraxgrammar/lex/dash.txt','utf8','utf8']];
+insert_dash = CDRewrite[dash,
+                     ("[BOS]".utf8 | " ".utf8),
+                     "".utf8,
+                     c.whole_alphabet*,
+                     'ltr',
+                     'obl'];
+
 dr = CDRewrite[("doktor".utf8 : "dr".utf8),
                 " ".utf8,
                 " ".utf8 c.ALPHABET c.alphabet+,
@@ -388,9 +409,9 @@ dr = CDRewrite[("doktor".utf8 : "dr".utf8),
                 'ltr',
                 'obl'];
 
-DENORM = Optimize[name_casing @ acro_denorm @ law_nr @ dash @ kl @ decimal1 @ decimal2 @
+DENORM = Optimize[name_casing @ acro_denorm @ law_nr @ endash @ kl @ decimal1 @ decimal2 @
 decimal2 @ decimal2 @ ratio1 @ ratio2 @ rm_space_bf_punct @ celsius @ url1 @
-url2 @ url3 @ ogeda @ committee @ minister @ dr];
+url2 @ url3 @ ogeda @ committee @ minister @ ministry @ insert_dash @ dr];
 
 export ABBR_AND_DENORM = ArcSort[
                     Optimize[ABBREVIATE @ DENORM],

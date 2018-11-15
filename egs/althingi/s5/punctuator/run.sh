@@ -61,18 +61,29 @@ if [ $stage -le -1 ]; then
   #   --id $id --ignore-commas $ignore_commas \
   #   $cleaned $datadir $datadir_2nd_stage || exit 1;
 
-  # The following will use data as it is prepared by the new prep_althingi_data.sh
-  utils/slurm.pl $datadir/log/prep_punct_data.log \
-    punctuator/local/prep_punct_data2.sh \
-    --id $id --ignore-commas $ignore_commas \
-    text_PunctuationTraining.txt $datadir || exit 1;
+  # The following does not work if we are starting from scratch
+  # It works if we are updating an existing punctuation training set and
+  # have already cleaned everything for punctuation
+  # It is also only for one stage training
+  utils/slurm.pl $datadir/log/prep_and_update_punct_data.log \
+    punctuator/local/prep_and_update_punct_data.sh \
+      --ignore-commas $ignore_commas || exit 1;
+  
+  # # The following will use data as it is prepared by the new prep_althingi_data.sh
+  # utils/slurm.pl $datadir/log/prep_punct_data.log \
+  #   punctuator/local/prep_punct_data2.sh \
+  #   --id $id --ignore-commas $ignore_commas \
+  #   text_PunctuationTraining.txt $datadir || exit 1;
 
-  # Scripts called by this one have not been reviewed. I have not used the
-  # 2nd stage data so far exept in one test.
-  utils/slurm.pl --mem 8G --time 2-00 $datadir/log/prep_punct_data_2nd_stage.log \
-    punctuator/local/prep_punct_data_2nd_stage.sh \
-    --id $id --ignore-commas $ignore_commas \
-    $input_2nd_stage $ali_dir $datadir_2nd_stage || exit 1;
+  # if [ $two_stage = true ]; then
+  #   # Scripts called by this one have not been reviewed. I have not used the
+  #   # 2nd stage data so far exept in one test.
+  #   utils/slurm.pl --mem 8G --time 2-00 $datadir/log/prep_punct_data_2nd_stage.log \
+  #     punctuator/local/prep_punct_data_2nd_stage.sh \
+  #     --id $id --ignore-commas $ignore_commas \
+  #     $input_2nd_stage $ali_dir $datadir_2nd_stage || exit 1;
+  # fi
+  
 fi
 
 if [ $stage -le 1 ]; then
@@ -114,7 +125,7 @@ if [ $stage -le 3 ]; then
     (
       utils/slurm.pl --mem 4G $modeldir/log/punctuator_1st_stage_$dataset.log \
         THEANO_FLAGS='device=cpu' python punctuator/punctuator_filein.py $modeldir/Model_althingi${id}${suffix}_h256_lr0.02.pcl ${datadir}/althingi.${dataset}.txt ${datadir}/${dataset}_punctuated_stage1${id}${suffix}.txt  || error 1 "punct: punctuator_filein.py failed";
-      ) 
+      ) &
     #sbatch --get-user-env --job-name=punctuator --mem=4G --wrap="THEANO_FLAGS='device=cpu' srun python punctuator/punctuator_filein.py $modeldir/Model_althingi${id}${suffix}_h256_lr0.02.pcl ${datadir}/althingi.${d}.txt ${datadir}/${d}_punctuated_stage1${id}${suffix}.txt"
   done
   

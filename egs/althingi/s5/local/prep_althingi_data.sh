@@ -492,7 +492,8 @@ if [ $stage -le 8 ]; then
   # Find words in the new text that are not in the pron dict
   comm -23 <(cut -d' ' -f2- ${outdir}/text_SpellingFixed.txt \
     | tr ' ' '\n' | egrep -v '[0-9%‰°º²³,.:;?! ]' \
-    | egrep -v "\b$(cat $tmp/abbr_pattern.tmp)\b" | sort -u) \
+    | egrep -v "\b$(cat $tmp/abbr_pattern.tmp)\b" \
+    | grep -vf $abbr_acro_as_letters | sort -u) | egrep -v '^\s*$' \
     <(cut -f1 $prondict | sort -u) | egrep -v "Binary file" \
     > $tmp/new_vocab_all.txt || error 14 $LINENO ${error_array[14]};
 

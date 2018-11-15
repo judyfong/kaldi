@@ -8,7 +8,7 @@ import codecs
 import re
 import sys
 import nltk # I had to add these lines, but only needed once
-nltk.download('punkt')
+#nltk.download('punkt')
 
 NUM = '<NUM>'
 

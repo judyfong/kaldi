@@ -10,13 +10,10 @@ ignore_commas=true
 suffix=
 $ignore_commas && suffix=_noCOMMA
 
-. ./path.sh
+. ./path.sh # root_* and $data defined as well here
 . ./utils/parse_options.sh
-. ./conf/path.conf
 
 # These paths are defined in path.conf
-prondict=$(ls -t $root_lexicon/prondict.*.txt | head -n1)
-abbr_list=$(ls -t $root_text_norm_listdir/abbreviation_list.*.txt | head -n1)
 scraped_text_dir=/data/althingi/text_corpora/ #$root_raw_text
 all=$root_intermediate
 
@@ -40,9 +37,6 @@ cleanup () {
 }
 trap cleanup EXIT
 
-# Make a regex pattern of all abbreviations, upper and lower case.
-cat $abbr_list <(sed -r 's:.*:\u&:' $abbr_list) | sort -u | tr "\n" "|" | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" > $tmp/abbr_pattern.tmp || exit 1;
-
 echo "Clean the scraped data"
 n=0
 for textin in $scraped_text_dir/t131.txt <(grep -v rad2016 $all/all_nov2016/text_orig_endanlegt.txt) $all/all_{okt2017,sept2017,mars18}/text_orig_endanlegt.txt ; do
@@ -52,8 +46,8 @@ for textin in $scraped_text_dir/t131.txt <(grep -v rad2016 $all/all_nov2016/text
     base=${base}_$n
     utils/slurm.pl $cleaned/log/clean_$base.log \
 		   local/clean_new_speech.sh \
-		   $textin $tmp/abbr_pattern.tmp \
-		   $prondict $cleaned/${base}.clean.txt \
+		   $textin $tmp/amtext.tmp \
+		   $cleaned/${base}.clean.txt \
 		   $tmp/${base}_new_vocab.txt || exit 1;
     cat $cleaned/${base}.clean.txt >> ${cleaned}/punctuation_text.train.txt || exit 1;
   ) & 
@@ -64,8 +58,8 @@ for textin in <(grep rad2016 $all/all_nov2016/text_orig_endanlegt.txt) ; do
   base=$(basename $(dirname $textin))
   utils/slurm.pl $cleaned/log/clean_${base}_test.log \
     local/clean_new_speech.sh \
-	   $textin $tmp/abbr_pattern.tmp \
-	   $prondict $cleaned/${base}_test.clean.txt \
+	   $textin $tmp/amtext.tmp \
+	   $cleaned/${base}_test.clean.txt \
 	   $tmp/${base}_test_new_vocab.txt || exit 1;
 
   nlines_half=$(echo $((($(wc -l $cleaned/${base}_test.clean.txt | cut -d" " -f1)+1)/2)))
@@ -98,7 +92,7 @@ echo "Make the Sept 2017 data pause annotated"
 utils/slurm.pl ${out_2nd_stage}/log/make_pause_annotated.log punctuator/local/make_pause_annotated.sh || exit 1;
 
 # If I want to ignore commas in the training:
-if [ ignore_commas = true ]; then
+if [ $ignore_commas = true ]; then
   out_noComma=${out}$suffix
   mkdir -p $out_noComma/log
   for f in althingi.{train,dev,test}.txt; do

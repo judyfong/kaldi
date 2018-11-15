@@ -12,11 +12,6 @@
 # --noutput=1 --input_mode=utf8 --output_mode=utf8 <input-text-file>
 # <output-text-file>
 
-# NOTE! If the last word of the whole speech is a number it will not
-# be correctly shortened. F.ex. "fjörutíu og tveir" would become "40
-# og tveir" The NARROWNUMS_MAYBE transducer requires that a space
-# follows the number
-
 import 'local/thraxgrammar/common.grm' as c;
 import 'local/thraxgrammar/numbers.grm' as n;
 import 'local/thraxgrammar/ordinals.grm' as o;
@@ -164,8 +159,6 @@ ORDINAL = ArcSort[Optimize[Determinize[
                      # vegar" and "dag einn..." will be abbreviated
 
 abbreviate1 = Optimize[ABBR_WORD @ ORDINAL @ ABBR_NUMBER];
-#abbreviate1 = Optimize[ABBR_WORD @ ORDINAL @ NARROWNUMS_MAYBE];
-
 
 # Could I here add a fst that works on the output of the first
 # one. F.ex. checks if the previous word is a number??

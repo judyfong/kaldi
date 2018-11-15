@@ -248,7 +248,8 @@ if [ $stage -le 4 ]; then
   # Find words in the new text that are not in the pron dict
   comm -23 <(cut -d' ' -f2- ${intermediate}/text_exp3.txt \
     | tr ' ' '\n' | egrep -v '[0-9%‰°º²³,.:;?! ]' \
-    | egrep -v "\b$(cat $tmp/abbr_pattern.tmp)\b" | sort -u) \
+    | egrep -v "\b$(cat $tmp/abbr_pattern.tmp)\b" \
+    | grep -vf $abbr_acro_as_letters | sort -u) | egrep -v '^\s*$' \
     <(cut -f1 $prondict | sort -u) \
     > $tmp/new_vocab_all.txt || error 14 $LINENO ${error_array[14]};
   sed -r -i 's:^.*Binary file.*$::' $tmp/new_vocab_all.txt

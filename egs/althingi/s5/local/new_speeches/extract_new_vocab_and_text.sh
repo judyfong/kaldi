@@ -25,7 +25,8 @@ amdir=$root_am_transcripts
 lmdir=$root_lm_transcripts
 punctdir=$root_punctuation_transcripts
 vocabdir=$root_new_vocab
-mkdir -p $amdir $lmdir $punctdir $vocabdir
+concordancedir=$root_vocab_concordance
+mkdir -p $amdir $lmdir $punctdir $vocabdir $concordancedir
 
 
 # NOTE! I have to design this with Judy. It would probably be best if this runs automatically
@@ -128,6 +129,15 @@ if [ $stage -le 3 ]; then
   
 fi
 
+if [ $stage -le 4 ]; then
+  echo "Find the concordance of the new words"
+  # The nltk method writes to stdout so I pipe to output file
+    python local/new_speeches/concordance_of_new_vocab.py \
+      $amdir/$speechname.txt $vocabdir/$speechname.txt \
+      > $concordancedir/$speechname.txt \
+      || error 1 $LINENO "Failed to find the concordance of the new words";
+fi
+    
 # NOTE! Fix uttIDs!
 
 # # Extract the speaker IDs

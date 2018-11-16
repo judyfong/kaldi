@@ -28,6 +28,8 @@ vocabdir=$root_new_vocab
 concordancedir=$root_vocab_concordance
 mkdir -p $amdir $lmdir $punctdir $vocabdir $concordancedir
 
+# NOTE! We have environment problems. Quick fix is:
+export LANG=en_US.UTF-8
 
 # NOTE! I have to design this with Judy. It would probably be best if this runs automatically
 # every time a transcriber has read through an ASR transcript. The editors would then see

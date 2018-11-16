@@ -47,6 +47,9 @@ cleanup () {
 }
 trap cleanup EXIT
 
+# NOTE! We have environment problems. Quick fix is:
+export LANG=en_US.UTF-8
+
 # Make a regex pattern of all abbreviations, upper and lower case.
 cat $abbr_list <(sed -r 's:.*:\u&:' $abbr_list) \
   | sort -u | tr "\n" "|" | sed '$s/|$//' \
@@ -240,7 +243,7 @@ if [ $stage -le 4 ]; then
   comm -13 <(sed -r 's:.*:\u&:' ${tmp}/prondict_two_cases.tmp) \
        <(cut -f1 $prondict | egrep "^[A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]" | sort -u) \
        > ${tmp}/propernouns_prondict.tmp || error 14 $LINENO ${error_array[14]};
-  
+
   comm -13 <(sort -u ${tmp}/prondict_two_cases.tmp) \
        <(cut -f1 $prondict | egrep "^[a-záðéíóúýþæö]" | sort -u) \
        > ${tmp}/only_lc_prondict.tmp || error 14 $LINENO ${error_array[14]};
@@ -249,11 +252,11 @@ if [ $stage -le 4 ]; then
   comm -23 <(cut -d' ' -f2- ${intermediate}/text_exp3.txt \
     | tr ' ' '\n' | egrep -v '[0-9%‰°º²³,.:;?! ]' \
     | egrep -v "\b$(cat $tmp/abbr_pattern.tmp)\b" \
-    | grep -vf $abbr_acro_as_letters | sort -u) | egrep -v '^\s*$' \
+    | grep -vf $abbr_acro_as_letters | sort -u | egrep -v '^\s*$' ) \
     <(cut -f1 $prondict | sort -u) \
     > $tmp/new_vocab_all.txt || error 14 $LINENO ${error_array[14]};
-  sed -r -i 's:^.*Binary file.*$::' $tmp/new_vocab_all.txt
-    
+  sed -i -r 's:^.*Binary file.*$::' $tmp/new_vocab_all.txt
+
   if [ -s $tmp/new_vocab_all.txt ]; then
     # Find the ones that probably have the incorrect case
     comm -12 $tmp/new_vocab_all.txt \

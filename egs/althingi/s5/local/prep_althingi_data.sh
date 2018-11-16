@@ -493,10 +493,11 @@ if [ $stage -le 8 ]; then
   comm -23 <(cut -d' ' -f2- ${outdir}/text_SpellingFixed.txt \
     | tr ' ' '\n' | egrep -v '[0-9%‰°º²³,.:;?! ]' \
     | egrep -v "\b$(cat $tmp/abbr_pattern.tmp)\b" \
-    | grep -vf $abbr_acro_as_letters | sort -u) | egrep -v '^\s*$' \
-    <(cut -f1 $prondict | sort -u) | egrep -v "Binary file" \
+    | grep -vf $abbr_acro_as_letters | sort -u | egrep -v '^\s*$') \
+    <(cut -f1 $prondict | sort -u) \
     > $tmp/new_vocab_all.txt || error 14 $LINENO ${error_array[14]};
-
+  sed -i -r 's:^.*Binary file.*$::' $tmp/new_vocab_all.txt
+  
   # Find the ones that probably have the incorrect case
   comm -12 $tmp/new_vocab_all.txt \
        <(sed -r 's:.+:\l&:' ${tmp}/propernouns_prondict.tmp) \

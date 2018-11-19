@@ -1,4 +1,4 @@
-#!/bin/bash -eu
+#!/bin/bash -e
 
 #Analyze the decoding results.
 #Extract csid info (number of correct, substituted, inserted and deleted words in an utterance):

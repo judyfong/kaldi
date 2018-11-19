@@ -1,4 +1,4 @@
-#!/bin/bash -eu
+#!/bin/bash -e
 
 # Copyright 2017  Reykjavik University (Author: Inga Rún Helgadóttir)
 # Apache 2.0

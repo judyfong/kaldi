@@ -1,4 +1,4 @@
-#!/bin/bash -eu
+#!/bin/bash -e
 set -o pipefail
 # Idea from: Sproat, R. (2010). Lightly supervised learning of text normalization: Russian number names.
 

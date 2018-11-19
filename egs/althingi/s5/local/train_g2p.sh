@@ -1,4 +1,4 @@
-#!/bin/bash -eu
+#!/bin/bash -e
 
 # Train a g2p model based on the Althingi projects pron dict, excluding foreign words. See: https://github.com/sequitur-g2p/sequitur-g2p
 

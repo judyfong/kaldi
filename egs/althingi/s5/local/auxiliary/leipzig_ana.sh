@@ -1,4 +1,4 @@
-#!/bin/bash -eu
+#!/bin/bash -e
 
 # Check how many of my abbreviations are written out in the Leipzig data
 # and look for some expanded numbers

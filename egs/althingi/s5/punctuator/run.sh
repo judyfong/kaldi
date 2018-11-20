@@ -8,7 +8,7 @@ set -o pipefail
 d=$(date +'%Y%m%d')
 
 stage=0
-ignore_commas=true
+ignore_commas=false #true
 suffix=
 $ignore_commas && suffix=_noCOMMA
 id= #_april2018 or exp_lr_decay_k0.8
@@ -47,9 +47,7 @@ fi
 input_2nd_stage=$root_intermediate/all_sept2017
 ali_dir=$exp/tri4_ali
 
-if [[ $(hostname -f) == terra.hir.is ]]; then
-  source $CONDAPATH/activate thenv || error 11 ${error_array[11]};
-fi
+source $CONDAPATH/activate thenv || error 11 ${error_array[11]};
 
 if [ $stage -le -1 ]; then
 
@@ -128,6 +126,7 @@ if [ $stage -le 3 ]; then
       ) &
     #sbatch --get-user-env --job-name=punctuator --mem=4G --wrap="THEANO_FLAGS='device=cpu' srun python punctuator/punctuator_filein.py $modeldir/Model_althingi${id}${suffix}_h256_lr0.02.pcl ${datadir}/althingi.${d}.txt ${datadir}/${d}_punctuated_stage1${id}${suffix}.txt"
   done
+  wait
   
   if [ -e $datadir_2nd_stage/althingi.train.txt ]; then
     echo "Punctuate the dev and test sets using the 2nd stage model"
@@ -137,6 +136,7 @@ if [ $stage -le 3 ]; then
           THEANO_FLAGS='device=cpu' python punctuator/punctuator_filein.py $modeldir/Model_stage2_althingi${id}${suffix}_h256_lr0.02.pcl ${datadir_2nd_stage}/althingi.${dataset}.txt ${datadir_2nd_stage}/${dataset}_punctuated_stage1${id}${suffix}.txt 1  || error 1 "punct: punctuator_filein.py failed on 2nd stage model";
       ) &
     done
+    wait
     #sbatch --get-user-env --job-name=punctuator_2nd_stage --mem=4G --wrap="THEANO_FLAGS='device=cpu' srun python punctuator/punctuator_filein.py $modeldir/Model_stage2_althingi${id}${suffix}_h256_lr0.02.pcl ${datadir_2nd_stage}/althingi.${dataset}.txt ${datadir_2nd_stage}/${dataset}_punctuated_stage1${id}${suffix}.txt 1"
   fi
 fi

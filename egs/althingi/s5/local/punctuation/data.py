@@ -1,17 +1,16 @@
 # coding: utf-8
-from __future__ import division
 
 import random
 import os
 import sys
 import operator
-import cPickle
+#import cPickle
 import codecs
 import fnmatch
 import shutil
 
 #DATA_PATH = "../data"
-DATA_PATH = "punctuator/processed_data"
+DATA_PATH = "local/punctuation/processed_data"
 
 # path to text file in the format:
 # word1 0.123 0.123 ... 0.123
@@ -40,13 +39,12 @@ TEST_FILE2 = os.path.join(DATA_PATH, "test2")
 WORD_VOCAB_FILE = os.path.join(DATA_PATH, "vocabulary")
 
 #PUNCTUATION_VOCABULARY = [SPACE, ",COMMA", ".PERIOD", "?QUESTIONMARK", "!EXCLAMATIONMARK", ":COLON", ";SEMICOLON", "-DASH"]
+#PUNCTUATION_MAPPING = {}
 
-PUNCTUATION_VOCABULARY = [SPACE, ",COMMA", ".PERIOD", "?QUESTIONMARK", "!EXCLAMATIONMARK", ":COLON"]
-PUNCTUATION_MAPPING = {";SEMICOLON": ".PERIOD"}
-#PUNCTUATION_VOCABULARY = [SPACE, ".PERIOD", "?QUESTIONMARK", ":COLON"]
-#PUNCTUATION_MAPPING = {"!EXCLAMATIONMARK": ".PERIOD", ";SEMICOLON": ".PERIOD"}
+PUNCTUATION_VOCABULARY = [SPACE, ".PERIOD", "?QUESTIONMARK", ":COLON"]
+PUNCTUATION_MAPPING = {";SEMICOLON": ".PERIOD",  "!EXCLAMATIONMARK": ".PERIOD"}
 
-EOS_TOKENS = {".PERIOD", "?QUESTIONMARK", ":COLON", "!EXCLAMATIONMARK"}
+EOS_TOKENS = {".PERIOD", "?QUESTIONMARK", ":COLON"}
 CRAP_TOKENS = {"<doc>", "<doc.>"} # punctuations that are not included in vocabulary nor mapping, must be added to CRAP_TOKENS
 PAUSE_PREFIX = "<sil="
 
@@ -78,7 +76,7 @@ def write_vocabulary(vocabulary, file_name):
     if UNK not in vocabulary:
         vocabulary.append(UNK)
 
-    print "Vocabulary size: %d" % len(vocabulary)
+    print("Vocabulary size: %d" % len(vocabulary))
 
     with codecs.open(file_name, 'w', 'utf-8') as f:
         f.write("\n".join(vocabulary))
@@ -184,7 +182,8 @@ def write_processed_dataset(input_files, output_file):
                         else:
                             subsequence = [
                                 current_words[:-1] + [word_vocabulary[END]],
-                                current_punctuations,
+                                #current_punctuations,
+                                current_punctuations + [punctuation_vocabulary[SPACE]],
                                 current_pauses[1:]
                             ]
 
@@ -197,7 +196,7 @@ def write_processed_dataset(input_files, output_file):
 
                         last_eos_idx = 0 # sequence always starts with a new sentence
 
-    print "%.2f%% UNK-s in %s" % (num_unks / num_total * 100, output_file)
+    print("%.2f%% UNK-s in %s" % (num_unks / num_total * 100, output_file))
 
     dump(data, output_file)
 
@@ -230,21 +229,22 @@ def create_dev_test_train_split_and_vocabulary(root_path, create_vocabulary, tra
                             add_counts(word_counts, line)
 
     if create_vocabulary:
-        if pretrained_embeddings_path:
-            vocabulary = []
-            embeddings = []
-            with codecs.open(pretrained_embeddings_path, 'r', 'utf-8') as f:
-                for line in f:
-                    line = line.split()
-                    w = line[0]
-                    e = [float(x) for x in line[1:]]
-                    vocabulary.append(w)
-                    embeddings.append(e)
+        # if pretrained_embeddings_path:
+        #     vocabulary = []
+        #     embeddings = []
+        #     with codecs.open(pretrained_embeddings_path, 'r', 'utf-8') as f:
+        #         for line in f:
+        #             line = line.split()
+        #             w = line[0]
+        #             e = [float(x) for x in line[1:]]
+        #             vocabulary.append(w)
+        #             embeddings.append(e)
 
-            with open("We.pcl", 'wb') as f:
-                cPickle.dump(embeddings, f, cPickle.HIGHEST_PROTOCOL)
-        else:
-            vocabulary = build_vocabulary(word_counts)
+        #     with open("We.pcl", 'wb') as f:
+        #         cPickle.dump(embeddings, f, cPickle.HIGHEST_PROTOCOL)
+        #else:
+        vocabulary = build_vocabulary(word_counts)
+            
         write_vocabulary(vocabulary, WORD_VOCAB_FILE)
 
     write_processed_dataset(train_txt_files, train_output)

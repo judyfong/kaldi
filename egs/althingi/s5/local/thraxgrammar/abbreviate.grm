@@ -84,7 +84,8 @@ abbr_unit_CDafter = Optimize[
                     ("[BOS]".utf8 | " ".utf8),
                     (" komma".utf8 | " og hálf".utf8
                     | " prósent".utf8 | " prómill".utf8
-                    | " gráð".utf8),
+                    | " gráð".utf8 | " krón".utf8
+                    | " millj".utf8 c.alphabet+ " krón".utf8),
                     c.whole_alphabet*,
                     'ltr',
                     'obl']];
@@ -388,9 +389,16 @@ dr = CDRewrite[("doktor".utf8 : "dr".utf8),
                 'ltr',
                 'obl'];
 
+thousands = CDRewrite[("".utf8 : ".".utf8),
+                c.Digits,
+                c.Digits c.Digits c.Digits (" ".utf8 | ".".utf8 | ",".utf8),
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
+
 DENORM = Optimize[name_casing @ acro_denorm @ law_nr @ dash @ kl @ decimal1 @ decimal2 @
 decimal2 @ decimal2 @ ratio1 @ ratio2 @ rm_space_bf_punct @ celsius @ url1 @
-url2 @ url3 @ ogeda @ committee @ minister @ dr];
+url2 @ url3 @ ogeda @ committee @ minister @ dr @ thousands];
 
 export ABBR_AND_DENORM = ArcSort[
                     Optimize[ABBREVIATE @ DENORM],
@@ -409,7 +417,7 @@ Optimize[StringFile['local/thraxgrammar/lex/abbr_periods.txt','utf8','utf8']];
 
 INS_PERIODS = CDRewrite[ins_periods,
                      ("[BOS]".utf8 | " ".utf8),
-                     ".".utf8? ("[EOS]".utf8 | " ".utf8),
+                     (".".utf8? | ",".utf8? | "?".utf8? | "!".utf8? | ":".utf8?) ("[EOS]".utf8 | " ".utf8),
                      c.whole_alphabet*,
                      'ltr',
                      'obl'];

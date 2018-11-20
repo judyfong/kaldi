@@ -65,6 +65,18 @@ megavattstund	mwst
 megavattstundir	mwst
 megavattstundum	mwst
 megavattstunda	mwst
+milljarður króna	milljarður kr
+milljarð króna	milljarð kr
+milljarði króna	milljarði kr
+milljarðs króna	milljarðs kr
+milljarðar króna	milljarðar kr
+milljarða króna	milljarða kr
+milljörðum króna	milljörðum kr
+milljóna króna	millj kr
+milljónar króna	millj kr
+milljónir króna	millj kr
+milljónum króna	millj kr
+milljón krónur	millj kr
 norskar krónur	nkr
 prómill	‰
 prómill	‰

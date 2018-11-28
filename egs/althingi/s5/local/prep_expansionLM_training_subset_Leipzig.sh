@@ -18,13 +18,11 @@ lowercase=false
 corpus=/data/leipzig/isl_sentences_10M.txt
 
 . ./cmd.sh
-. ./path.sh
+. ./path.sh # contains path.conf where root_* variables are defined
 . parse_options.sh || exit 1;
-. ./conf/path.conf # contains all root_* variables
 
 fstnormdir=$(ls -td $root_text_norm_modeldir/20* | head -n1)
-capitalization_listdir=$root_capitalization
-text_norm_lex_dir=$(ls -td $root_text_norm_listdir/thraxgrammar_lex.* | head -n1)
+text_norm_lex_dir=$root_thraxgrammar_lex
 outdirlc=$root_expansionLM_lc_data
 
 if [ $# -lt 3 ]; then
@@ -61,12 +59,10 @@ cleanup () {
 }
 trap cleanup EXIT
 
-[ ! -d $capitalization_listdir ] && echo "$0: expected $capitalization_listdir to exist" && exit 1;
 for f in $corpus $fstnormdir/ABBREVIATE_forExpansion.fst $prondict $althingitext \
   $text_norm_lex_dir/{abbr_lexicon.txt,units_lexicon.txt,ordinals_*?_lexicon.txt}; do
   [ ! -f $f ] && echo "$0: expected $f to exist" && exit 1;
-done  
-
+done
 
 if [ -e $outdirlc/wordlist_numbertexts_lc.txt -a -e $outdirlc/numbertexts_Leipzig_lc.txt* ]; then
   echo "The lowercase Leipzig numbertext and wordlist already exists."
@@ -160,7 +156,7 @@ if [ $stage -le 6 -a $lowercase = false ]; then
 
   echo "Make the text approximately case sensitive"
   # Can't fix the casing of words that appear in both cases and we don't have rules for"
-  utils/slurm.pl $outdir/log/fix_casing.log local/fix_casing_expansionLM.sh $capitalization_listdir $prondict $outdirlc/wordlist_numbertexts_lc.txt $outdirlc/numbertexts_Leipzig_lc.txt $outdir/numbertexts_Leipzig_cs.txt
+  utils/slurm.pl $outdir/log/fix_casing.log local/fix_casing_expansionLM.sh $prondict $outdirlc/wordlist_numbertexts_lc.txt $outdirlc/numbertexts_Leipzig_lc.txt $outdir/numbertexts_Leipzig_cs.txt
 
 fi
 

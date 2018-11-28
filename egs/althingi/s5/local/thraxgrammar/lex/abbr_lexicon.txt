@@ -1,3 +1,4 @@
+amk	að minnsta kosti
 árg	árgangi
 árg	árgangur
 bls	blaðsíða
@@ -11,8 +12,10 @@ cm	sentímetra
 cm	sentímetrar
 cm	sentímetrum
 dkr	danskar krónur
+dr	doktor
 efnismgr	efnismálsgrein
 efnismgr	efnismálsgreinar
+etv	ef til vill
 flm	flutningsmaður
 flm	flutningsmann
 flm	flutningsmanni
@@ -29,10 +32,18 @@ frv	frumvarps
 frv	frumvarpsins
 fskj	fylgiskjal
 fskj	fylgiskjali
+fyrrv	fyrrverandi
 gr	grein
 gr	greinar
+gw	gígavatt
+gw	gígavatta
+gw	gígavatti
+gw	gígavött
+gw	gígavöttum
 gwst	gígavattstund
+gwst	gígavattstunda
 gwst	gígavattstundir
+gwst	gígavattstundum
 hæstv	hæstvirt
 hæstv	hæstvirta
 hæstv	hæstvirtan
@@ -70,7 +81,9 @@ kg	kílógrömm
 kg	kílógrömmum
 kl	klukkan
 klst	klukkustund
+klst	klukkustunda
 klst	klukkustundir
+klst	klukkustundum
 km²	ferkílómetra
 km²	ferkílómetrar
 km	kílómetra
@@ -89,12 +102,15 @@ kw	kílóvöttum
 kwst	kílóvattstund
 kwst	kílóvattstunda
 kwst	kílóvattstundir
+kwst	kílóvattstundum
 lokamálsgr	lokamálsgrein
 lokamálsgr	lokamálsgreinar
 m²	fermetra
 m²	fermetrar
 m³	rúmmetra
 m³	rúmmetrar
+ma	meðal annars
+mas	meira að segja
 málsgr	málsgrein
 málsgr	málsgreinar
 málsl	málslið
@@ -111,6 +127,11 @@ mw	megavatta
 mw	megavatti
 mw	megavött
 mw	megavöttum
+mwst	megavattstund
+mwst	megavattstunda
+mwst	megavattstundir
+mwst	megavattstundum
+nk	næstkomandi
 nkr	norskar krónur
 norðaust	norðausturkjördæmi
 Norðaust	Norðausturkjördæmi
@@ -121,8 +142,12 @@ Norðvest	Norðvesturkjördæmi
 norðvest	norðvesturkjördæmis
 Norðvest	Norðvesturkjördæmis
 nr	númer
+núv	núverandi
 ofl	og fleira
 ofl	og fleiri
+osfrv	og svo framvegis
+oþh	og þess háttar
+pr	per
 reykv n	reykjavíkurkjördæmi norður
 Reykv n	Reykjavíkurkjördæmi norður
 reykv n	reykjavíkurkjördæmis norður
@@ -135,10 +160,13 @@ rvík n	reykjavíkurkjördæmi norður
 rvík n	reykjavíkurkjördæmis norður
 rvík s	reykjavíkurkjördæmis suður
 rvík s	reykjavíkurkjördæmi suður
+sbr	samanber
 skr	sænskar krónur
+skv	samkvæmt
 sl	síðastliðið
 sl	síðastliðinn
 sl	síðastliðnum
+stk	stykki
 stjfrv	stjórnarfrumvarp
 stjtill	stjórnartillaga
 stjtill	stjórnartillögu
@@ -156,25 +184,44 @@ sþ	sameinuðu þjóðirnar
 SÞ	Sameinuðu þjóðirnar
 sþ	sameinuðu þjóðunum
 SÞ	Sameinuðu þjóðunum
+tam	til að mynda
+td	til dæmis
 tbl	tölublað
 tbl	tölublaðs
 tölul	tölulið
 tölul	töluliðar
 tölul	töluliður
+tw	teravatt
+tw	teravatta
+tw	teravatti
+tw	teravött
+tw	teravöttum
 twh	teravattstund
 twh	teravattstunda
 twh	teravattstundir
 twh	teravattstundum
+twst	teravattstund
+twst	teravattstunda
+twst	teravattstundir
+twst	teravattstundum
 umr	umræða
 umr	umræðu
+uþb	um það bil
 varaform	varaformaður
 vlf	verg landsframleiðsla
-vlf	vergra landsframleiðslu
+vlf	verga landsframleiðslu
+vlf	vergrar landsframleiðslu
 vlf	vergri landsframleiðslu
+wst	vattstund
+wst	vattstunda
+wst	vattstundir
+wst	vattstundum
 þáltill	þingsályktunartillaga
 þáltill	þingsályktunartillögu
+þáv	þáverandi
 þe	það er
 þe	það er að segja
+þeas	það er að segja
 þmt	þar með talið
 þmt	þar með talin
 þmt	þar með talinn
@@ -188,3 +235,4 @@ vlf	vergri landsframleiðslu
 þskj	þingskjal
 þskj	þingskjali
 þskj	þingskjölum
+þús	þúsund

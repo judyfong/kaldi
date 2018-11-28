@@ -15,6 +15,9 @@ set -o pipefail
 . ./local/utils.sh
 . ./local/array.sh
 
+# NOTE! We have environment problems. Quick fix is:
+export LANG=en_US.UTF-8
+
 if [ $# != 3 ]; then
   echo "This scripts handles the denormalization of an ASR transcript"
   echo "Usually called from the transcription script, recognize.sh"
@@ -33,7 +36,6 @@ mkdir -p $intermediate
 
 utf8syms=$bundle/utf8.syms
 normdir=$bundle/text_norm
-personal_names=$bundle/latest/ambiguous_personal_names
 punctuation_model=$bundle/punctuation_model
 paragraph_model=$bundle/paragraph_model
 
@@ -97,16 +99,14 @@ fststringcompile ark:"sed 's:.*:1 &:' ${intermediate}/punctuator_out_wPuncts.tmp
 # Fix year intervals, e.g. 2014–17 -> 2014–2017 and 1994–6 -> 1994-1996
 # Remove repititions except when they are reps of: að, í, á, til, það, er, við
 # https://superuser.com/questions/843778/find-repeated-words-in-a-text
+# Insert periods into thousands and millions
 sed -re 's:([Hh]æstv)irt[^ ]*\b:\1\.:g' \
     -e 's:([Hh])áttv[^ ]+ (þingm[^ ]+):\1v\. \2:g' \
-    -e 's:([Hh]v\. ([0-9]+\. )?)þingm[^ .?:eö]+ ([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1þm. \3:g' \
+    -e 's:([Hh]v\.? ([0-9]+\. )?)þingm[^ .?:eö]+ ([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1þm. \3:g' \
     -e 's:([0-9]+\.) þingm[^ .?:eö]+ ([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 þm. \2:g' \
-    -e 's:(þm\. Norð[av][ue]st)urkjördæmis?:\1.:g' \
-    -e 's:þm\. Reykjavíkurkjördæmis? ([ns])[^ ]+?:þm. Reykv. \1.:g' \
-    -e 's:(þm\. Suðurk)jördæmis?:\1.:g' \
-    -e 's:(þm\. Suðvest)urkjördæmis?:\1.:g' \
     -e 's: ([0-9]{3})([0-9])–([0-9])\b: \1\2–\1\3:g' -e 's: ([0-9]{2})([0-9]{2})–([0-9]{2})\b: \1\2–\1\3:g' \
     -e 's:\b(að|í|á|til|það|er|við) \1\b:\1 \1 \1:g' -e 's:(\b.+),? \1\b:\1:g' \
+    -e 's:([0-9]{2,})([0-9]{3})\b:\1.\2:g' -e 's:([0-9]+)([0-9]{3}\.[0-9]{3})\b:\1.\2:g' -e 's:([3-9])([0-9]{3})\b:\1.\2:g' \
     < ${intermediate}/punctuator_out_wPeriods.tmp \
     > ${intermediate}/hv_abbreviated.tmp || error 1 "Error while abbreviating to hv., hæstv. and þm.";
 

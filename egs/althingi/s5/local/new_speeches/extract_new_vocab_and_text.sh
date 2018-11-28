@@ -75,6 +75,9 @@ if [ $stage -le 1 ]; then
           -e `echo "s/\r//"` -e 's: *<[^<>]*?>: :g' \
           -e "s:^.*:$speechname &:" -e 's: +: :g' \
   > $intermediate/text_orig.txt || error 13 $LINENO ${error_array[13]};
+
+  echo "Extract the speaker ID"
+  spkID=$(perl -ne 'print "$1\n" if /\bskst=\"([^\"]+)/' $infile | head -n1)
   
   # utils/slurm.pl $outdir/log/extract_text.log python3 local/extract_text.py $datadir $intermediate/text_orig.txt
   # ret=$?
@@ -86,7 +89,7 @@ if [ $stage -le 1 ]; then
   local/clean_new_speech.sh --stage $clean_stage $intermediate/text_orig.txt $outdir/cleantext.txt $outdir/punct_text.txt $outdir/new_vocab.txt || error 1 "ERROR: clean_new_speech.sh failed";
 
   # Save the new punctuation training text
-  sed -r "s:^$speechname ::" < $outdir/punct_text.txt > $punctdir/$speechname.txt
+  sed -r "s:^$speechname ::" < $outdir/punct_text.txt > $punctdir/${spkID}-${speechname}.txt
 fi
 
 if [ $stage -le 2 ]; then
@@ -94,7 +97,7 @@ if [ $stage -le 2 ]; then
   if [ -s $outdir/new_vocab.txt ]; then
     echo "Get the phonetic transcriptions of the new vocabulary"
     local/transcribe_g2p.sh $g2p $outdir/new_vocab.txt \
-      > $vocabdir/$speechname.txt \
+      > $vocabdir/${spkID}-${speechname}.txt \
     || error 1 "ERROR: transcribe_g2p.sh failed"
   fi
   
@@ -120,24 +123,25 @@ if [ $stage -le 3 ]; then
     | sed -re 's:[.:?!]+ *$::g' -e 's:[.:?!]+ :\n:g' \
           -e 's:[^A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö \n]::g' \
           -e 's: +: :g' \
-    > $lmdir/$speechname.txt || exit 1;
+    > $lmdir/${spkID}-${speechname}.txt || exit 1;
 
   # Extract the speaker IDs
   ID=$(egrep "<ræða .*? skst=" $infile | sed -re 's:.*?id="([^\"]+?)".*?skst="([^\"]+?)".*?:\1 \2:g' | cut -d' ' -f2)
   
   echo "Remove punctuations to make the text better fit for acoustic modelling. Add a spkID."
   sed -re 's: [^A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö ] : :g' -e 's: +: :g' -e "s:.*:${ID}-&:" \
-      < ${outdir}/text_expanded > $amdir/$speechname.txt || exit 1;
+      < ${outdir}/text_expanded > $amdir/${spkID}-${speechname}.txt || exit 1;
   
 fi
 
 if [ $stage -le 4 ]; then
-  echo "Find the concordance of the new words"
-  # The nltk method writes to stdout so I pipe to output file
+  if [ -s $vocabdir/${spkID}-${speechname}.txt ]; then
+    echo "Find the concordance of the new words"
     python local/new_speeches/concordance_of_new_vocab.py \
-      $amdir/$speechname.txt $vocabdir/$speechname.txt \
-      > $concordancedir/$speechname.txt \
+      $amdir/${spkID}-${speechname}.txt $vocabdir/${spkID}-${speechname}.txt \
+      $concordancedir/${spkID}-${speechname}.txt \
       || error 1 $LINENO "Failed to find the concordance of the new words";
+  fi
 fi
     
 # NOTE! Fix uttIDs!

@@ -21,6 +21,8 @@ lowercase=false
 . parse_options.sh || exit 1;
 . ./conf/path.conf
 
+Leipzig_corpus=$root_leipzig_corpus/isl_sentences_10M.txt
+manually_fixed_data=$root_manually_fixed/althingi100_textCS
 utf8syms=$root_listdir/utf8.syms
 prondict=$(ls -t $root_lexicon/prondict.*.txt | head -n1)
 thraxfstdir=$(ls -dt $root_text_norm_modeldir/20* | head -n1)
@@ -41,13 +43,13 @@ cleanup () {
 }
 trap cleanup EXIT
 
-for f in $utf8syms $prondict $thraxfstdir/EXPAND_UTT.fst ; do
+for f in $Leipzig_corpus $manually_fixed_data $utf8syms $prondict $thraxfstdir/EXPAND_UTT.fst ; do
   [ ! -f $f ] && echo "$0: expected $f to exist" && exit 1;
 done 
 
 if [ $stage -le 0 ]; then
   # Create the training set
-  utils/slurm.pl $expLMbase/log/prep_base_expansion_training_subset.log local/prep_expansionLM_training_subset_Leipzig.sh --lowercase $lowercase $prondict
+  utils/slurm.pl $expLMbase/log/prep_base_expansion_training_subset.log local/prep_expansionLM_training_subset_Leipzig.sh --lowercase $lowercase $Leipzig_corpus $manually_fixed_data $prondict
 fi
 
 if [ $stage -le 1 ]; then

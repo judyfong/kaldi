@@ -21,7 +21,6 @@ set -o pipefail
 
 # denormalize.sh:
 # utf8.syms
-# ambiguous_personal_names
 # text_norm  <-- contains the fsts
 # punctuation_model
 # paragraph_model
@@ -65,15 +64,12 @@ graph=$acoustic_model/graph_3gsmall \
 [ -z $text_norm ] && text_norm=$(ls -td $root_text_norm_modeldir/2* | head -n1) \
     || error 1 "Failed setting text_norm variable";
 
-amb_pers_names=$(ls -t $root_capitalization/ambiguous_personal_names.*.txt | head -n1) \
-  || error 1 "Failed setting amb_pers_names variable";
 utf8syms=$root_listdir/utf8.syms \
   || error 1 "Failed setting utf8syms variable";
 
 # Create symlinks
 
 ln -s $acoustic_model $thisbundle/acoustic_model || error 1 "Failed creating acoustic model symlink";
-ln -s $amb_pers_names $thisbundle/ambiguous_personal_names || error 1 "Failed creating ambiguous-names symlink";
 ln -s $extractor $thisbundle/extractor || error 1 "Failed creating extractor symlink";
 #[ ! -d $thisbundle/graph ] && ln -s $newest_graph $thisbundle/graph || error 1 "Failed creating the graph symlink";
 ln -s $graph $thisbundle/graph || error 1 "Failed creating the graph symlink";

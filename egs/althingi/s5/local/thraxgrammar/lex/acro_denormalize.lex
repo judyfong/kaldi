@@ -61,6 +61,7 @@ k f c	KFC
 k g b	KGB
 k h í	KHÍ
 k k í	KKÍ
+k m í	KMÍ
 k s í	KSÍ
 l í ú	LÍÚ
 l s h	LSH
@@ -100,6 +101,7 @@ w t o	WTO
 w w w	www
 ö b í	ÖBÍ
 a a	AA
+b a	BA
 b s	BS
 c e	CE
 d v	DV

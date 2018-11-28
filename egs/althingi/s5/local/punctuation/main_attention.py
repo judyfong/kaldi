@@ -19,7 +19,7 @@ os.environ["CUDA_VISIBLE_DEVICES"]="0" # NOTE! But what if I want to use any ava
 #print('LD_LIBRARY_PATH: ', os.environ['LD_LIBRARY_PATH'])
 import numpy as np
 import keras
-from keras.layers import Input, Masking, Embedding, GRU, Flatten, Dense, Activation, Permute, RepeatVector, Bidirectional, Add, Multiply, TimeDistributed, merge, Lambda, Reshape, Dropout
+from keras.layers import Input, Masking, Embedding, GRU, Dense, Activation, Permute, RepeatVector, Bidirectional, Add, Multiply, TimeDistributed, merge, Lambda, Reshape, Dropout
 from keras.models import Model
 from keras.utils.np_utils import to_categorical
 from keras.preprocessing.sequence import pad_sequences
@@ -28,13 +28,13 @@ from keras import backend as K
 sys.path.insert(0, 'local/punctuation')
 import data
 
-EMBEDDING_DIM = 300 # OK? For English vocabulary it is often lower. For my rnnlm it is 1024
+EMBEDDING_DIM = 256 # OK? For English vocabulary it is often lower. For my rnnlm it is 1024
 MINIBATCH_SIZE = 128
 DROP_RATE = 0.2
 TIME_STEPS = data.MAX_SEQUENCE_LEN
 LABEL_DIM = len(data.PUNCTUATION_VOCABULARY)
 PADDING_VALUE = len(data.read_vocabulary(data.WORD_VOCAB_FILE)) +10
-EPOCHS = 15
+EPOCHS = 10
 #pdb.set_trace
 
 def get_data(file_name,shuffle):
@@ -61,6 +61,23 @@ def attention(inputs):
     output_attention_mul = Multiply()([inputs, a_probs])
     return output_attention_mul
 
+def attention2(inputs,context,projected_context):
+    '''From https://github.com/philipperemy/keras-attention-mechanism/blob/master/attention_lstm.py'''
+    # inputs.shape = (batch_size, time_steps, input_dim)
+    #attention = Dense(num_hidden * 2, use_bias=False)(inputs)
+    attention = TimeDistributed(Dense(num_hidden * 2, use_bias=False))(inputs)
+    attention = Add()([projected_context, attention])
+    attention = Activation('tanh')(attention)
+    #attention = Permute((2, 1))(attention)
+    #attention = Dense(TIME_STEPS, activation='softmax')(attention)
+    attention = TimeDistributed(Dense(num_hidden*2, activation='softmax'))(attention)
+    #attention = Lambda(lambda x: K.mean(x, axis=1), name='dim_reduction')(attention)
+    #attention = RepeatVector(num_hidden*2)(attention)
+    #attention = Permute((2, 1), name='attention_vec')(attention)
+    weighted_context = Multiply()([context, attention])
+    return weighted_context
+
+
 def createModel(num_hidden):
     '''Almost entirely from https://github.com/vackosar/keras-punctuator/blob/master/punctuator.py'''
     sys.stderr.write('Creating model.' + "\n")
@@ -72,50 +89,30 @@ def createModel(num_hidden):
 
     #context = GRU(num_hidden, activation='tanh', recurrent_activation='hard_sigmoid', use_bias=True, kernel_initializer='glorot_uniform', return_sequences=True)(e)
     context = Bidirectional(GRU(num_hidden, activation='tanh', recurrent_activation='hard_sigmoid', use_bias=True, kernel_initializer='glorot_uniform', return_sequences=True))(e)
-    context = Dropout(DROP_RATE)(context)
-    context = GRU(num_hidden, return_sequences=True)(context)
-    # context=Bidirectional(grulayer, merge_mode=None, weights=None)
-    #projected_context = TimeDistributed(Dense(num_hidden * 2))(context)
-
-    # attention = TimeDistributed(Dense(1, activation='tanh'))(context)
-    # attention = Flatten()(attention)
-    # attention = Activation('softmax')(attention)
-    # attention = RepeatVector(num_hidden)(attention)
-    # attention = Permute([2, 1])(attention)
-
-    # sent_representation = Multiply()([context, attention])
-    #y = TimeDistributed(Dense(LABEL_DIM, activation='softmax'))(sent_representation)
-
-    attention_mul = attention(context)
-    #attention_mul = Flatten()(attention_mul)
-    output = TimeDistributed(Dense(LABEL_DIM, activation='softmax'))(attention_mul)
-    #model = Model(input=[inputs], output=output)
+    #context = Dropout(DROP_RATE)(context)
+    #context = GRU(num_hidden, return_sequences=True)(context)
     
-    # grulayer_uni = GRU(num_hidden, activation='tanh', recurrent_activation='hard_sigmoid', use_bias=True, kernel_initializer='glorot_uniform', recurrent_initializer='orthogonal', bias_initializer='zeros')(e)
-    
-    # # Attention model
-    # # compute importance for each step
-    # attention = Dense(num_hidden * 2, use_bias=False)(grulayer_uni)
-    # attention = Add()([projected_context, attention]) # What axes? Do I need to worry?
-    # attention = Activation('tanh')(attention)
-    # attention = Flatten()(attention)
-    # attention = Dense(1, activation='softmax', use_bias=False)(attention)
-    # attention = RepeatVector(num_hidden*2)(attention)
-    # #attention = Permute([2, 1])(attention)
-    # weighted_context = merge([context, attention], mode='mul')
+    projected_context = TimeDistributed(Dense(num_hidden * 2))(context)
 
-    # # Late fusion - from punctuator
-    # fusion_context = Dense(num_hidden, use_bias=False)(weighted_context)
-    # weighted_fusion_context = Dense(num_hidden, use_bias=False)(fusion_context)
-    # grudense = Dense(num_hidden)(grulayer_uni)
-    # fusion_weights = Add()([weighted_fusion_context, grudense])
-    # h = Add()([Multiply()([fusion_context,fusion_weights]), grulayer_uni])
-    # y = Dense(LABEL_DIM, activation='softmax')(h)
+    #attention_mul = attention(context)
+    #output = TimeDistributed(Dense(LABEL_DIM, activation='softmax'))(attention_mul)
+    
+    grulayer_uni = GRU(num_hidden, activation='tanh', recurrent_activation='hard_sigmoid', use_bias=True, kernel_initializer='glorot_uniform', return_sequences=True)(projected_context)
+    
+    # Attention model
+    # compute importance for each step
+    weighted_context = attention2(grulayer_uni,context,projected_context)
 
-    
-    #y = TimeDistributed(Dense(LABEL_DIM, activation='softmax'))(projected_context)
-    
-    model = Model(inputs=inputs, outputs=output)
+    # Late fusion - from punctuator
+    fusion_context = TimeDistributed(Dense(num_hidden, use_bias=False))(weighted_context)
+    weighted_fusion_context = TimeDistributed(Dense(num_hidden, use_bias=False))(fusion_context)
+    grudense = TimeDistributed(Dense(num_hidden))(grulayer_uni)
+    fusion_weights = Add()([weighted_fusion_context, grudense])
+    fusion_weights = Activation('sigmoid')(fusion_weights)
+    h = Add()([Multiply()([fusion_context,fusion_weights]), grulayer_uni])
+    y = TimeDistributed(Dense(LABEL_DIM, activation='softmax'))(h)
+
+    model = Model(inputs=inputs, outputs=y)
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy']) # , 'f1score', 'precision', 'recall'
     # optimizer='rmsprop', loss='sdg'
     print(model.summary())
@@ -128,7 +125,7 @@ def trainModel(model, xTrain, yTrain, xVal, yVal, model_file, callbacks=None, ve
     #From https://github.com/flomlo/ntm_keras/blob/master/testing_utils.py
     tensorboard = TensorBoard(log_dir=model_path + '/logs', batch_size=MINIBATCH_SIZE, histogram_freq=1, write_grads=True, write_images=True) #, embeddings_freq=1, embeddings_layer_names='embedding', embeddings_metadata=model_path + '/logs' + 'metadata.tsv', embeddings_data=xTrain)
     checkpoint = ModelCheckpoint(model_path + "/logs/model.ckpt.{epoch:04d}.hdf5", monitor='val_loss', verbose=1, save_best_only=True, period=1)
-    early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=2, verbose=1)
+    early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=0, verbose=1)
     cbs = [tensorboard, early_stopping, checkpoint] # TerminateOnNaN,
     if verbose:
         for i in range(0, EPOCHS):

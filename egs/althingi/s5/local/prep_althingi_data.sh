@@ -16,15 +16,21 @@ nj=24
 . ./local/utils.sh
 . ./local/array.sh
 
+tmp=$(mktemp -d)
+cleanup () {
+    rm -rf "$tmp"
+}
+trap cleanup EXIT
+
 utf8syms=$root_listdir/utf8.syms
 norm_listdir=$root_text_norm_listdir # All root_* variables are defined in path.conf
 cap_listdir=$root_capitalization
 abbr_list=$(ls -t $norm_listdir/abbreviation_list.*.txt | head -n1)
-abbr_acro_as_letters=$(ls -t $norm_listdir/abbr_acro_as_letters.*.txt | head -n1)
 acronyms_as_words=$(ls -t $cap_listdir/acronyms_as_words.*.txt | head -n1)
 prondict=$(ls -t $root_lexicon/prondict.*.txt | head -n1)
-ambiguous_names=$(ls -t $cap_listdir/ambiguous_personal_names.*.txt | head -n1)
 named_entities=$(ls -t $cap_listdir/named_entities.*.txt | head -n1)
+cut -f2 $root_thraxgrammar_lex/acro_denormalize.lex > $tmp/abbr_acro_as_letters
+cut -f2 $root_thraxgrammar_lex/ambiguous_personal_names.lex > $tmp/ambiguous_names
 
 if [ $# -ne 3 ]; then
   echo "This script cleans Icelandic parliamentary data, as obtained from the parliament."
@@ -45,20 +51,14 @@ textout=$1
 intermediate=$outdir/intermediate
 mkdir -p $intermediate
 
-tmp=$(mktemp -d)
-cleanup () {
-    rm -rf "$tmp"
-}
-trap cleanup EXIT
-
 [ ! -d $corpusdir ] && echo "$0: expected $corpusdir to exist" && exit 1
-for f in $abbr_acro_as_letters $acronyms_as_words; do
+for f in $tmp/abbr_acro_as_letters $acronyms_as_words; do
   [ ! -f $f ] && echo "$0: expected $f to exist" && exit 1;
 done
 
 # Make the abbreviation regex pattern used in punctuation cleaning and correcting capitalization
 cat $abbr_list <(sed -r 's:.*:\u&:' $abbr_list) \
-  | sort -u | tr "\n" "|" | sed '$s/|$//' \
+  | tr " " "\n" | sort -u | tr "\n" "|" | sed '$s/|$//' \
   | perl -pe "s:\|:\\\b\|\\\b:g" \
   > $tmp/abbr_pattern.tmp || error 1 $LINENO "Failed creating pattern of abbreviations";
   
@@ -241,7 +241,7 @@ if [ $stage -le 4 ]; then
   # 15) Rewrite vulgar fractions
   # 16) Add space before "," when not followed by a number and before ";"
   # 17) Remove the period in abbreviated middle names
-  # 18) For a few abbreviations that often stand at the end of sentences, add space before the period
+  # 18) For measurement units and a few abbreviations that often stand at the end of sentences, add space before the period
   # 19) Remove periods inside abbreviation
   # 20) Move EOS punctuation away from the word and lowercase the next word, if the previous word is a number or it is the last word.
   # 21) Remove the abbreviation periods
@@ -277,7 +277,7 @@ if [ $stage -le 4 ]; then
       | sed -re 's:¼: einn 4. :g' -e 's:¾: 3 fjórðu:g' -e 's:([0-9])½:\1,5 :g' -e 's: ½: 0,5 :g' \
             -e 's:([,;])([^0-9]|\s*$): \1 \2:g' -e 's:([^0-9]),:\1 ,:g' \
             -e 's:([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+) ([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]?)\. ([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+):\1 \2 \3:g' \
-            -e 's: (gr|umr|sl|millj|nk|mgr|kr|osfrv)([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \2 \l\3:g' \
+            -e 's:[ /]([ck]?m[²³]?|[km]g|[kmgt]?w|gr|umr|sl|millj|nk|mgr|kr|osfrv)([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \2 \l\3:g' \
             -e 's:\.([a-záðéíóúýþæö]):\1:g' \
             -e 's:([0-9,.]{3,})([.:?!]+) *([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \2 \l\3:g' -e 's:([0-9]%)([.:?!]+) *([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \2 \l\3:g' -e 's:([0-9.,]{4,})([.:?!]+) :\1 \2 :g' -e 's:([0-9]%)([.:?!]+) *:\1 \2 :g' -e 's:([.:?!]+)\s*$: \1:g' \
             -e "s:(\b$(cat $tmp/abbr_pattern.tmp))\.:\1:g" \
@@ -375,7 +375,7 @@ if [ $stage -le 5 ]; then
   egrep "\b[AÁEÉIÍOÓUÚYÝÆÖ]+\b|\b[QWRTPÐSDFGHJKLZXCVBNM]+\b" \
     < $tmp/acro.tmp > $tmp/asletters.tmp || error 14 $LINENO ${error_array[14]};
   
-  cat $tmp/asletters.tmp $abbr_acro_as_letters \
+  cat $tmp/asletters.tmp $tmp/abbr_acro_as_letters \
     | sort -u > $tmp/asletters_tot.tmp || error 14 $LINENO ${error_array[14]};
 
   # Create a table where the 1st col is the acronym and the 2nd one is the acronym with with spaces between the letters
@@ -493,7 +493,7 @@ if [ $stage -le 8 ]; then
   comm -23 <(cut -d' ' -f2- ${outdir}/text_SpellingFixed.txt \
     | tr ' ' '\n' | egrep -v '[0-9%‰°º²³,.:;?! ]' \
     | egrep -v "\b$(cat $tmp/abbr_pattern.tmp)\b" \
-    | grep -vf $abbr_acro_as_letters | sort -u | egrep -v '^\s*$') \
+    | grep -vf $tmp/abbr_acro_as_letters | sort -u | egrep -v '^\s*$') \
     <(cut -f1 $prondict | sort -u) \
     > $tmp/new_vocab_all.txt || error 14 $LINENO ${error_array[14]};
   sed -i -r 's:^.*Binary file.*$::' $tmp/new_vocab_all.txt
@@ -527,7 +527,7 @@ if [ $stage -le 8 ]; then
 
   # Sometimes there are personal names that exist both in upper and lowercase, fix if
   # they have accidentally been lowercased
-  tr "\n" "|" < $ambiguous_names \
+  tr "\n" "|" < $tmp/ambiguous_names \
     | sed '$s/|$//' \
     | perl -pe "s:\|:\\\b\|\\\b:g" \
     | sed 's:.*:\L&:' > $tmp/ambiguous_personal_names_pattern.tmp

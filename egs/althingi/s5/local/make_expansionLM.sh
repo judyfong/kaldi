@@ -38,6 +38,8 @@ trap cleanup EXIT
 
 mkdir -p $dir
 
+lexdir=$root_thraxgrammar_lex
+
 # Convert text file to a Kaldi table (ark).
 # The archive format is:
 # <key1> <object1> <newline> <key2> <object2> <newline> ...
@@ -93,15 +95,15 @@ if [ $stage -le 2 ]; then
     cat ${dir}/wordlist30.txt ${dir}/vocab_alth_only.txt > ${dir}/wordlist30_plusAlthingi.txt
     
     # Here I add the expanded abbreviations that were filtered out
-    abbr_expanded=$(cut -f2 ${dir}/lex/abbr_lexicon.txt | tr " " "\n" | sort -u)
+    abbr_expanded=$(cut -f2 $lexdir/abbr_lexicon.txt | tr " " "\n" | sort -u)
     for abbr in $abbr_expanded
     do
 	grep -q "\b${abbr}\b" ${dir}/wordlist30_plusAlthingi.txt || echo -e ${abbr} >> ${dir}/wordlist30_plusAlthingi.txt
     done
 
     # Add expanded numbers to the list
-    cut -f2 ${dir}/lex/ordinals_*?_lexicon.txt >> ${dir}/wordlist30_plusAlthingi.txt
-    cut -f2 ${dir}/lex/units_lexicon.txt >> ${dir}/wordlist30_plusAlthingi.txt
+    cut -f2 $lexdir/ordinals_*?_lexicon.txt >> ${dir}/wordlist30_plusAlthingi.txt
+    cut -f2 $lexdir/units_lexicon.txt >> ${dir}/wordlist30_plusAlthingi.txt
     
     # Make a word symbol table. Code from prepare_lang.sh
     cat ${dir}/wordlist30_plusAlthingi.txt | grep -v "<num>"| LC_ALL=C sort | uniq  | awk '

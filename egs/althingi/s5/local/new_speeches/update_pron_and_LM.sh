@@ -67,23 +67,6 @@ if [ $stage -le 1 ]; then
     mv $confirmed_vocab_dir/*.txt $vocab_archive/ 
   fi
     
-  # # Select all language models training texts from the last time the language model was updated
-  # if [ -f $newest -a -f $archive_newest ]; then
-  #   n1=$(grep -n $archive_newest $tmp/lm_transcript_list.tmp | cut -d':' -f1)
-  #   n2=$(grep -n $newest $tmp/lm_transcript_list.tmp | cut -d':' -f1)
-  #   head -n $[$n1-1] $tmp/lm_transcript_all.tmp | tail -n +$n2 > $tmp/lm_texts_list.tmp
-  # elif [ -f $newest -a ! -f $archive_newest ]; then
-  #   n1=$(grep -n $oldest $tmp/lm_transcript_list.tmp | cut -d':' -f1)
-  #   n2=$(grep -n $newest $tmp/lm_transcript_list.tmp | cut -d':' -f1)
-  #   head -n $n1 $tmp/lm_transcript_all.tmp | tail -n +$n2 > $tmp/lm_texts_list.tmp
-  # elif [ ! -f $newest -a -f $archive_newest ]; then
-  #   n1=$(grep -n $archive_newest $tmp/lm_transcript_list.tmp | cut -d':' -f1)
-  #   head -n $[$n1-1] $tmp/lm_transcript_all.tmp > $tmp/lm_texts_list.tmp    
-  # else
-  #   echo "No new or former new vocabulary files to base the language text selection on"
-  #   exit 1;
-  # fi
-  
 fi
 
 if [ $stage -le 2 ]; then
@@ -100,6 +83,10 @@ if [ $stage -le 2 ]; then
     $localdict   \
     $lm_modeldir/lang
 
+fi
+
+if [ $stage -le 3 ]; then
+  
   echo "Preparing a pruned trigram language model"
   mkdir -p $lm_modeldir/log
   $train_cmd --mem 12G $lm_modeldir/log/make_LM_3gsmall.log \
@@ -108,7 +95,10 @@ if [ $stage -le 2 ]; then
       $lm_training_dir/LMtext.${d}.txt $lm_modeldir/lang \
       $localdict/lexicon.txt $lm_modeldir \
     || error 1 "Failed creating a pruned trigram language model"
-  
+
+fi
+
+if [ $stage -le 4 ]; then
   echo "Preparing an unpruned 5g LM"
   mkdir -p $lm_modeldir/log
   $train_cmd --mem 20G $lm_modeldir/log/make_LM_5g.log \
@@ -120,14 +110,14 @@ if [ $stage -le 2 ]; then
   
 fi
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 5 ]; then
 
   echo "Update the decoding graph"
   local/update_graph.sh || error 1 "ERROR: update_graph.sh failed"
   
 fi
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 6 ]; then
 
   echo "Update latest"
   local/update_latest.sh || error 1 "ERROR: update_latest.sh failed"

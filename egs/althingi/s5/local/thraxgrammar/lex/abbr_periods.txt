@@ -25,19 +25,19 @@ millj	millj.
 mwst	mwst.
 nk	nk.
 nkr	n.kr.
-norðaust	Norðaust.
-norðvest	Norðvest.
+Norðaust	Norðaust.
+Norðvest	Norðvest.
 nr	nr.
 osfrv	o.s.frv.
-reykv n	Reykv. n.
-reykv s	Reykv. s.
+Reykv n	Reykv. n.
+Reykv s	Reykv. s.
 sbr	sbr.
 Sbr	Sbr.
 skr	s.kr.
 skv	skv.
 Skv	Skv.
-suðurk	Suðurk.
-suðvest	Suðvest.
+Suðurk	Suðurk.
+Suðvest	Suðvest.
 td	t.d.
 Td	T.d.
 Th	Th.

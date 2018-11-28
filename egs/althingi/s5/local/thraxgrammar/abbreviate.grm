@@ -40,7 +40,7 @@ abbr3 = Optimize[StringFile['local/thraxgrammar/lex/abbreviate_if_followed_byNum
 first_second_tenth = Optimize[StringFile['local/thraxgrammar/lex/first_second_tenth.txt','utf8','utf8']];
 half_expand = Optimize[StringFile['local/thraxgrammar/lex/half.txt','utf8','utf8']];
 half = Invert[half_expand];
-#kjordaemi = Optimize[StringFile['local/thraxgrammar/lex/kjordaemi_abbr.txt','utf8','utf8']];
+kjordaemi = Optimize[StringFile['local/thraxgrammar/lex/kjordaemi_abbr.txt','utf8','utf8']];
 
 ABBR_NUMBER_10plus_and_0 = Optimize[
                      CDRewrite[namesnumber_10plus_and_0 delspace,
@@ -189,16 +189,16 @@ ABBR_WORD3 = Optimize[
                      'ltr',
                      'obl']];
 
-# ABBR_KJORDAEMI = CDRewrite[kjordaemi delspace,
-#                      (c.Digits+ ".".utf8 " ".utf8 "þingm".utf8
-#                      c.alphabet+ " ".utf8),
-#                      ("[EOS]".utf8 | " ".utf8),
-#                      c.whole_alphabet*,
-#                      'ltr',
-#                      'obl'];
+ABBR_KJORDAEMI = CDRewrite[kjordaemi delspace,
+                     (c.Digits+ ".".utf8 " ".utf8 "þingm".utf8
+                     c.alphabet+ " ".utf8),
+                     ("[EOS]".utf8 | " ".utf8),
+                     c.whole_alphabet*,
+                     'ltr',
+                     'obl'];
 
 export ABBREVIATE = ArcSort[
-                    Optimize[abbreviate2 @ ABBR_WORD3],
+                    Optimize[abbreviate2 @ ABBR_WORD3 @ ABBR_KJORDAEMI],
                     'input'];
 
 # Denormalization
@@ -349,6 +349,8 @@ url3 = CDRewrite[(" punktur ".utf8 : ".".utf8),
                 'ltr',
                 'obl'];
 
+url = Optimize[url1 @ url2 @ url3];
+
 ogeda = CDRewrite[(" ".utf8 : "/".utf8),
                 "og".utf8,
                 "eða".utf8,
@@ -403,16 +405,23 @@ dr = CDRewrite[("doktor".utf8 : "dr".utf8),
                 'ltr',
                 'obl'];
 
-thousands = CDRewrite[("".utf8 : ".".utf8),
-                c.Digits,
-                c.Digits c.Digits c.Digits (" ".utf8 | ".".utf8 | ",".utf8),
-                c.whole_alphabet*,
-                'ltr',
-                'obl'];
+# thousands = CDRewrite[("".utf8 : ".".utf8),
+#                 c.Digits c.Digits,
+#                 c.Digits c.Digits c.Digits (" ".utf8 | "[EOS]".utf8),
+#                 c.whole_alphabet*,
+#                 'ltr',
+#                 'obl'];
 
-DENORM = Optimize[name_casing @ acro_denorm @ law_nr @ dash @ kl @ decimal1 @ decimal2 @
-decimal2 @ decimal2 @ ratio1 @ ratio2 @ rm_space_bf_punct @ celsius @ url1 @
-url2 @ url3 @ ogeda @ committee @ minister @ ministry @ insert_dash @ dr @ thousands];
+# thousands2 = CDRewrite[("".utf8 : ".".utf8),
+#                 c.Digits,
+#                 c.Digits c.Digits c.Digits ".".utf8 c.Digits c.Digits c.Digits,
+#                 c.whole_alphabet*,
+#                 'ltr',
+#                 'obl'];
+
+DENORM = Optimize[name_casing @ acro_denorm @ law_nr @ endash @ kl @
+decimal1 @ decimal2 @ ratio1 @ ratio2 @ rm_space_bf_punct @ celsius @
+url @ ogeda @ committee @ minister @ ministry @ insert_dash @ dr];
 
 export ABBR_AND_DENORM = ArcSort[
                     Optimize[ABBREVIATE @ DENORM],

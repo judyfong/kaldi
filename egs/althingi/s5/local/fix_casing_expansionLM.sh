@@ -16,8 +16,6 @@ if [ $# -lt 5 ]; then
   exit 1;
 fi
 
-lists=$1
-prondict=$2
 wordlist=$3
 textin=$4
 textout=$5
@@ -26,11 +24,18 @@ dir=$(dirname $textout)
 intermediate=$dir/intermediate
 mkdir -p $intermediate
 
-acro_as_words=$(ls -t $lists/acronyms_as_words.*.txt | head -n1)
-ambiguous_names=$(ls -t $lists/ambiguous_personal_names.*.txt | head -n1)
-named_entities=$(ls -t $lists/named_entities.*.txt | head -n1)
+tmp=$(mktemp -d)
+cleanup () {
+    rm -rf "$tmp"
+}
+trap cleanup EXIT
 
-for f in $acro_as_words $ambiguous_names $named_entities $prondict $wordlist $textin; do
+prondict=$(ls -t $root_lexicon/prondict.*.txt | head -n1)
+acro_as_words=$(ls -t $root_capitalization/acronyms_as_words.*.txt | head -n1)
+named_entities=$(ls -t $root_capitalization/named_entities.*.txt | head -n1)
+cut -f2 $root_thraxgrammar_lex/ambiguous_personal_names.lex > $tmp/ambiguous_names
+
+for f in $acro_as_words $tmp/ambiguous_names $named_entities $prondict $wordlist $textin; do
   [ ! -f $f ] && echo "$0: expected $f to exist" && exit 1;
 done  
   
@@ -56,7 +61,7 @@ echo "Make the text approximately case sensitive"
   srun sed -r 's:(\b'$(cat $intermediate/to_uppercase_pattern.tmp)'\b):\u\1:g' $intermediate/texts_acroCS.txt > $intermediate/texts_CaseSens.tmp
 
   # Make a regex pattern from my ambiguous proper names
-  tr "\n" "|" < $ambiguous_names | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > $intermediate/ambiguous_personal_names_pattern.tmp
+  tr "\n" "|" < $tmp/ambiguous_names | sed '$s/|$//' | perl -pe "s:\|:\\\b\|\\\b:g" | sed 's:.*:\L&:' > $intermediate/ambiguous_personal_names_pattern.tmp
 
   # Switch bleyja to bleia, fiskistofn to fiskstofn, innistæða to innstæða, capitalize companies when followed by ohf, ehf or hf, capitalize ambiguous propernames when there is a middle name
   sed -re 's:\bbleyj(a|u|an|una|unni|unnar|ur|um|urnar|unum|anna)\b:blei\1:g' -e 's:fiskistofn:fiskstofn:g' -e 's:innistæð:innstæð:g' \

@@ -25,13 +25,20 @@ outdir=$(dirname $textout)
 intermediate=$outdir/intermediate
 mkdir -p $outdir/{intermediate,log}
 
+tmp=$(mktemp -d)
+cleanup () {
+    rm -rf "$tmp"
+}
+trap cleanup EXIT
+
 prondict=$(ls -t $root_lexicon/prondict.*.txt | head -n1) 
 abbr_list=$(ls -t $root_text_norm_listdir/abbreviation_list.*.txt | head -n1)
-abbr_acro_as_letters=$(ls -t $root_text_norm_listdir/abbr_acro_as_letters.*.txt | head -n1)
-simple_abbr=$(ls -t $root_text_norm_listdir/simple_abbreviations.*.txt | head -n1)
-ambiguous_names=$(ls -t $root_capitalization/ambiguous_personal_names.*.txt | head -n1)
+bad_words=$(ls -t $root_listdir/discouraged_words.*.txt | head -n1)
 
-for f in $textin $prondict $abbr_list $abbr_acro_as_letters $simple_abbr $ambiguous_names; do
+cut -f2 $root_thraxgrammar_lex/ambiguous_personal_names.lex > $tmp/ambiguous_names
+cut -f2 $root_thraxgrammar_lex/acro_denormalize.lex > $tmp/abbr_acro_as_letters
+
+for f in $textin $prondict $abbr_list $tmp/abbr_acro_as_letters $tmp/ambiguous_names; do
   [ ! -f $f ] && echo "$0: expected $f to exist" && exit 1;
 done
 
@@ -41,18 +48,12 @@ if egrep -q 'rad[0-9][^ ]+ *$' $textin ; then
   exit 1
 fi
 
-tmp=$(mktemp -d)
-cleanup () {
-    rm -rf "$tmp"
-}
-trap cleanup EXIT
-
 # NOTE! We have environment problems. Quick fix is:
 export LANG=en_US.UTF-8
 
 # Make a regex pattern of all abbreviations, upper and lower case.
 cat $abbr_list <(sed -r 's:.*:\u&:' $abbr_list) \
-  | sort -u | tr "\n" "|" | sed '$s/|$//' \
+  | tr " " "\n" | sort -u | tr "\n" "|" | sed '$s/|$//' \
   | perl -pe "s:\|:\\\b\|\\\b:g" > $tmp/abbr_pattern.tmp || error 1 $LINENO "Failed creating pattern of abbreviations";
  
 if [ $stage -le 1 ]; then
@@ -112,7 +113,7 @@ if [ $stage -le 2 ]; then
   # 17) Rewrite vulgar fractions
   # 18) Add space before "," when not followed by a number and before ";"
   # 19) Remove the period in abbreviated middle names
-  # 20) For a few abbreviations that often stand at the end of sentences, add space before the period
+  # 20) For measurement units and a few abbreviations that often stand at the end of sentences, add space before the period
   # 21) Remove periods inside abbreviation
   # 22) Move EOS punctuation away from the word and lowercase the next word, if the previous word is a number or it is the last word.
   # 23) Remove the abbreviation periods
@@ -147,7 +148,7 @@ if [ $stage -le 2 ]; then
     | sed -re 's:¼: einn 4. :g' -e 's:¾: 3 fjórðu:g' -e 's:([0-9])½:\1,5 :g' -e 's: ½: 0,5 :g' \
           -e 's:([,;])([^0-9]|\s*$): \1 \2:g' -e 's:([^0-9]),:\1 ,:g' \
           -e 's:([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+) ([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]?)\. ([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+):\1 \2 \3:g' \
-          -e 's: (gr|umr|sl|millj|nk|mgr|kr|osfrv)([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \2 \l\3:g' \
+          -e 's:[ /]([ck]?m[²³]?|[km]g|[kmgt]?w|gr|umr|sl|millj|nk|mgr|kr|osfrv)([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \2 \l\3:g' \
           -e 's:\.([a-záðéíóúýþæö]):\1:g' \
           -e 's:([0-9,.]{3,})([.:?!]+) *([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \2 \l\3:g' -e 's:([0-9]%)([.:?!]+) *([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \2 \l\3:g' -e 's:([0-9.,]{4,})([.:?!]+) :\1 \2 :g' -e 's:([0-9]%)([.:?!]+) *:\1 \2 :g' -e 's:([.:?!]+)\s*$: \1:g' \
           -e "s:(\b$(cat $tmp/abbr_pattern.tmp))\.:\1:g" \
@@ -168,42 +169,33 @@ fi
 
 if [ $stage -le 3 ]; then
   
-  echo "Expand some abbreviations, incl. 'hv.' and 'þm.' in certain circumstances"
-  # Start with expanding some abbreviations using regex
-  sed -re 's/\s+/\\b:/' -e 's/^.*/s:\\b&/' -e 's/$/:g/g' \
-      < $simple_abbr \
-      > $tmp/simple_abbr_sed_pattern.tmp || error 13 $LINENO ${error_array[13]};
-
-  /bin/sed -f $tmp/simple_abbr_sed_pattern.tmp \
-    < ${intermediate}/text_noPuncts.txt \
-    > ${intermediate}/text_exp1.txt || error 13 ${error_array[13]};
-
+  echo "Expand 'hv.', 'hæstv.' and 'þm.' in certain circumstances"
   # Use Anna's code to expand hv, hæstv and þm, where there is no ambiguity about the expanded form.
   python3 local/althingi_replace_plain_text.py \
-    ${intermediate}/text_exp1.txt \
-    ${intermediate}/text_exp2.txt
+    ${intermediate}/text_noPuncts.txt \
+    ${intermediate}/text_exp1.txt
   # Check the return status
   [ $? -ne 0 ] && error 1 $LINENO "Error in althingi_replace_plain_text.py";
 
   # I don't want to expand acronyms pronounced as letters in the punctuation training text
   echo "make a special text version for the punctuation training texts"
-  cp ${intermediate}/text_exp2.txt ${intermediate}/text_exp2_forPunct.txt || error 14 $LINENO ${error_array[14]};
+  cp ${intermediate}/text_exp1.txt ${intermediate}/text_exp1_forPunct.txt || error 14 $LINENO ${error_array[14]};
 
   # Add spaces into acronyms pronounced as letters
-  if egrep -q "[A-ZÁÐÉÍÓÚÝÞÆÖ]{2,}\b" ${intermediate}/text_exp2.txt ; then  
+  if egrep -q "[A-ZÁÐÉÍÓÚÝÞÆÖ]{2,}\b" ${intermediate}/text_exp1.txt ; then  
     egrep -o "[A-ZÁÐÉÍÓÚÝÞÆÖ]{2,}\b" \
-      < ${intermediate}/text_exp2.txt \
+      < ${intermediate}/text_exp1.txt \
       > $tmp/acro.tmp || error 14 $LINENO ${error_array[14]};
 
     if egrep -q "\b[AÁEÉIÍOÓUÚYÝÆÖ]+\b|\b[QWRTPÐSDFGHJKLZXCVBNM]+\b" $tmp/acro.tmp; then
       egrep "\b[AÁEÉIÍOÓUÚYÝÆÖ]+\b|\b[QWRTPÐSDFGHJKLZXCVBNM]+\b" \
             < $tmp/acro.tmp > $tmp/asletters.tmp || error 14 $LINENO ${error_array[14]};
       
-      cat $tmp/asletters.tmp $abbr_acro_as_letters \
+      cat $tmp/asletters.tmp $tmp/abbr_acro_as_letters \
       | sort -u > $tmp/asletters_tot.tmp || error 14 $LINENO ${error_array[14]};
     fi
   else
-    cp $abbr_acro_as_letters $tmp/asletters_tot.tmp || error 14 $LINENO ${error_array[14]};
+    cp $tmp/abbr_acro_as_letters $tmp/asletters_tot.tmp || error 14 $LINENO ${error_array[14]};
   fi
 
   # Create a table where the 1st col is the acronym and the 2nd one is the acronym with with spaces between the letters
@@ -222,8 +214,8 @@ if [ $stage -le 3 ]; then
       < $tmp/insert_space_into_acro.tmp \
       > $tmp/acro_sed_pattern.tmp || error 13 $LINENO ${error_array[13]};
   
-  /bin/sed -f $tmp/acro_sed_pattern.tmp ${intermediate}/text_exp2.txt \
-    > ${intermediate}/text_exp3.txt || error 13 $LINENO ${error_array[13]};
+  /bin/sed -f $tmp/acro_sed_pattern.tmp ${intermediate}/text_exp1.txt \
+    > ${intermediate}/text_exp2.txt || error 13 $LINENO ${error_array[13]};
  
 fi
 
@@ -249,10 +241,13 @@ if [ $stage -le 4 ]; then
        > ${tmp}/only_lc_prondict.tmp || error 14 $LINENO ${error_array[14]};
 
   # Find words in the new text that are not in the pron dict
-  comm -23 <(cut -d' ' -f2- ${intermediate}/text_exp3.txt \
+  # Exclude words that are abbreviations, acronyms as letters
+  # or writing notations which are incorrect or discouraged by Althingi.
+  comm -23 <(cut -d' ' -f2- ${intermediate}/text_exp2.txt \
     | tr ' ' '\n' | egrep -v '[0-9%‰°º²³,.:;?! ]' \
     | egrep -v "\b$(cat $tmp/abbr_pattern.tmp)\b" \
-    | grep -vf $abbr_acro_as_letters | sort -u | egrep -v '^\s*$' ) \
+    | grep -vf $tmp/abbr_acro_as_letters | grep -vf $bad_words \
+    | sort -u | egrep -v '^\s*$' ) \
     <(cut -f1 $prondict | sort -u) \
     > $tmp/new_vocab_all.txt || error 14 $LINENO ${error_array[14]};
   sed -i -r 's:^.*Binary file.*$::' $tmp/new_vocab_all.txt
@@ -273,7 +268,7 @@ if [ $stage -le 4 ]; then
       > $tmp/to_lowercase_pattern.tmp || error 13 $LINENO ${error_array[13]};
 
     sed -r 's:(\b'$(cat $tmp/to_lowercase_pattern.tmp)'\b):\l\1:g' \
-	< ${intermediate}/text_exp3.txt \
+	< ${intermediate}/text_exp2.txt \
 	> ${intermediate}/text_case1.txt || error 13 $LINENO ${error_array[13]};
 
     # Capitalize
@@ -287,7 +282,7 @@ if [ $stage -le 4 ]; then
 
     # Do the same for the punctuation text
     sed -r 's:(\b'$(cat $tmp/to_lowercase_pattern.tmp)'\b):\l\1:g' \
-	< ${intermediate}/text_exp2_forPunct.txt \
+	< ${intermediate}/text_exp1_forPunct.txt \
 	> ${intermediate}/text_case1_forPunct.txt || error 13 $LINENO ${error_array[13]};
 
     sed -r 's:(\b'$(cat $tmp/to_uppercase_pattern.tmp)'\b):\u\1:g' \
@@ -295,13 +290,13 @@ if [ $stage -le 4 ]; then
 	> ${intermediate}/text_case2_forPunct.txt || error 13 $LINENO ${error_array[13]};
 
   else
-    cp ${intermediate}/text_exp3.txt ${intermediate}/text_case2.txt
-    cp ${intermediate}/text_exp2_forPunct.txt ${intermediate}/text_case2_forPunct.txt
+    cp ${intermediate}/text_exp2.txt ${intermediate}/text_case2.txt
+    cp ${intermediate}/text_exp1_forPunct.txt ${intermediate}/text_case2_forPunct.txt
   fi
   
   # Sometimes there are personal names that exist both in upper and lowercase, fix if
   # they have accidentally been lowercased
-  tr "\n" "|" < $ambiguous_names \
+  tr "\n" "|" < $tmp/ambiguous_names \
     | sed '$s/|$//' \
     | perl -pe "s:\|:\\\b\|\\\b:g" \
     | sed 's:.*:\L&:' > $tmp/ambiguous_personal_names_pattern.tmp || error 13 $LINENO ${error_array[13]};

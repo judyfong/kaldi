@@ -16,7 +16,7 @@ echo "$0 $@"  # Print the command line for logging
 . ./utils/parse_options.sh
 . ./conf/path.conf
 
-normlistdir=$(ls -td $root_text_norm_listdir/thraxgrammar_lex.* | head -n1)
+normlistdir=$root_thraxgrammar_lex
 
 if [ $# -ne 3 ]; then
     echo "Usage: $0 [options] <textfile1> <textfile2> <output-dir>"

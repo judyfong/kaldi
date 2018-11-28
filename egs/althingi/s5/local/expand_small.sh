@@ -19,7 +19,7 @@ echo "$0 $@"  # Print the command line for logging
 . utils/parse_options.sh
 . local/utils.sh
 
-text_norm_lex=$(ls -td $root_text_norm_listdir/thraxgrammar_lex.* | head -n1)
+text_norm_lex=$root_thraxgrammar_lex
 base_norm_data=$root_expansionLM_cs_data
 base_norm_model=$root_base_text_norm_model
 

@@ -183,7 +183,7 @@ class GRU(object):
             alphas = alphas.reshape((alphas.shape[0], alphas.shape[1])) # drop 2-axis (sized 1)
             alphas = alphas / alphas.sum(axis=0, keepdims=True) # These 3 lines is the softmax
             weighted_context = (context * alphas[:,:,None]).sum(axis=0)
-
+                        
             h_t = self.GRU.step(x_t=x_t, h_tm1=h_tm1)
 
             # Late fusion

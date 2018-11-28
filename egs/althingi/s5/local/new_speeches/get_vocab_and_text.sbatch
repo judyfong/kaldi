@@ -1,6 +1,7 @@
 #! /bin/bash
 #
 #SBATCH --get-user-env
+#SBATCH --mem=8G
 
 # Declare the variables
 # To run: sbatch --export=xml=$xml,outdir=$outdir local/new_speeches/get_vocab_and_text.sbatch

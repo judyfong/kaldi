@@ -51,7 +51,7 @@ if [ $stage -le 1 ]; then
   echo "$0: $prondir/prondict.${d}.txt already exists. Are you sure you want to overwrite it?" \
   && exit 1;
 
-  if [ "$(ls -A $lm_transcript_dir)" ]; then
+  if [ ls $lm_transcript_dir/*.txt &>/dev/null ]; then
     echo "Update the LM training texts"
     cat $current_LM_training_texts $lm_transcript_dir/*.txt > $lm_training_dir/LMtext.${d}.txt
     mv $lm_transcript_dir/*.txt $lm_transcripts_archive/
@@ -61,7 +61,7 @@ if [ $stage -le 1 ]; then
   fi
 
   # Update the prondict if there is new confirmed vocabulary, and move those vocab files to the archive
-  if [ "$(ls -A $confirmed_vocab_dir)" ]; then
+  if [ ls $confirmed_vocab_dir/*.txt &>/dev/null ]; then
     echo "Update the pronunciation dictionary"
     cat $confirmed_vocab_dir/*.txt $current_prondict | sort -u > $prondir/prondict.${d}.txt
     mv $confirmed_vocab_dir/*.txt $vocab_archive/ 

@@ -6,17 +6,17 @@
 # the number of cpus on your machine.
 
 # Terra
-export train_cmd="utils/slurm.pl"
-export decode_cmd="utils/slurm.pl --mem 4G"
-export mkgraph_cmd="utils/slurm.pl --mem 4G"
-export big_memory_cmd="utils/slurm.pl --mem 8G"
-export cuda_cmd="utils/slurm.pl --gpu 1"
+# export train_cmd="utils/slurm.pl"
+# export decode_cmd="utils/slurm.pl --mem 4G"
+# export mkgraph_cmd="utils/slurm.pl --mem 4G"
+# export big_memory_cmd="utils/slurm.pl --mem 8G"
+# export cuda_cmd="utils/slurm.pl --gpu 1"
 
 #c) run it locally...
-# export train_cmd=run.pl
-# export decode_cmd=run.pl
-# export cuda_cmd=run.pl
-# export mkgraph_cmd=run.pl
+export train_cmd=run.pl
+export decode_cmd=run.pl
+export cuda_cmd=run.pl
+export mkgraph_cmd=run.pl
 
 #d) via ssh
 # export train_cmd=ssh.pl

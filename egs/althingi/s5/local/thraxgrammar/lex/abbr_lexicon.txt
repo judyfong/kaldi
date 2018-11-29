@@ -3,11 +3,14 @@ amk	að minnsta kosti
 árg	árgangur
 bls	blaðsíða
 bls	blaðsíðu
+bls	blaðsíðum
 bls	blaðsíður
 cm²	fersentímetra
 cm²	fersentímetrar
+cm²	fersentímetrum
 cm³	rúmsentímetra
 cm³	rúmsentímetrar
+cm³	rúmsentímetrum
 cm	sentímetra
 cm	sentímetrar
 cm	sentímetrum
@@ -35,11 +38,11 @@ fskj	fylgiskjali
 fyrrv	fyrrverandi
 gr	grein
 gr	greinar
-gw	gígavatt
-gw	gígavatta
-gw	gígavatti
-gw	gígavött
-gw	gígavöttum
+gW	gígavatt
+gW	gígavatta
+gW	gígavatti
+gW	gígavött
+gW	gígavöttum
 gwst	gígavattstund
 gwst	gígavattstunda
 gwst	gígavattstundir
@@ -86,6 +89,7 @@ klst	klukkustundir
 klst	klukkustundum
 km²	ferkílómetra
 km²	ferkílómetrar
+km²	ferkílómetrum
 km	kílómetra
 km	kílómetrar
 km	kílómetri
@@ -94,11 +98,11 @@ kr	króna
 kr	krónu
 kr	krónum
 kr	krónur
-kw	kílóvatt
-kw	kílóvatta
-kw	kílóvatti
-kw	kílóvött
-kw	kílóvöttum
+kW	kílóvatt
+kW	kílóvatta
+kW	kílóvatti
+kW	kílóvött
+kW	kílóvöttum
 kwst	kílóvattstund
 kwst	kílóvattstunda
 kwst	kílóvattstundir
@@ -122,24 +126,20 @@ millj kr	milljónar króna
 millj kr	milljóna króna
 millj kr	milljónir króna
 millj kr	milljónum króna
-mw	megavatt
-mw	megavatta
-mw	megavatti
-mw	megavött
-mw	megavöttum
+mW	megavatt
+mW	megavatta
+mW	megavatti
+mW	megavött
+mW	megavöttum
 mwst	megavattstund
 mwst	megavattstunda
 mwst	megavattstundir
 mwst	megavattstundum
 nk	næstkomandi
 nkr	norskar krónur
-norðaust	norðausturkjördæmi
 Norðaust	Norðausturkjördæmi
-norðaust	norðausturkjördæmis
 Norðaust	Norðausturkjördæmis
-norðvest	norðvesturkjördæmi
 Norðvest	Norðvesturkjördæmi
-norðvest	norðvesturkjördæmis
 Norðvest	Norðvesturkjördæmis
 nr	númer
 núv	núverandi
@@ -148,41 +148,27 @@ ofl	og fleiri
 osfrv	og svo framvegis
 oþh	og þess háttar
 pr	per
-reykv n	reykjavíkurkjördæmi norður
 Reykv n	Reykjavíkurkjördæmi norður
-reykv n	reykjavíkurkjördæmis norður
 Reykv n	Reykjavíkurkjördæmis norður
-reykv s	reykjavíkurkjördæmis suður
 Reykv s	Reykjavíkurkjördæmis suður
-reykv s	reykjavíkurkjördæmi suður
 Reykv s	Reykjavíkurkjördæmi suður
-rvík n	reykjavíkurkjördæmi norður
-rvík n	reykjavíkurkjördæmis norður
-rvík s	reykjavíkurkjördæmis suður
-rvík s	reykjavíkurkjördæmi suður
 sbr	samanber
 skr	sænskar krónur
 skv	samkvæmt
 sl	síðastliðið
 sl	síðastliðinn
 sl	síðastliðnum
+ss	svo sem
 stk	stykki
 stjfrv	stjórnarfrumvarp
 stjtill	stjórnartillaga
 stjtill	stjórnartillögu
-suðurk	suðurkjördæmi
 Suðurk	Suðurkjördæmi
-suðurk	suðurkjördæmis
 Suðurk	Suðurkjördæmis
-suðvest	suðvesturkjördæmi
 Suðvest	Suðvesturkjördæmi
-suðvest	suðvesturkjördæmis
 Suðvest	Suðvesturkjördæmis
-sþ	sameinuðu þjóðanna
 SÞ	Sameinuðu þjóðanna
-sþ	sameinuðu þjóðirnar
 SÞ	Sameinuðu þjóðirnar
-sþ	sameinuðu þjóðunum
 SÞ	Sameinuðu þjóðunum
 tam	til að mynda
 td	til dæmis
@@ -191,11 +177,11 @@ tbl	tölublaðs
 tölul	tölulið
 tölul	töluliðar
 tölul	töluliður
-tw	teravatt
-tw	teravatta
-tw	teravatti
-tw	teravött
-tw	teravöttum
+tW	teravatt
+tW	teravatta
+tW	teravatti
+tW	teravött
+tW	teravöttum
 twh	teravattstund
 twh	teravattstunda
 twh	teravattstundir

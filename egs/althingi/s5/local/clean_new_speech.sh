@@ -32,13 +32,12 @@ cleanup () {
 trap cleanup EXIT
 
 prondict=$(ls -t $root_lexicon/prondict.*.txt | head -n1) 
-abbr_list=$(ls -t $root_text_norm_listdir/abbreviation_list.*.txt | head -n1)
 bad_words=$(ls -t $root_listdir/discouraged_words.*.txt | head -n1)
+cut -f1 $root_thraxgrammar_lex/abbr_lexicon.txt | tr " " "\n" | sort -u > $tmp/abbr_list
+cut -f2 $root_thraxgrammar_lex/ambiguous_personal_names.txt > $tmp/ambiguous_names
+cut -f2 $root_thraxgrammar_lex/acro_denormalize.txt > $tmp/abbr_acro_as_letters
 
-cut -f2 $root_thraxgrammar_lex/ambiguous_personal_names.lex > $tmp/ambiguous_names
-cut -f2 $root_thraxgrammar_lex/acro_denormalize.lex > $tmp/abbr_acro_as_letters
-
-for f in $textin $prondict $abbr_list $tmp/abbr_acro_as_letters $tmp/ambiguous_names; do
+for f in $textin $prondict $bad_words $tmp/abbr_list $tmp/abbr_acro_as_letters $tmp/ambiguous_names; do
   [ ! -f $f ] && echo "$0: expected $f to exist" && exit 1;
 done
 
@@ -52,9 +51,10 @@ fi
 export LANG=en_US.UTF-8
 
 # Make a regex pattern of all abbreviations, upper and lower case.
-cat $abbr_list <(sed -r 's:.*:\u&:' $abbr_list) \
-  | tr " " "\n" | sort -u | tr "\n" "|" | sed '$s/|$//' \
-  | perl -pe "s:\|:\\\b\|\\\b:g" > $tmp/abbr_pattern.tmp || error 1 $LINENO "Failed creating pattern of abbreviations";
+cat $tmp/abbr_list <(sed -r 's:.*:\u&:' $tmp/abbr_list) \
+  | sort -u | tr "\n" "|" | sed '$s/|$//' \
+  | perl -pe "s:\|:\\\b\|\\\b:g" \
+  > $tmp/abbr_pattern.tmp || error 1 $LINENO "Failed creating pattern of abbreviations";
  
 if [ $stage -le 1 ]; then
   echo "Rewrite roman numerals"
@@ -104,30 +104,29 @@ if [ $stage -le 2 ]; then
   # 7) Remove commas used as quotation marks, remove or change "..." -> "." and "??+" -> "?"
   # 8) Deal with double punctuation after words/numbers
   # 9) Remove "ja" from numbers written like "22ja",
-  # 10) Rewrite [ck]?m[23] to [ck]?m[²³] and "kV" to "kw"
-  # 11) Fix spelling errors like "be4stu" and "o0g",
-  # 12) Rewrite website names,
-  # 13) In an itemized list, lowercase what comes after the numbering.
-  # 14) Rewrite en dash (x96), regular dash and "tilstr(ik)" to " til ", if sandwitched between words or numbers,
-  # 15-16) Rewrite decimals, f.ex "0,045" to "0 komma 0 45" and "0,00345" to "0 komma 0 0 3 4 5" and remove space before a "%",
-  # 17) Rewrite vulgar fractions
-  # 18) Add space before "," when not followed by a number and before ";"
-  # 19) Remove the period in abbreviated middle names
-  # 20) For measurement units and a few abbreviations that often stand at the end of sentences, add space before the period
-  # 21) Remove periods inside abbreviation
-  # 22) Move EOS punctuation away from the word and lowercase the next word, if the previous word is a number or it is the last word.
-  # 23) Remove the abbreviation periods
-  # 24) Move remaining EOS punctuation away from the word and lowercase next word
-  # 25) Lowercase the first word in a speech
-  # 26) Rewrite "/a " to "á ári", "/s " to "á sekúndu" and so on.
-  # 27) Switch dashes (exept in utt filenames) and remaining slashes out for space
-  # 28) Rewrite thousands and millions, f.ex. 3.500 to 3500,
-  # 29) Rewrite chapter and clause numbers and time and remove remaining periods between numbers, f.ex. "ákvæði 2.1.3" to "ákvæði 2 1 3" and "kl 15.30" to "kl 15 30",
-  # 30) Add spaces between letters and numbers in alpha-numeric words (Example:1st: "4x4", 2nd: f.ex. "bla.3. júlí", 3rd: "1.-bekk."
-  # 31) Remove punctuation attached to the word behind
-  # 32) Fix spacing around % and degrees celsius and add space in a number starting with a zero
-  # 33) Fix if the first letter in an acronym has been lowercased.
-  # 34) Remove punctuations that we don't want to learn, map remaining weird words to <unk> and fix spacing
+  # 10) Fix spelling errors like "be4stu" and "o0g",
+  # 11) Rewrite website names,
+  # 12) In an itemized list, lowercase what comes after the numbering.
+  # 13) Rewrite en dash (x96), regular dash and "tilstr(ik)" to " til ", if sandwitched between words or numbers,
+  # 14-15) Rewrite decimals, f.ex "0,045" to "0 komma 0 45" and "0,00345" to "0 komma 0 0 3 4 5" and remove space before a "%",
+  # 16) Rewrite vulgar fractions
+  # 17) Add space before "," when not followed by a number and before ";"
+  # 18) Remove the period in abbreviated middle names
+  # 19) For measurement units and a few abbreviations that often stand at the end of sentences, add space before the period
+  # 20) Remove periods inside abbreviation
+  # 21) Move EOS punctuation away from the word and lowercase the next word, if the previous word is a number or it is the last word.
+  # 22) Remove the abbreviation periods
+  # 23) Move remaining EOS punctuation away from the word and lowercase next word
+  # 24) Lowercase the first word in a speech
+  # 25) Rewrite "/a " to "á ári", "/s " to "á sekúndu" and so on.
+  # 26) Switch dashes (exept in utt filenames) and remaining slashes out for space
+  # 27) Rewrite thousands and millions, f.ex. 3.500 to 3500,
+  # 28) Rewrite chapter and clause numbers and time and remove remaining periods between numbers, f.ex. "ákvæði 2.1.3" to "ákvæði 2 1 3" and "kl 15.30" to "kl 15 30",
+  # 29) Add spaces between letters and numbers in alpha-numeric words (Example:1st: "4x4", 2nd: f.ex. "bla.3. júlí", 3rd: "1.-bekk."
+  # 30) Remove punctuation attached to the word behind
+  # 31) Fix spacing around % and degrees celsius and add space in a number starting with a zero
+  # 32) Fix if the first letter in an acronym has been lowercased.
+  # 33) Remove punctuations that we don't want to learn, map remaining weird words to <unk> and fix spacing
   sed -re 's:\([^/()<>]*?\)+: :g' -e 's:\[[^]]*?\]: :g' \
       -e 's:([0-9]) 1/2\b:\1,5:g' -e 's:\b([0-9])/([0-9]{1,2})\b:\1 \2\.:g' \
       -e 's:/?([0-9]+)/([0-9]+): \1 \2:g' -e 's:([0-9]+)/([A-Z]{2,}):\1 \2:g' -e 's:([0-9])/ ([0-9]):\1 \2:g' \
@@ -137,7 +136,6 @@ if [ $stage -le 2 ]; then
       -e 's: ,,: :g' -e 's:\.\.+ ([A-ZÁÐÉÍÓÚÝÞÆÖ]):. \1:g' -e 's:\.\.+::g' -e 's:([^a-záðéíóúýþæö ]) ?\?\?+:\1:g' -e 's:\?\?+ ([A-ZÁÐÉÍÓÚÝÞÆÖ]):? \1:g' -e 's:\?\?+::g' \
       -e 's:\b([^0-9 .,:;?!]+)([.,:;?!]+)([.,:;?!]):\1 \3 :g' -e 's:\b([0-9]+[.,:;?!])([.,:;?!]):\1 \2 :g' -e 's:\b(,[0-9]+)([.,:;?!]):\1 \2 :g' \
       -e 's:([0-9]+)ja\b:\1:g' \
-      -e 's:([ck]?m)2: \1²:g' -e 's:([ck]?m)3: \1³:g' -e 's: kV : kw :g' -e 's:Wst:\L&:g' \
       -e 's:\b([a-záðéíóúýþæö]+)[0-9]([a-záðéíóúýþæö]+):\1\2:g' \
       -e 's:www\.:w w w :g' -e 's:\.(is|net|com|int)\b: punktur \1:g' \
       -e 's:\b([0-9]\.) +([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \l\2:g' \

@@ -202,7 +202,7 @@ export ABBREVIATE = ArcSort[
                     'input'];
 
 # Denormalization
-middle_name_abbr_lex = Optimize[StringFile['local/thraxgrammar/lex/alphabet.lex','utf8','utf8']];
+middle_name_abbr_lex = Optimize[StringFile['local/thraxgrammar/lex/alphabet.txt','utf8','utf8']];
 middle_name_abbr = Optimize[
                       CDRewrite[middle_name_abbr_lex delspace,
                       ("[BOS]".utf8 | " ".utf8) c.ALPHABET
@@ -215,7 +215,7 @@ middle_name_abbr = Optimize[
                       'ltr',
                       'obl']];
 
-personal_names = Optimize[StringFile['local/thraxgrammar/lex/ambiguous_personal_names.lex','utf8','utf8']];
+personal_names = Optimize[StringFile['local/thraxgrammar/lex/ambiguous_personal_names.txt','utf8','utf8']];
 amb_pers_names1 = Optimize[
                       CDRewrite[personal_names delspace,
                       ("[BOS]".utf8 | " ".utf8),
@@ -241,7 +241,7 @@ amb_pers_names2 = Optimize[
 name_casing = Optimize[middle_name_abbr @ amb_pers_names1 @
 amb_pers_names2];
 
-acro_denorm_lex = Optimize[StringFile['local/thraxgrammar/lex/acro_denormalize.lex','utf8','utf8']];
+acro_denorm_lex = Optimize[StringFile['local/thraxgrammar/lex/acro_denormalize.txt','utf8','utf8']];
 acro_denorm = CDRewrite[acro_denorm_lex,
                      ("[BOS]".utf8 | " ".utf8),
                      ("[EOS]".utf8 | " ".utf8),
@@ -405,23 +405,25 @@ dr = CDRewrite[("doktor".utf8 : "dr".utf8),
                 'ltr',
                 'obl'];
 
-# thousands = CDRewrite[("".utf8 : ".".utf8),
-#                 c.Digits c.Digits,
-#                 c.Digits c.Digits c.Digits (" ".utf8 | "[EOS]".utf8),
-#                 c.whole_alphabet*,
-#                 'ltr',
-#                 'obl'];
+vg = CDRewrite[(" ".utf8 : " – ".utf8),
+                "Vinstrihreyfing".utf8 c.alphabet+,
+                "græn".utf8 c.alphabet+,
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
 
-# thousands2 = CDRewrite[("".utf8 : ".".utf8),
-#                 c.Digits,
-#                 c.Digits c.Digits c.Digits ".".utf8 c.Digits c.Digits c.Digits,
-#                 c.whole_alphabet*,
-#                 'ltr',
-#                 'obl'];
+upptalning_lex = Optimize[StringFile['local/thraxgrammar/lex/ordinals_neutral_3-9.txt','utf8','utf8']];
+upptalning = CDRewrite[upptalning_lex,
+                ("Í ".utf8 | "í ".utf8),
+                " lagi ".utf8,
+                c.whole_alphabet*,
+                'ltr',
+                'obl'];
 
 DENORM = Optimize[name_casing @ acro_denorm @ law_nr @ endash @ kl @
 decimal1 @ decimal2 @ ratio1 @ ratio2 @ rm_space_bf_punct @ celsius @
-url @ ogeda @ committee @ minister @ ministry @ insert_dash @ dr];
+url @ ogeda @ committee @ minister @ ministry @ insert_dash @ dr @ vg
+@ upptalning];
 
 export ABBR_AND_DENORM = ArcSort[
                     Optimize[ABBREVIATE @ DENORM],

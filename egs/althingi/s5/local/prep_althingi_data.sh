@@ -23,14 +23,13 @@ cleanup () {
 trap cleanup EXIT
 
 utf8syms=$root_listdir/utf8.syms
-norm_listdir=$root_text_norm_listdir # All root_* variables are defined in path.conf
-cap_listdir=$root_capitalization
-abbr_list=$(ls -t $norm_listdir/abbreviation_list.*.txt | head -n1)
-acronyms_as_words=$(ls -t $cap_listdir/acronyms_as_words.*.txt | head -n1)
 prondict=$(ls -t $root_lexicon/prondict.*.txt | head -n1)
-named_entities=$(ls -t $cap_listdir/named_entities.*.txt | head -n1)
-cut -f2 $root_thraxgrammar_lex/acro_denormalize.lex > $tmp/abbr_acro_as_letters
-cut -f2 $root_thraxgrammar_lex/ambiguous_personal_names.lex > $tmp/ambiguous_names
+# All root_* variables are defined in path.conf
+acronyms_as_words=$(ls -t $root_capitalization/acronyms_as_words.*.txt | head -n1)
+named_entities=$(ls -t $root_capitalization/named_entities.*.txt | head -n1)
+cut -f1 $root_thraxgrammar_lex/abbr_lexicon.txt | tr " " "\n" | sort -u > $tmp/abbr_list
+cut -f2 $root_thraxgrammar_lex/acro_denormalize.txt > $tmp/abbr_acro_as_letters
+cut -f2 $root_thraxgrammar_lex/ambiguous_personal_names.txt > $tmp/ambiguous_names
 
 if [ $# -ne 3 ]; then
   echo "This script cleans Icelandic parliamentary data, as obtained from the parliament."
@@ -52,13 +51,14 @@ intermediate=$outdir/intermediate
 mkdir -p $intermediate
 
 [ ! -d $corpusdir ] && echo "$0: expected $corpusdir to exist" && exit 1
-for f in $tmp/abbr_acro_as_letters $acronyms_as_words; do
+for f in $utf8syms $prondict $acronyms_as_words $named_entities \
+	 $tmp/abbr_list $tmp/abbr_acro_as_letters $tmp/ambiguous_names; do
   [ ! -f $f ] && echo "$0: expected $f to exist" && exit 1;
 done
 
 # Make the abbreviation regex pattern used in punctuation cleaning and correcting capitalization
-cat $abbr_list <(sed -r 's:.*:\u&:' $abbr_list) \
-  | tr " " "\n" | sort -u | tr "\n" "|" | sed '$s/|$//' \
+cat $tmp/abbr_list <(sed -r 's:.*:\u&:' $tmp/abbr_list) \
+  | sort -u | tr "\n" "|" | sed '$s/|$//' \
   | perl -pe "s:\|:\\\b\|\\\b:g" \
   > $tmp/abbr_pattern.tmp || error 1 $LINENO "Failed creating pattern of abbreviations";
   
@@ -266,7 +266,7 @@ if [ $stage -le 4 ]; then
 	-e 's: ,,: :g' -e 's:\.\.+ ([A-ZÁÐÉÍÓÚÝÞÆÖ]):. \1:g' -e 's:\.\.+::g' -e 's:([^a-záðéíóúýþæö ]) ?\?\?+:\1:g' -e 's:\?\?+ ([A-ZÁÐÉÍÓÚÝÞÆÖ]):? \1:g' -e 's:\?\?+::g' \
 	-e 's:\b([^0-9 .,:;?!]+)([.,:;?!]+)([.,:;?!]):\1 \3 :g' -e 's:\b([0-9]+[.,:;?!])([.,:;?!]):\1 \2 :g' -e 's:\b(,[0-9]+)([.,:;?!]):\1 \2 :g' \
 	-e 's:([0-9]+)ja\b:\1:g' \
-	-e 's:([ck]?m)2: \1²:g' -e 's:([ck]?m)3: \1³:g' -e 's: kV : kw :g' -e 's:Wst:\L&:g' \
+	-e 's:([ck]?m)2: \1²:g' -e 's:([ck]?m)3: \1³:g' -e 's: ([kgmt])V : \1W :g' -e 's:Wst:\L&:g' \
 	-e 's:\b([a-záðéíóúýþæö]+)[0-9]([a-záðéíóúýþæö]+):\1\2:g' \
 	-e 's:www\.:w w w :g' -e 's:\.(is|net|com|int)\b: punktur \1:g' \
 	-e 's:\b([0-9]\.) +([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \l\2:g' \
@@ -343,13 +343,12 @@ if [ $stage -le 5 ]; then
   tr "\n" "|" < $acronyms_as_words \
     | sed '$s/|$//' \
     | perl -pe "s:\|:\\\b\|\\\b:g" \
-    | sed 's:.*:\L&:' \
   > ${tmp}/acronyms_as_words_pattern.tmp || error 14 $LINENO ${error_array[14]};
 
   for n in upphaflegt endanlegt; do
     # Capitalize 
-    sed -re 's:(\b'$(cat ${tmp}/acronyms_as_words_pattern.tmp)'\b):\U\1:g' \
-        -e 's:\b([a-záðéíóúýþæö][A-ZÁÐÉÍÓÚÝÞÆÖ]+)\b:\u\1:g' \
+    sed -re 's:(\b'$(cat ${tmp}/acronyms_as_words_pattern.tmp)'\b):\U\1:gI' \
+        -e 's:\b([a-záðéíóúýþæö][A-ZÁÐÉÍÓÚÝÞÆÖ]{2,})\b:\u\1:g' \
         < ${intermediate}/text_exp1_${n}.txt \
         > ${intermediate}/text_exp1_${n}_acroCS.txt || error 14 $LINENO ${error_array[14]};
     

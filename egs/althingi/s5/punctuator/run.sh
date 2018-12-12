@@ -8,7 +8,7 @@ set -o pipefail
 d=$(date +'%Y%m%d')
 
 stage=0
-ignore_commas=false #true
+ignore_commas=false
 suffix=
 $ignore_commas && suffix=_noCOMMA
 id= #_april2018 or exp_lr_decay_k0.8

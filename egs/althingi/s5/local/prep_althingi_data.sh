@@ -241,8 +241,8 @@ if [ $stage -le 4 ]; then
   # 15) Rewrite vulgar fractions
   # 16) Add space before "," when not followed by a number and before ";"
   # 17) Remove the period in abbreviated middle names
-  # 18) For measurement units and a few abbreviations that often stand at the end of sentences, add space before the period
-  # 19) Remove periods inside abbreviation
+  # 18) Remove periods inside abbreviation
+  # 19) For measurement units and a few abbreviations that often stand at the end of sentences, add space before the period
   # 20) Move EOS punctuation away from the word and lowercase the next word, if the previous word is a number or it is the last word.
   # 21) Remove the abbreviation periods
   # 22) Move remaining EOS punctuation away from the word and lowercase next word
@@ -277,8 +277,8 @@ if [ $stage -le 4 ]; then
       | sed -re 's:¼: einn 4. :g' -e 's:¾: 3 fjórðu:g' -e 's:([0-9])½:\1,5 :g' -e 's: ½: 0,5 :g' \
             -e 's:([,;])([^0-9]|\s*$): \1 \2:g' -e 's:([^0-9]),:\1 ,:g' \
             -e 's:([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+) ([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]?)\. ([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+):\1 \2 \3:g' \
+            -e 's:\.([a-záðéíóúýþæö]):\1:g' \	    
             -e 's:[ /]([ck]?m[²³]?|[km]g|[kmgt]?w|gr|umr|sl|millj|nk|mgr|kr|osfrv)([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \2 \l\3:g' \
-            -e 's:\.([a-záðéíóúýþæö]):\1:g' \
             -e 's:([0-9,.]{3,})([.:?!]+) *([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \2 \l\3:g' -e 's:([0-9]%)([.:?!]+) *([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \2 \l\3:g' -e 's:([0-9.,]{4,})([.:?!]+) :\1 \2 :g' -e 's:([0-9]%)([.:?!]+) *:\1 \2 :g' -e 's:([.:?!]+)\s*$: \1:g' \
             -e "s:(\b$(cat $tmp/abbr_pattern.tmp))\.:\1:g" \
             -e 's:([.:?!]+) *([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \l\2:g' -e 's:([^0-9])([.:?!]+)([0-9]):\1 \2 \3:g' -e 's:([^0-9])([.:?!]+):\1 \2:g' \

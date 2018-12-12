@@ -77,3 +77,5 @@ if [ $stage -le 4 ]; then
     ) &
   done
 fi
+
+source $CONDAPATH/deactivate

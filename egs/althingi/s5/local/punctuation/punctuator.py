@@ -3,13 +3,33 @@
 import sys, os
 import codecs
 import numpy as np
-sys.path.insert(0, 'local/punctuation')
-import data
-import main_attention
+import subprocess, re
+gpu_info = subprocess.check_output(('lspci'))
+num_gpus = len(re.findall('VGA compatible controller: NVIDIA Corporation', str(gpu_info), flags=0))
+
+from tensorflow.python.framework.errors_impl import InternalError
 
 os.environ['LD_LIBRARY_PATH'] = '/usr/local/cuda-9.0/lib64/'
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="0" 
+
+sys.path.insert(0, 'local/punctuation')
+import data
+from main_attention_batchnorm import PADDING_VALUE, perplexity
+
+# import tensorflow as tf
+# import keras
+# config = tf.ConfigProto()
+# config.gpu_options.allow_growth=True
+# sess = tf.Session(config=config)
+# keras.backend.set_session(sess)
+
+# def _get_available_devices():
+#     from tensorflow.python.client import device_lib
+#     for i in range(6):
+#     local_device_protos = device_lib.list_local_devices()
+#     return [x.name for x in local_device_protos]
+
+# print _get_available_devices()
 
 from keras.models import load_model
 from keras.preprocessing.sequence import pad_sequences
@@ -39,7 +59,7 @@ def restore(output_file, text, word_vocabulary, reverse_punctuation_vocabulary, 
             converted_subsequence = [word_vocabulary.get(w, word_vocabulary[data.UNK]) for w in subsequence]
 
             if len(converted_subsequence) < MAX_SUBSEQUENCE_LEN:
-                converted_subsequence = pad_sequences([converted_subsequence], maxlen=MAX_SUBSEQUENCE_LEN, value=main_attention.PADDING_VALUE)
+                converted_subsequence = pad_sequences([converted_subsequence], maxlen=MAX_SUBSEQUENCE_LEN, value=PADDING_VALUE)
                 y = model.predict(converted_subsequence)
             else:
                 y = model.predict(np.asarray([converted_subsequence]))
@@ -92,14 +112,16 @@ if __name__ == "__main__":
         sys.exit("Output file path argument missing")
     
     print("Loading model parameters...")
-    model = load_model(model_file)
-
-    # print "Building model..."
-    # predict = theano.function(
-    #     inputs=[x],
-    #     outputs=net.y
-    # )
-
+    # for i in range(num_gpus):
+    #     try:
+    #         os.environ["CUDA_VISIBLE_DEVICES"]=str(i)
+    #         model = load_model(model_file, custom_objects={'perplexity': perplexity})
+    #         break
+    #     except InternalError:
+    #         print("GPU {0} is not available".format(str(i)))
+    os.environ["CUDA_VISIBLE_DEVICES"]="4"
+    model = load_model(model_file, custom_objects={'perplexity': perplexity})
+    
     word_vocabulary = data.read_vocabulary(data.WORD_VOCAB_FILE)
     punctuation_vocabulary = data.iterable_to_dict(data.PUNCTUATION_VOCABULARY)
 

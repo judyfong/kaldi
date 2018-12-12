@@ -30,6 +30,7 @@ lm_transcripts_archive=$root_lm_transcripts_archive
 lm_training_dir=$root_lm_training
 current_LM_training_texts=$(ls -t $lm_training_dir/*.txt | head -n1)
 lm_modeldir=$root_lm_modeldir/$d
+current_lmdir=$(ls -td $root_lm_modeldir/20* | head -n1)
 
 # Temporary dir used when creating data/lang dirs in local/prep_lang.sh
 localdict=$root_localdict # Byproduct of local/prep_lang.sh
@@ -75,14 +76,19 @@ if [ $stage -le 2 ]; then
 
   # Make lang dir
   prondict=$(ls -t $prondir/prondict.*.txt | head -n1)
-  [ -d $localdict ] && rm -r $localdict
-  mkdir -p $localdict $lm_modeldir/lang
+  if [ $prondict != $current_prondict ]; then
+    [ -d $localdict ] && rm -r $localdict
+    mkdir -p $localdict $lm_modeldir/lang
+    
+    local/prep_lang.sh \
+      $prondict        \
+      $localdict   \
+      $lm_modeldir/lang
+  else
+    mkdir -p $lm_modeldir
+    cp $current_lmdir/lang $lm_modeldir
+  fi
   
-  local/prep_lang.sh \
-    $prondict        \
-    $localdict   \
-    $lm_modeldir/lang
-
 fi
 
 if [ $stage -le 3 ]; then
@@ -92,7 +98,7 @@ if [ $stage -le 3 ]; then
   $train_cmd --mem 12G $lm_modeldir/log/make_LM_3gsmall.log \
     local/make_LM.sh \
       --order 3 --small true --carpa false \
-      $lm_training_dir/LMtext.${d}.txt $lm_modeldir/lang \
+      $(ls -t $lm_training_dir/*.txt | head -n1) $lm_modeldir/lang \
       $localdict/lexicon.txt $lm_modeldir \
     || error 1 "Failed creating a pruned trigram language model"
 
@@ -104,7 +110,7 @@ if [ $stage -le 4 ]; then
   $train_cmd --mem 20G $lm_modeldir/log/make_LM_5g.log \
     local/make_LM.sh \
       --order 5 --small false --carpa true \
-      $lm_training_dir/LMtext.${d}.txt $lm_modeldir/lang \
+      $(ls -t $lm_training_dir/*.txt | head -n1) $lm_modeldir/lang \
       $localdict/lexicon.txt $lm_modeldir \
     || error 1 "Failed creating an unpruned 5-gram language model"
   

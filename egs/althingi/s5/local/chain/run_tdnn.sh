@@ -55,7 +55,7 @@ if [ ! $# = 2 ]; then
   echo "and tests the new model on a development set"
   echo ""
   echo "Usage: $0 [options] <input-training-data> <test-data-dir>"
-  echo " e.g.: $0 data/train data"
+  echo " e.g.: $0 data/train_okt2017_500k_cleaned data"
   echo ""
   echo "Options:"
   echo "    --speed-perturb <bool>           # apply speed perturbations, default: true"

@@ -1,14 +1,6 @@
 # coding: utf-8
 
-# NOTE! The below is non-functional! I based it off https://github.com/ottokart/punctuator2
-# But there the whole thing is done one timestep at a time, so for a sequence x_i, we estimate
-# y_i_t based on x_i_t, incorporating also information about the whole context in x_i
-# How can I do that here? Kind of let the input be x_it but that it comes with a certain context
-# I need to find a way to learn the relation between the input x (number) and the output y (vector
-# of length punctuation_vocabulary) given the context of x. How do I do that?
-# I think the answer is to use TimeDistributed and return_sequences=True in the GRU step
-
-# I could maybe try to process the input data differently. For example, move a sliding window one word at a time through the text and let the target be the punctuation behind the middle word. One problem there is that I'm missing out information about punctuations around the one I'm predicting.
+# NOTE! The code below is not ready! It is based on https://github.com/ottokart/punctuator2
 
 import sys,os
 #import pdb
@@ -16,7 +8,6 @@ import sys,os
 os.environ['LD_LIBRARY_PATH'] = '/usr/local/cuda-9.0/lib64/'
 os.environ["CUDA_VISIBLE_DEVICES"]="4" # NOTE! But what if I want to use any available one?
 
-#print('LD_LIBRARY_PATH: ', os.environ['LD_LIBRARY_PATH'])
 import numpy as np
 import keras
 from keras.layers import Input, Masking, Embedding, GRU, Dense, Activation, Permute, RepeatVector, Bidirectional, Add, Multiply, TimeDistributed, Lambda, Reshape, Dropout, BatchNormalization

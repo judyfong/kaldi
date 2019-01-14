@@ -16,7 +16,7 @@ BINFILES = fstdeterminizestar  \
            fstrmepslocal fstcomposecontext fsttablecompose fstrand \
            fstdeterminizelog fstphicompose fstcopy \
            fstpushspecial fsts-to-transcripts fststringcompile fsttablefilter \
-           expand-numbers fsts-project fsts-union
+           expand-numbers fsts-project fsts-union fsts-concat make-grammar-fst
 
 OBJFILES =
 
@@ -25,9 +25,9 @@ TESTFILES =
 # actually, this library is currently empty.  Everything is a header.
 LIBFILE =
 
-ADDLIBS = ../fstext/kaldi-fstext.a ../util/kaldi-util.a \
-          ../matrix/kaldi-matrix.a \
-          ../base/kaldi-base.a ../lm/kaldi-lm.a
+ADDLIBS = ../decoder/kaldi-decoder.a ../fstext/kaldi-fstext.a \
+          ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
+          ../base/kaldi-base.a
 
 include ../makefiles/default_rules.mk
 

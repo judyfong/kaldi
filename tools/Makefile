@@ -7,7 +7,8 @@ CC = gcc         # used for sph2pipe
 
 # Note: OpenFst requires a relatively recent C++ compiler with C++11 support,
 # e.g. g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3.
-OPENFST_VERSION ?= 1.6.5
+OPENFST_VERSION ?= 1.6.7
+CUB_VERSION ?= 1.8.0
 
 # Default features configured for OpenFST; can be overridden in the make command line.
 OPENFST_CONFIGURE ?= --enable-static --enable-shared --enable-grm --enable-ngram-fsts
@@ -18,7 +19,7 @@ ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10600)","1")
             Supported versions: >= 1.6.0)
 endif
 
-all: check_required_programs sph2pipe openblas sclite openfst sequitur kenlm
+all: check_required_programs sph2pipe openblas sclite openfst sequitur kenlm cub
 	@echo -e "\n\n"
 	@echo "Warning: IRSTLM is not installed by default anymore. If you need IRSTLM"
 	@echo "Warning: use the script extras/install_irstlm.sh"
@@ -51,7 +52,9 @@ distclean:
 	rm -rf libsndfile-1.0.25{,.tar.gz} BeamformIt-3.51{,.tgz}
 	rm -rf kenlm
 	rm -rf sequitur{,-g2p}
-
+	rm -f cub-$(CUB_VERSION).zip
+	rm -rf cub-$(CUB_VERSION)
+	rm -f cub
 
 .PHONY: openfst # so target will be made even though "openfst" exists.
 openfst: openfst_compiled openfst-$(OPENFST_VERSION)/lib
@@ -85,7 +88,7 @@ openfst-$(OPENFST_VERSION): openfst-$(OPENFST_VERSION).tar.gz
 	tar xozf openfst-$(OPENFST_VERSION).tar.gz
 
 openfst-$(OPENFST_VERSION).tar.gz:
-	wget -T 10 -t 1 http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-$(OPENFST_VERSION).tar.gz || \
+	wget -T 10 -t 1 http://www.openfst.org/twiki/pub/FST/FstDownload/openfst-$(OPENFST_VERSION).tar.gz || \
 	wget -T 10 -t 3 http://www.openslr.org/resources/2/openfst-$(OPENFST_VERSION).tar.gz
 
 sclite: sclite_compiled
@@ -120,7 +123,7 @@ sph2pipe_v2.5/sph2pipe: | sph2pipe_v2.5
 	$(CC) -o sph2pipe  *.c -lm
 
 sph2pipe_v2.5: sph2pipe_v2.5.tar.gz
-	tar xzf sph2pipe_v2.5.tar.gz
+	tar --no-same-owner -xzf sph2pipe_v2.5.tar.gz
 
 sph2pipe_v2.5.tar.gz:
 	wget -T 10 -t 3 http://www.openslr.org/resources/3/sph2pipe_v2.5.tar.gz || \
@@ -150,6 +153,13 @@ openblas_compiled:
 	cd OpenBLAS; sed 's:# FCOMMON_OPT = -frecursive:FCOMMON_OPT = -frecursive:' < Makefile.rule >tmp && mv tmp Makefile.rule
 	# $(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=1 NUM_THREADS=64 -C OpenBLAS all install
 	$(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=0 -C OpenBLAS all install
+
+.PHONY: cub
+cub:
+	wget -T 10 -t 3 -O cub-$(CUB_VERSION).zip https://github.com/NVlabs/cub/archive/$(CUB_VERSION).zip
+	unzip -oq cub-$(CUB_VERSION).zip
+	rm -f cub
+	ln -s cub-$(CUB_VERSION) cub
 
 # # All of the below does not exist in Kaldi update obtained 20th des 2016
 # # libsndfile needed by beamformit,
@@ -184,6 +194,9 @@ sequitur_compiled:
 # .PHONY: kenlm
 
 # kenlm:
-# 	wget -O - http://kheafield.com/code/kenlm.tar.gz | tar xz && \
-# 	mkdir kenlm/build && cd kenlm/build && cmake .. && make -j2
+# 	wget -O - http://kheafield.com/code/kenlm.tar.gz | tar xz \
+# 	&& mkdir kenlm/build \
+# 	&& cd kenlm/build \
+# 	&& cmake .. -DCMAKE_INSTALL_PREFIX=/usr/bin/  \
+# 	&& make -j2 && make install
 

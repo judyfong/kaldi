@@ -56,7 +56,7 @@ if [ $stage -le 3 ]; then
   echo "Insert paragraph tokens into the dev and test sets using the 1st stage model"
   for dataset in dev test; do
     (
-      utils/slurm.pl --mem 8G --time 0-10:00 ${datadir}/log/${dataset}_paragraphed.log \
+      utils/slurm.pl --mem 8G --time 1-00:00 ${datadir}/log/${dataset}_paragraphed.log \
         cat ${datadir}/althingi.$dataset.txt \| THEANO_FLAGS='device=cpu' python paragraph/paragrapher.py $modeldir/Model_althingi_paragraph_h256_lr0.02.pcl ${datadir}/${dataset}_paragraphed.txt || exit 1;
     ) &
   done
@@ -72,7 +72,7 @@ if [ $stage -le 4 ]; then
       python paragraph/error_calculator.py \
         ${datadir}/althingi.$d.txt \
         ${datadir}/${d}_paragraphed.txt \
-        > ${datadir}/${d}_error.txt \
+        > ${modeldir}/${d}_error.txt \
       || error 12 ${error_array[12]};
     ) &
   done

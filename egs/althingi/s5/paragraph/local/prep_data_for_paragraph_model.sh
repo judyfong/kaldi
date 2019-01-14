@@ -41,14 +41,14 @@ done
 # sed -re 's:, | — | — : :g' -e 's:[!;]:.:g' 
 
 # Split up to train, dev and test set
-nlines20=$(echo $((($(wc -l ${tmp}/text_noXML_endanlegt.txt | cut -d" " -f1)+1)/5)))
+nlines10=$(echo $((($(wc -l ${tmp}/text_noXML_endanlegt.txt | cut -d" " -f1)+1)/10)))
 sort -R ${tmp}/text_noXML_endanlegt.txt > ${tmp}/shuffled.tmp || error 13 $LINENO ${error_array[13]};
 
-head -n $[$nlines20/2] ${tmp}/shuffled.tmp \
+head -n $[$nlines10/2] ${tmp}/shuffled.tmp \
      > ${dir}/althingi.dev.txt || error 14 $LINENO ${error_array[14]};
-tail -n $[$nlines20/2+1] ${tmp}/shuffled.tmp | head -n $[$nlines20/2] \
+tail -n $[$nlines10/2+1] ${tmp}/shuffled.tmp | head -n $[$nlines10/2] \
      > ${dir}/althingi.test.txt || error 14 $LINENO ${error_array[14]};
-tail -n +$[$nlines20+1] ${tmp}/shuffled.tmp \
+tail -n +$[$nlines10+1] ${tmp}/shuffled.tmp \
      > ${dir}/althingi.train.txt || error 14 $LINENO ${error_array[14]};
 
 exit 0;

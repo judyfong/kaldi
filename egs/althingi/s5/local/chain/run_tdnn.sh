@@ -280,7 +280,6 @@ if [ $generate_plots = true ]; then
     steps/nnet3/report/generate_plots.py \
       --is-chain true $dir $dir/report_tdnn${affix}$suffix
   fi
-  
 fi
 
 if [ $zerogram_decoding = true ]; then

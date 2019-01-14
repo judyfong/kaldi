@@ -16,7 +16,7 @@ set -o pipefail
 stage=-1
 trim=0
 num_jobs=1
-lmwt=9 # Language model weight. Can have big effect.
+lmwt=8 # Changed from 9 # Language model weight. Can have big effect.
 rnnlm=false
 #ngram_rnnlm=false # Completely unnecessary
 score=false

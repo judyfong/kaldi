@@ -457,6 +457,17 @@ if [ $stage -le 11 ]; then
   # mkdir -p $logdir
   # nohup local/chain/tuning/run_tdnn${affix}.sh --affix=$affix --stage 0 --speed-perturb $speed_perturb --generate-plots true --zerogram-decoding true $data/train_okt2017 data >>$logdir/tdnn2$affix.log 2>&1 &
   wait
+
+  # # echo "Run the swbd chain tdnn recipe with sp"
+  # # local/chain/run_tdnn.sh data/train data >>tdnn.log 2>&1 &
+  # affix=_1a
+  # speed_perturb=true
+  # suffix=
+  # $speed_perturb && suffix=_sp
+  # amdir=$root_chain/$(cat $KALDI_ROOT/src/.version)/tdnn_opgru${affix}$suffix/$d
+  # logdir=$amdir/log
+  # mkdir -p $logdir
+  # nohup local/chain/tuning/run_tdnn_opgru_1a.sh --stage 0 --affix $affix --speed-perturb $speed_perturb --generate-plots true $data/train_des18_cleaned data >>$logdir/tdnn_opgru$affix.log 2>&1 &
   
   # Save in my file structure
   cp -L -t $root_am_modeldir/extractor/$d $exp/nnet3/extractor/{final.ie,final.dubm,global_cmvn.stats,splice_opts,online_cmvn.conf,final.mat}

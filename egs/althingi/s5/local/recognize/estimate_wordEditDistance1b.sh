@@ -16,7 +16,13 @@ echo "$0 $@"  # Print the command line for logging
 . ./utils/parse_options.sh
 . ./conf/path.conf
 
-normlistdir=$root_thraxgrammar_lex
+tmp=$(mktemp -d)
+cleanup () {
+    rm -rf "$tmp"
+}
+trap cleanup EXIT
+
+cut -f1 $root_thraxgrammar_lex/abbr_lexicon.txt | tr " " "\n" | sort -u > $tmp/abbr_list
 
 if [ $# -ne 3 ]; then
     echo "Usage: $0 [options] <textfile1> <textfile2> <output-dir>"
@@ -32,17 +38,22 @@ textfile1=$1
 textfile2=$2
 dir=$3
 mkdir -p $dir
-abbr_list=$normlistdir/abbr_lex_pattern.txt
 
 base=$(basename "$textfile1")
 base="${base%.*}"
+
+# Make the abbreviation regex pattern used in punctuation cleaning and correcting capitalization
+cat $tmp/abbr_list <(sed -r 's:.*:\u&:' $tmp/abbr_list) \
+  | sort -u | tr "\n" "|" | sed '$s/|$//' \
+  | perl -pe "s:\|:\\\b\|\\\b:g" \
+  > $tmp/abbr_pattern.tmp
 
 # If the text files are xml files I first need to extract the text
 n=0
 for file in $textfile1 $textfile2; do
   n=$[$n+1]
   # 1) Remove newlines, xml tags and carriage return
-  # 2) Rewrite weird invisible dashes and underscore to a space and add space around the other ones
+  # 2) Remove quotation marks and ellipsis (…), rewrite weird invisible dashes and underscore to a space and add space around the other ones
   # 3) Remove the period after abbreviated middle names
   # 4) For a few abbreviations that often stand at the end of sentences, add a space between the abbr and the period
   # 5) Remove periods inside abbreviations
@@ -54,13 +65,13 @@ for file in $textfile1 $textfile2; do
   tr "\n" " " < $file | sed -re 's:</mgr></ræðutexti></ræða> <ræðutexti><mgr>: :g' -e 's:(.*)?<ræðutexti>(.*)</ræðutexti>(.*):\2:' \
     -e 's:<mgr>//[^/<]*?//</mgr>|<!--[^>]*?-->|http[^<> )]*?|<[^>]*?>\:[^<]*?ritun[^<]*?</[^>]*?>|<mgr>[^/]*?//</mgr>|<ræðutexti> +<mgr>[^/]*?/</mgr>|<ræðutexti> +<mgr>til [0-9]+\.[0-9]+</mgr>|<truflun>[^<]*?</truflun>|<atburður>[^<]*?</atburður>|<málsheiti>[^<]*?</málsheiti>: :g' -e `echo "s/\r//"` \
     -e 's: *<[^<>]*?>: :g' \
-    -e 's:­| |_: :g' -e 's:([—-]): \1 :g' \
+    -e 's:[„“…]::g' -e 's:­| |_: :g' -e 's:([—-]): \1 :g' \
     -e 's:([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+) ([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]?)\. ([A-ZÁÐÉÍÓÚÝÞÆÖ][a-záðéíóúýþæö]+):\1 \2 \3:g' \
     -e 's: (gr|umr|sl|millj|nk|mgr)([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \2 \3:g' \
     -e 's:\.([a-záðéíóúýþæö]):\1:g' \
     -e 's:([0-9,.]{3,})([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \2 \3:g' -e 's:([0-9]%)([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \2 \3:g' -e 's:([0-9.,]{4,})([.:?!]+) :\1 \2 :g' -e 's:([0-9]%)([.:?!]+) :\1 \2 :g' -e 's:([.:?!]+)\s*$: \1 :g' \
     -e 's:([,;]) : \1 :g' \
-    -e "s:(\b$(cat $abbr_list))\.:\1:g" \
+    -e 's:(\b'$(cat $tmp/abbr_pattern.tmp)')\.:\1:g' \
     -e 's:([.:?!]+) +([A-ZÁÐÉÍÓÚÝÞÆÖ]): \1 \2:g' \
     -e 's:(.*):1 \1:' -e 's: +: :g' \
     > $dir/text$n.tmp

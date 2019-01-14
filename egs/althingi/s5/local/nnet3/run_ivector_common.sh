@@ -15,9 +15,8 @@ data=
 mfcc=
 
 . ./cmd.sh
-. ./path.sh
+. ./path.sh # runs conf/path.conf
 . ./utils/parse_options.sh
-. ./conf/path.conf
 
 if [ ! $# = 4 ]; then
   echo "This script creates high-resolution MFCC features for the training data,"

@@ -148,7 +148,7 @@ if [ $stage -le 4 ]; then
       python punctuator/error_calculator.py \
         ${datadir}/althingi.${f}.txt \
         ${datadir}/${f}_punctuated_stage1${id}$suffix.txt \
-        > ${datadir}/${f}_error_stage1${id}$suffix.txt \
+        > ${modeldir}/${f}_error_stage1${id}$suffix.txt \
       || error 12 ${error_array[12]};
     ) &
   done
@@ -159,7 +159,7 @@ if [ $stage -le 4 ]; then
         python punctuator/error_calculator.py \
           ${datadir}/althingi.${f}.txt \
           ${datadir}/${f}_punctuated_stage2${id}$suffix.txt \
-          > ${datadir}/${f}_error_stage2${id}$suffix.txt \
+          > ${modeldir}/${f}_error_stage2${id}$suffix.txt \
 	|| error 12 ${error_array[12]};
       ) &
     done

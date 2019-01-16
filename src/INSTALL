@@ -6,17 +6,17 @@ compilation, see ../windows/INSTALL.
 You must first have completed the installation steps in ../tools/INSTALL
 (compiling OpenFst; getting ATLAS and CLAPACK headers).
 
-The installation instructions are
+The installation instructions are (on terra the default cuda version is 8)
 
-  ./configure  --openblas-root=../tools/OpenBLAS/install
-  make depend
-  make
+  CXX=g++-4.9 ./configure  --openblas-root=../tools/OpenBLAS/install --cudatk-dir=/usr/local/cuda-9.1
+  CXX=g++-4.9 make depend
+  CXX=g++-4.9 make
 
 Note that "make" takes a long time. You can speed it up by running make
 in parallel if you have multiple CPUs, e.g. to use 8 CPUs
 
-  make depend -j 8
-  make -j 8
+  CXX=g++-4.9 make depend -j 8
+  CXX=g++-4.9 make -j 8
 
 Note that we added the "-j 8" to run in parallel because "make" takes a long
 time.  8 jobs might be too many for a laptop or small desktop machine with not

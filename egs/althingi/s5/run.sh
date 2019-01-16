@@ -78,7 +78,6 @@ tri2=$root_gmm/tri2_cleaned
 am_datadir=$root_am_datadir/$d
 punct_datadir=$root_punctuation_datadir/$d
 lm_datadir=$root_lm_datadir/$d
-rnnlm_datadir=$root_lm_datadir/rnn/$d
 
 # Existing language model training data
 lm_trainingset=$(ls -t $root_lm_datadir/training/LMtext.*.txt | head -n1)
@@ -372,9 +371,9 @@ if [ $stage -le 7 ]; then
   # Save in my structure
   cp -r -L -t $rnnlm_modeldir $exp/rnnlm_lstm${affix}/{final.raw,feat_embedding.final.mat,special_symbol_opts.txt,word_feats.txt,config}
   [ -f $exp/rnnlm_lstm${affix}/word_embedding.final.mat ] && cp -L $exp/rnnlm_lstm${affix}/word_embedding.final.mat $rnnlm_modeldir
+
 fi
   
-fi
 
 if [ $stage -le 8 ]; then
   echo "Make subsets of the training data to use for the first mono and triphone trainings"
@@ -438,45 +437,63 @@ if [ $stage -le 11 ]; then
 
   # echo "Run the swbd chain tdnn recipe with sp"
   # local/chain/run_tdnn.sh data/train data >>tdnn.log 2>&1 &
+  base=tdnn
   affix=_1
-  speed_perturb=false
+  speed_perturb=true
   suffix=
   $speed_perturb && suffix=_sp
-  amdir=$root_chain/$(cat $KALDI_ROOT/src/.version)/tdnn${affix}$suffix/$d
+  extractordir=$root_am_modeldir/extractor/$d
+  amdir=$root_chain/$(cat $KALDI_ROOT/src/.version)/$base${affix}$suffix/$d
   logdir=$amdir/log
-  mkdir -p $logdir
-  nohup local/chain/run_tdnn.sh --stage 0 --affix=$affix --speed-perturb $speed_perturb --generate-plots true --zerogram-decoding true $data/train_okt2017_500k_cleaned data >>$logdir/tdnn$affix.log 2>&1 &
+  mkdir -p $extractordir $logdir
+  nohup local/chain/run_$base.sh --stage 0 --affix=$affix --speed-perturb $speed_perturb --generate-plots true --zerogram-decoding true $data/train_okt2017_500k_cleaned data >>$logdir/$base$affix.log 2>&1 &
 
   # # echo "Run the swbd chain tdnn recipe without sp on all my training data. Bigger model"
+  # base=tdnn
   # affix=_2
   # speed_perturb=false
   # suffix=
   # $speed_perturb && suffix=_sp
-  # amdir=$root_chain/$(cat $KALDI_ROOT/src/.version)/tdnn${affix}/$d
+  # extractordir=$root_am_modeldir/extractor/$d
+  # amdir=$root_chain/$(cat $KALDI_ROOT/src/.version)/$base${affix}/$d
   # logdir=$amdir/log
-  # mkdir -p $logdir
-  # nohup local/chain/tuning/run_tdnn${affix}.sh --affix=$affix --stage 0 --speed-perturb $speed_perturb --generate-plots true --zerogram-decoding true $data/train_okt2017 data >>$logdir/tdnn2$affix.log 2>&1 &
+  # mkdir -p $extractordir $logdir
+  # nohup local/chain/tuning/run_${base}${affix}.sh --affix=$affix --stage 0 --speed-perturb $speed_perturb --generate-plots true --zerogram-decoding true $data/train_okt2017 data >>$logdir/$base2$affix.log 2>&1 &
   wait
 
-  # # echo "Run the swbd chain tdnn recipe with sp"
-  # # local/chain/run_tdnn.sh data/train data >>tdnn.log 2>&1 &
+  # # echo "Run the swbd chain tdnn+opgru recipe with sp"
+  # # local/chain/run_tdnn_opgru.sh data/train data >>tdnn_opgru.log 2>&1 &
+  # base=tdnn_opgru
   # affix=_1a
   # speed_perturb=true
   # suffix=
   # $speed_perturb && suffix=_sp
-  # amdir=$root_chain/$(cat $KALDI_ROOT/src/.version)/tdnn_opgru${affix}$suffix/$d
+  # extractordir=$root_am_modeldir/extractor/$d
+  # amdir=$root_chain/$(cat $KALDI_ROOT/src/.version)/$base${affix}$suffix/$d
   # logdir=$amdir/log
-  # mkdir -p $logdir
-  # nohup local/chain/tuning/run_tdnn_opgru_1a.sh --stage 0 --affix $affix --speed-perturb $speed_perturb --generate-plots true $data/train_des18_cleaned data >>$logdir/tdnn_opgru$affix.log 2>&1 &
+  # mkdir -p $extractordir $logdir
+  # nohup local/chain/tuning/run_${base}${affix}.sh --stage 0 --affix $affix --speed-perturb $speed_perturb --generate-plots true $data/train_des18_cleaned data >>$logdir/$base$affix.log 2>&1 &
   
-  # Save in my file structure
-  cp -L -t $root_am_modeldir/extractor/$d $exp/nnet3/extractor/{final.ie,final.dubm,global_cmvn.stats,splice_opts,online_cmvn.conf,final.mat}
-  cp -r -t $amdir $exp/chain/tdnn${affix}$suffix/{cmvn_opts,final.*,frame_subsampling_factor,graph_3gsmall,tree}
-  [ -f $exp/chain/tdnn${affix}$suffix/log/mkgraph.log ] && cp $exp/chain/tdnn${affix}$suffix/log/mkgraph.log $logdir/
+  # Save in my file structure:
+  # Extractor:
+  cp -L -t $extractordir $exp/nnet3/extractor/{final.ie,final.dubm,global_cmvn.stats,splice_opts,online_cmvn.conf,final.mat}
+
+  # Acoustic model:
+  cp -r -t $amdir $exp/chain/$base${affix}$suffix/{cmvn_opts,final.*,frame_subsampling_factor,graph_3gsmall,tree}
+
+  # WER info:
+  mkdir -p $amdir/scoring/{dev_wer,eval_wer}
+  for x in $exp/chain/$base${affix}$suffix/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done >> $amdir/scoring/best_wer.txt
+  cp -r -t $amdir/scoring/dev_wer $exp/chain/$base${affix}$suffix/decode_dev_5g/scoring_kaldi/wer_details/*
+  cp -r -t $amdir/scoring/eval_wer $exp/chain/$base${affix}$suffix/decode_eval_5g/scoring_kaldi/wer_details/*
+
+  # Mkdir log:
+  [ -f $exp/chain/$base${affix}$suffix/log/mkgraph.log ] \
+    && cp $exp/chain/$base${affix}$suffix/log/mkgraph.log $logdir/
 
   # Create a symlink to the extractor and LM dir used:
-  ln -s $root_am_modeldir/extractor/$d $amdir/extractor
-  vers=$(egrep -o "language_model/[0-9]+/" $logdir/*.log | sort -u | tail -n1)
+  ln -s $extractordir $amdir/extractor
+  vers=$(egrep -o "language_model/[0-9]+/" $logdir/*.log | sort -u | tail -n1 | cut -d':' -f2)
   ln -s $root_modeldir/$vers $amdir/lmdir
   
 fi

@@ -482,11 +482,21 @@ if [ $stage -le 11 ]; then
   cp -r -t $amdir $exp/chain/$base${affix}$suffix/{cmvn_opts,final.*,frame_subsampling_factor,graph_3gsmall,tree}
 
   # WER info:
-  mkdir -p $amdir/scoring/{dev_wer,eval_wer}
+  mkdir -p $amdir/scoring
   for x in $exp/chain/$base${affix}$suffix/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done >> $amdir/scoring/best_wer.txt
-  cp -r -t $amdir/scoring/dev_wer $exp/chain/$base${affix}$suffix/decode_dev_5g/scoring_kaldi/wer_details/*
-  cp -r -t $amdir/scoring/eval_wer $exp/chain/$base${affix}$suffix/decode_eval_5g/scoring_kaldi/wer_details/*
 
+  dev_wer_details=$exp/chain/$base${affix}$suffix/decode_dev_5g/scoring_kaldi/wer_details
+  perl -ne 'BEGIN{print "ID #segm #words %correct %err\n"} print;' <(grep "sys" $dev_wer_details/per_spk | sed -e "s/[[:space:]]\+/ /g" | cut -d" " -f1,3-5,9 | sort -n -k5) > $dev_wer_details/per_spk_err_sorted
+  cp -r -t $amdir/scoring/dev_wer_details $dev_wer_details
+
+  eval_wer_details=$exp/chain/$base${affix}$suffix/decode_eval_5g/scoring_kaldi/wer_details
+  perl -ne 'BEGIN{print "ID #segm #words %correct %err\n"} print;' <(grep "sys" $eval_wer_details/per_spk | sed -e "s/[[:space:]]\+/ /g" | cut -d" " -f1,3-5,9 | sort -n -k5) > $eval_wer_details/per_spk_err_sorted
+  cp -r -t $amdir/scoring/eval_wer_details $eval_wer_details
+
+  # RTF info:
+  local/calculate_rtf.sh $exp/chain/$base${affix}$suffix/decode_dev_3gsmall > $amdir/scoring/dev_rtf.txt
+  local/calculate_rtf.sh $exp/chain/$base${affix}$suffix/decode_eval_3gsmall > $amdir/scoring/eval_rtf.txt
+  
   # Mkdir log:
   [ -f $exp/chain/$base${affix}$suffix/log/mkgraph.log ] \
     && cp $exp/chain/$base${affix}$suffix/log/mkgraph.log $logdir/

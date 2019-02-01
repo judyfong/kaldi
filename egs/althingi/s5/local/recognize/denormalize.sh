@@ -100,6 +100,7 @@ fststringcompile ark:"sed 's:.*:1 &:' ${intermediate}/punctuator_out_wPuncts.tmp
 # Remove repititions except when they are reps of: að, í, á, til, það, er, við
 # https://superuser.com/questions/843778/find-repeated-words-in-a-text
 # Insert periods into thousands and millions
+# Re-write <unk> so not to interfere with XML tags
 sed -re 's:([Hh]æstv)irt[^ ]*\b:\1\.:g' \
     -e 's:([Hh])áttv[^ ]+ (þingm[^ ]+):\1v\. \2:g' \
     -e 's:([Hh]v\. ([0-9]+\. )?)þingm[^ .?:eö]+ ([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1þm. \3:g' \
@@ -107,6 +108,7 @@ sed -re 's:([Hh]æstv)irt[^ ]*\b:\1\.:g' \
     -e 's: ([0-9]{3})([0-9])–([0-9])\b: \1\2–\1\3:g' -e 's: ([0-9]{2})([0-9]{2})–([0-9]{2})\b: \1\2–\1\3:g' \
     -e 's:\b(að|í|á|til|það|er|við) \1\b:\1 \1 \1:g' -e 's:(\b.+),? \1\b:\1:g' \
     -e 's:([0-9]{2,})([0-9]{3})\b:\1.\2:g' -e 's:([0-9]+)([0-9]{3}\.[0-9]{3})\b:\1.\2:g' -e 's:([3-9])([0-9]{3})\b:\1.\2:g' \
+    -e 's:<unk>:[unknown]:g' \
     < ${intermediate}/punctuator_out_wPeriods.tmp \
     > ${intermediate}/hv_abbreviated.tmp || error 1 "Error while abbreviating to hv., hæstv. and þm.";
 

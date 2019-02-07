@@ -23,7 +23,7 @@ speed_perturb=true
 # Put all output on scratch
 exp=/mnt/scratch/inga/exp
 data=/mnt/scratch/inga/data
-mfccdir=/mnt/scratch/inga/mfcc_hires
+mfccdir=/mnt/scratch/inga/mfcc
 
 tdnn_lstm_affix=_1  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
 dir=${exp}/chain/tdnn_lstm${tdnn_lstm_affix} # Note: _sp will get added to this if $speed_perturb == true.

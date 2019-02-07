@@ -9,7 +9,7 @@ stage=1
 generate_alignments=false # Depends on whether we are doing speech perturbations
 speed_perturb=false
 
-# Defined in conf/path.conf, default to /mnt/scratch/inga/{exp,data,mfcc_hires}
+# Defined in conf/path.conf, default to /mnt/scratch/inga/{exp,data,mfcc}
 exp=
 data=
 mfcc=

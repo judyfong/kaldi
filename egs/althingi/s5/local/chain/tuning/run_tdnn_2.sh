@@ -14,7 +14,7 @@ train_stage=-10
 get_egs_stage=-10
 speed_perturb=false
 
-# Defined in conf/path.conf, default to /mnt/scratch/inga/{exp,data,mfcc_hires}
+# Defined in conf/path.conf, default to /mnt/scratch/inga/{exp,data,mfcc}
 exp=
 data=
 mfcc=

@@ -19,6 +19,10 @@ chmod +x tmp.sh
 echo "Setting up data and model directories"
 tmp.sh
 
+# thraxgrammar_lex is a symlink not a directory so
+rm -r $root_thraxgrammar_lex
+ln -s $ASSET_ROOT/ASR/local/thraxgrammar/lex $root_text_norm_listdir/thraxgrammar_lex
+
 # Remove tmp.sh
 rm tmp.sh
 

@@ -1,65 +1,43 @@
 #!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 
-# Find the concordance of new words
-
-# NOTE! mini_althingi_corpus.concordance(word) writes to stdout so pipe output to file
-# I commented the nltk part out for now, since it is VERY slow. 
+# Find the concordance of new words (+-5 word context)
 
 import os.path
 import sys
-# import nltk
-# #need these to be installed
-# from nltk.corpus import PlaintextCorpusReader
-# from nltk.corpus import stopwords
-# from urllib import request
 
 def load(filename):
     """Read in a two column file and drop the 2nd col"""
     vocab = [] 
-    with open(filename, 'r') as f: 
-        for line in f: 
-            vocab.append(line.split('\t')[0]) 
+    for line in filename: 
+        vocab.append(line.split('\t')[0]) 
     return vocab
 
-def find_concordance(textfile, vocabulary):
-    # textdir = os.path.dirname(textfile)
-    # textname = os.path.basename(textfile)
-    # wordlists = PlaintextCorpusReader(textdir,textname)
-    # mini_althingi_corpus = nltk.Text(wordlists.words())
-    # #show the concordance of any new vocab found in the speech
-    # for word in vocabulary:
-    #     print ("\n{}".format(word))
-    #     mini_althingi_corpus.concordance(word)
+def find_concordance(textlist, vocabulary):
 
-    l = len(textlist)
+    l = len(textlist) 
+    d=[]
     for word in vocabulary:
-        print ("\n{}".format(word))
-        pos = textlist.index(word)
-        if pos < 5 and pos > l-6:
-            print(' '.join(textlist))
-        elif pos < 5:
-            print(' '.join(textlist[:pos+6]))
-        elif pos > l-6:
-            print(' '.join(textlist[pos-5:]))
-        else:
-            print(' '.join(textlist[pos-5:pos+6]))
-   
+        i=[word]
+        pos = textlist.index(word) 
+        if pos < 5 and pos > l-6: 
+            i.append(' '.join(textlist))
+        elif pos < 5: 
+            i.append(' '.join(textlist[:pos+6]))
+        elif pos > l-6: 
+            i.append(' '.join(textlist[pos-5:]))
+        else: 
+            i.append(' '.join(textlist[pos-5:pos+6]))
+        d.append('\t'.join(i))
+    return d
+            
 if __name__ == "__main__":
 
-    if len(sys.argv) > 1:
-        textfile = os.path.abspath(sys.argv[1])
-    else:
-        sys.exit("'textfile' argument missing!")
-
-    if len(sys.argv) > 2:
-        vocabfile = os.path.abspath(sys.argv[2])
-    else:
-        sys.exit("'vocabfile' argument missing!")
-
-    vocab = load(vocabfile)
-    with open(textfile,'r') as textin:
-        textlist = textin.read().split()[1:] # Skip the uttID
-        concordance = find_concordance(textlist, vocab)
-        
-    #concordance = find_concordance(textfile, vocab)
+    # The arguments are the input text, vocabulary and output files
+    with open(sys.argv[3],'w') as fout:
+        with open(sys.argv[1],'r') as textin:
+            with open(sys.argv[2],'r') as fvoc:
+                textlist = textin.read().split()[1:] # Skip the uttID
+                vocab = load(fvoc) # Drop the phonetic transcriptions
+                concordance = find_concordance(textlist, vocab)
+                fout.write('\n'.join(concordance))

@@ -40,6 +40,7 @@ sudo pip install nltk #only works if you are installing to the correct python ve
 
 # (3)
 # First, run the usual kaldi installations in kaldi/tools and kaldi/src
+# Make sure thrax is enabled in tools/Makefile
 
 # They will recommend you install missing dependencies so do that. Then,
 
@@ -52,10 +53,14 @@ sudo rm -rf OpenBLAS
 #That can be x10 speedup in some cases
 
 #Make sure to install the necessary external tools mentioned on kaldi/egs/althingi/README.md
+# Swig and numpy necessary for sequitur
 cd /opt/althingi-kaldi/tools/
 #make sure sequitur is installed from tools/extra
 ./extras/check_dependencies.sh
 make -j &> kaldi.tools.log &
+# If the openfst and sequitur symlinks have not been created I create them
+ln -s /opt/althingi-kaldi/tools/openfst-1.6.7 /opt/althingi-kaldi/tools/openfst
+ln -s /opt/althingi-kaldi/tools/sequitur-g2p /opt/althingi-kaldi/tools/sequitur
 
 cd /opt/althingi-kaldi/src
 ./configure --shared --openblas-root=../tools/OpenBLAS/install
@@ -64,14 +69,8 @@ make depend -j
 make -j
 cd /opt
 
-# (4)
-# Make sure to install the necessary external tools mentioned on kaldi/egs/althingi/README.md
-
 # (4a)
-# For data preparation and/denormalization, properly install and enable thrax: e.g. expanding abbreviations
-
 # thrax should be enabled on the kaldi openfst install, but you will still need to install it if you do any data preparation or do a denormalization step
-# sequitur g2p is automatically installed on kaldi but it complains about the swig and numpy dependencies if they aren't installed
 
 # export $LD_LIBRARY_PATH=/usr/local/lib put this in the .bashrc file
 wget https://www.openfst.org/twiki/pub/GRM/ThraxDownload/thrax-1.2.7.tar.gz
@@ -95,9 +94,7 @@ make
 sudo make install
 cd ../
 
-#Install KenLM and all dependencies - Done in make in tools
-#thrax should be enabled on the kaldi openfst install, but you will still need to install it if you do any data preparation or do a denormalization step
-#sequitur g2p is automatically installed on kaldi but it complains about the swig and numpy dependencies if they aren't installed
+#Install KenLM and all dependencies - Done in tools Makefile
 # punctuator2 is now included and should no longer require python 2.7 but it needs to be tested to be sure
 # currently
 # wget https://kheafield.com/code/kenlm.tar.gz
@@ -142,6 +139,7 @@ conda install Theano
 
 # (6)
 # Modify path.sh and conf/path.conf to use the relevant paths
+# Make sure the paths to external tools like sequitur kenlm are correct
 cd /opt
 ln -s /opt/althingi-kaldi/egs/althingi/s5/ ASR
 cd ASR
@@ -151,22 +149,30 @@ ln -sfn ../../wsj/s5/steps steps
 ln -sfn ../../wsj/s5/rnnlm rnnlm
 
 # (7)
+# Install a virtual python 3.5 environment
+pip install virtualenv
+virtualenv -p /usr/bin/python3.5 venv3
+source venv3/bin/activate
+pip install -r venv3_requirements.txt
+deactivate
+
+# (8)
 # Set up the input and output data and model directories based on the structure in conf/path.conf
 # NOTE! Make sure you have updated path.sh and conf/path.conf to fit the server setup you want
 #config file for making directories for models and importing models, Althingi_setup.sh
 Althingi_setup.sh
 # don't overwrite models, just have them versioned with timestamps/subdirectories, maybe map it with an SQL database
 
-# (8)
+# (9)
 # Move necessary data over to the new server
 
-# (9)
+# (10)
 #Run the script: 
 ./local/compile_grammar.sh
 #to compile the ABBR_AND_DENORM.fst and INSERT_PERIODS.fst yourself
 # Copy the required FSTs from terra first
 
-# (10)
+# (11)
 # Should have been put in earlier: you compile kaldi with optimizations (-O3) on.
 # That can be x10 speedup in some cases
 

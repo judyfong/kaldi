@@ -60,11 +60,8 @@ if [ $stage -le 1 ]; then
   echo "Rewrite roman numerals"
   sed -i -r 's/([A-Z]\.?)–([A-Z])/\1 til \2/g' $textin
   python3 -c "
-import re
-import sys
-roman_path='/home/staff/inga/kaldi/egs/althingi/s5/local'
-if not roman_path in sys.path:
-    sys.path.append(roman_path)
+import re,sys
+sys.path.insert(0,'local')
 import roman
 text = open('$textin', 'r')
 text_out = open('${intermediate}/text_noRoman.txt', 'w')
@@ -77,7 +74,7 @@ for line in text:
     tmpline=[]
     for match in match_list:
         for word in line:
-            number = [re.sub(match,roman.fromRoman(match).encode('utf-8'),word) for elem in re.findall(r'\b(X{0,3}IX|X{0,3}IV|X{0,3}V?I{0,3})\.?,?\b', word) if len(elem)>0]
+            number = [re.sub(match,str(roman.fromRoman(match)),word) for elem in re.findall(r'\b(X{0,3}IX|X{0,3}IV|X{0,3}V?I{0,3})\.?,?\b', word) if len(elem)>0]
             if len(number)>0:
                 tmpline.extend(number)
             else:

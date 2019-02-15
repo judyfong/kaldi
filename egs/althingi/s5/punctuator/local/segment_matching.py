@@ -12,6 +12,7 @@ def match(segments,speech):
     """
     # Punctuation token pattern
     p=re.compile("[^ a-záðéíóúýþæöA-ZÁÐÉÍÓÚÝÞÆÖ0-9<][A-Z]+")
+    #p=re.compile("[.,:;?!][A-Z]+")
 
     match_dict=match_dictionary() # For finding correct expansions of abbreviations
     approx_match_dict=approx_match_dictionary() # Expands abbreviations to the stem that is common beween all forms of the word
@@ -22,15 +23,14 @@ def match(segments,speech):
     newsegments=[]
     for segment in segments:
         segmlist=segment.split()
-
         # Length without pause tokens
         l=len(segmlist[1::2])
 
         # Number of punctuations in the current speech part
         npunct=len(re.findall(p,' '.join(speechlist[j:j+l]), flags=0))
-
         # The speech part excluding punctuations
         speechtrans=[word for word in speechlist[j:j+l+npunct] if p.match(word)==None]
+        
         indices = [i for i,x in enumerate(speechtrans) if x == "<NUM>"]
 
         # Try to match the words that come before and after the "<NUM>" token with words in the segment.
@@ -50,6 +50,13 @@ def match(segments,speech):
 
         # Calculate the Levenshtein score between the pause-annotated segment and the punctation text segment
         score=fuzz.ratio(' '.join(trans),' '.join(speechtrans))
+        
+        try:
+            speechlist[j+l+npunct-1]
+        except IndexError:
+            print(speechlist[0],": index out of range. Segment: ",segmlist[0])
+            print("Continue to next speech")
+            return '\n'.join(newsegments)
 
         # Fix if last word is a punctuation or if first/last is an abbreviation
         first=speechlist[j]
@@ -63,13 +70,26 @@ def match(segments,speech):
             last=approx_match_dict[last]
 
         k=j
+
         # Slide the window one word to the right and see if the Levenshtein distance decreases
         while fuzz.ratio(trans[0],first) < 80 or fuzz.ratio(trans[-1],last) < 80 or score < 85:
             j+=1
             npunct=len(re.findall(p,' '.join(speechlist[j:j+l+npunct]), flags=0))
-            if p.match(speechlist[j+l+npunct]):
-                npunct+=1
+            try:
+                speechlist[j+l+npunct-1]
+            except IndexError:
+                print(speechlist[0],": index out of range. Segment: ",segmlist[0])
+                print("Continue to next speech")
+                return '\n'.join(newsegments)
 
+            # Check if a punctuation comes afterwards. If the last word in the segment
+            # was the last word in the speech then nothing happens.
+            try:
+                if p.match(speechlist[j+l+npunct]):
+                    npunct+=1
+            except IndexError:
+                pass
+            
             speechtrans=[word for word in speechlist[j:j+l+npunct] if p.match(word)==None]
             indices = [i for i,x in enumerate(speechtrans) if x == "<NUM>"]
 
@@ -95,36 +115,47 @@ def match(segments,speech):
                 last=speechlist[j+l+npunct-2]
             if last in approx_match_dict.keys():
                 last=approx_match_dict[last]
-                
+
+            did_break=False
             if j>k+70:
                 print("Match not found for segment: ", segmlist[0])
-                print("Continue to next speech")
-                return '\n'.join(newsegments)
+                print("Continue to next segment")
+                j = k+l-4
+                did_break=True
+                break
 
         # Use the best match to create the pause annotated data for step 2 of the punctuation model
-        newsegm=[segmlist[0]] # Start with the uttID
-        textit=0
-        pauseit=2 # Skip words. Use the ones from the punct. transcript
-        if p.match(speechlist[j+l+npunct]):
-            npunct+=1
+        if not did_break:
+            try:
+                if p.match(speechlist[j+l+npunct]):
+                    npunct+=1
+            except IndexError:
+                pass
+        
+            newsegments.append(weave_output(speechlist[j:j+l+npunct],segmlist,p))
+            j=j+l+npunct
 
-        # Weave together the two segments
-        while textit < len(speechlist[j:j+l+npunct]):
-            if p.match(speechlist[j+textit]):
-                newsegm.append(speechlist[j+textit])
-                textit+=1
-            else:
-                newsegm.append(speechlist[j+textit])
-                newsegm.append(segmlist[pauseit])
-                textit+=1
-                pauseit+=2
-
-        newsegments.append(' '.join(newsegm))
-
-        # Start matching the next segment where the current match ended
-        j=j+l+npunct 
     return '\n'.join(newsegments)+'\n'
 
+def weave_output(speech_list,segment_list,p):
+    """Use the best match to create the pause annotated data for step 2 of the punctuation model"""
+
+    newsegm=[segment_list[0]] # Start with the uttID
+    textit=0
+    pauseit=2 # Skip words. Use the ones from the punct. transcript
+        
+    # Weave together the two segments
+    while textit < len(speech_list) and pauseit < len(segment_list)+2:
+        if p.match(speech_list[textit]):
+            newsegm.append(speech_list[textit])
+            textit+=1
+        else:
+            newsegm.append(speech_list[textit])
+            newsegm.append(segment_list[pauseit])
+            textit+=1
+            pauseit+=2
+
+    return ' '.join(newsegm)
 
 def collapse_num(speechpart,slist,indices,match_dict):
     """Search for a match between the words that come before and after the "<NUM>" token 
@@ -231,11 +262,16 @@ def best_num_match(speechpart,slist,idx_segm_before,idx_segm_after):
     
 if __name__ == '__main__' :
 
-    speech = sys.argv[1]
-    with codecs.open(sys.argv[2],'r',encoding='utf-8') as fpause:
-        with codecs.open(sys.argv[3],'a',encoding='utf-8') as fout:
+    with codecs.open(sys.argv[1],'r',encoding='utf-8') as ftext:
+        speeches = ftext.read().strip().splitlines()
+        with codecs.open(sys.argv[2],'r',encoding='utf-8') as fpause:
             segments = fpause.read().strip().splitlines()
-
-            newsegments = match(segments,speech)
-            fout.write(newsegments)
+            with codecs.open(sys.argv[3],'a',encoding='utf-8') as fout:
+                
+                for speech in speeches:
+                    uttid = speech.split(' ', 1)[0]
+                    speech_segments = [line for line in segments if uttid in line]
+                    
+                    newsegments = match(speech_segments,speech)
+                    fout.write(newsegments)
 

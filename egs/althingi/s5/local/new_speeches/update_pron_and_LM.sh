@@ -58,7 +58,7 @@ if [ $stage -le 1 ]; then
     mv $lm_transcript_dir/*.txt $lm_transcripts_archive/
   else
     echo "There are no new transcripts to add to the language models"
-    exit 1;
+    exit 0;
   fi
 
   # Update the prondict if there is new confirmed vocabulary, and move those vocab files to the archive

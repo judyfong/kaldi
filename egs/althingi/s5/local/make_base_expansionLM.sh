@@ -17,9 +17,8 @@ order=4
 lowercase=false
 
 . ./cmd.sh
-. ./path.sh
+. ./path.sh # includes path.conf which sets the $root_* variables e.g.
 . parse_options.sh || exit 1;
-. ./conf/path.conf
 
 Leipzig_corpus=$root_leipzig_corpus/isl_sentences_10M.txt
 manually_fixed_data=$root_manually_fixed/althingi100_textCS

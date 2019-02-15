@@ -1,4 +1,4 @@
-#!/bin/bash -eu
+#!/bin/bash -e
 
 set -o pipefail
 
@@ -10,13 +10,11 @@ ignore_commas=true
 suffix=
 $ignore_commas && suffix=_noCOMMA
 
-. ./path.sh
+. ./path.sh # $root_* variables and $data, $exp are defined in conf/path.conf
 . ./utils/parse_options.sh
-. ./conf/path.conf
 
 # These paths are defined in path.conf
 prondict=$(ls -t $root_lexicon/prondict.*.txt | head -n1)
-abbr_list=$(ls -t $root_text_norm_listdir/abbreviation_list.*.txt | head -n1)
 all=$root_intermediate
 
 if [ $# -ne 3 ]; then
@@ -28,7 +26,7 @@ if [ $# -ne 3 ]; then
 fi
 
 datadir=$1; shift
-ali_dir=$1; shift # Should be $exp/tri4_ali according to run.sh
+ali_dir=$1; shift # Should contain alignments for the data in $datadir. NOTE! Slow if contains alignments for more datasets than the one in $datadir
 out=$1
 intermediate=$out/intermediate
 mkdir -p $intermediate $out/log
@@ -42,7 +40,7 @@ trap cleanup EXIT
 # NOTE! This just fits if the data was created in run.sh and we are using it
 # Text data fit for 2nd stage training
 textin_2nd_stage=$datadir/text_expanded
-reseg_dir=${datadir}_reseg_filtered
+reseg_dir=$data/$(basename ${datadir})_reseg_cleaned #filtered
 
 echo "Input text data is $textin_2nd_stage"
 echo "Segmented data used is $reseg_dir"
@@ -61,10 +59,13 @@ fi
 
 echo "Preprocess the data"
 utils/slurm.pl --mem 8G --time 2-00 ${out}/log/preprocessing_pause_data.log \
-	       python punctuator/local/preprocessing_pause_data.py $textin_2nd_stage ${out}/althingi.$(basename $datadir)_without_pauses.txt || exit 1;
+       python punctuator/local/preprocessing_pause_data.py \
+       $textin_2nd_stage ${out}/althingi.$(basename $datadir)_without_pauses.txt || exit 1;
 
-echo "Make the Sept 2017 data pause annotated"
-utils/slurm.pl --mem 8G --time 2-00 ${out}/log/make_pause_annotated.log punctuator/local/make_pause_annotated.sh $ali_dir ${out}/althingi.all_without_pauses.txt $reseg_dir || exit 1;
+echo "Make the data pause annotated"
+utils/slurm.pl --mem 8G --time 2-00 ${out}/log/make_pause_annotated.log \
+       punctuator/local/make_pause_annotated.sh \
+       $ali_dir ${out}/althingi.$(basename $datadir)_without_pauses.txt $reseg_dir || exit 1;
 
 # If I want to ignore commas in the training:
 if [ ignore_commas = true ]; then

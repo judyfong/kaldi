@@ -14,6 +14,7 @@ $ignore_commas && suffix=_noCOMMA
 id= #_april2018 or exp_lr_decay_k0.8
 two_stage=false                 # one or two stage training
 continue_with_previous=false    # continue training an existing model
+update_datasets=true
 
 . ./path.sh # root_* and $data defined as well here
 . ./utils/parse_options.sh
@@ -44,8 +45,13 @@ fi
 
 # NOTE! Review! This is what I used for my test:
 # Input data for 2nd stage training
-input_2nd_stage=$root_intermediate/all_sept2017
-ali_dir=$exp/tri4_ali
+# input_2nd_stage=$root_intermediate/all_sept2017
+# ali_dir=$exp/tri4_ali
+input_2nd_stage=$root_intermediate/all_jun2018
+ali_dir=$exp/tri5_ali_train_des18_cleaned_sp
+# Can't run make_pause_annotated.sh with this ali_dir unless I remove all the extra alignments from
+# sp and data in okt2017 data set.
+# Note! I should rather have a step where I find alignments for the segmented data.
 
 source $CONDAPATH/activate thenv || error 11 ${error_array[11]};
 
@@ -59,28 +65,31 @@ if [ $stage -le -1 ]; then
   #   --id $id --ignore-commas $ignore_commas \
   #   $cleaned $datadir $datadir_2nd_stage || exit 1;
 
-  # The following does not work if we are starting from scratch
-  # It works if we are updating an existing punctuation training set and
-  # have already cleaned everything for punctuation
-  # It is also only for one stage training
-  utils/slurm.pl $datadir/log/prep_and_update_punct_data.log \
-    punctuator/local/prep_and_update_punct_data.sh \
-      --ignore-commas $ignore_commas || exit 1;
-  
-  # # The following will use data as it is prepared by the new prep_althingi_data.sh
-  # utils/slurm.pl $datadir/log/prep_punct_data.log \
-  #   punctuator/local/prep_punct_data2.sh \
-  #   --id $id --ignore-commas $ignore_commas \
-  #   text_PunctuationTraining.txt $datadir || exit 1;
+  if [ $update_datasets = true ]; then
+    # The following does not work if we are starting from scratch
+    # It works if we are updating an existing punctuation training set and
+    # have already cleaned everything for punctuation
+    # It is also only for one stage training
+    utils/slurm.pl $datadir/log/prep_and_update_punct_data.log \
+      punctuator/local/prep_and_update_punct_data.sh \
+	--ignore-commas $ignore_commas || exit 1;
 
-  # if [ $two_stage = true ]; then
-  #   # Scripts called by this one have not been reviewed. I have not used the
-  #   # 2nd stage data so far exept in one test.
-  #   utils/slurm.pl --mem 8G --time 2-00 $datadir/log/prep_punct_data_2nd_stage.log \
-  #     punctuator/local/prep_punct_data_2nd_stage.sh \
-  #     --id $id --ignore-commas $ignore_commas \
-  #     $input_2nd_stage $ali_dir $datadir_2nd_stage || exit 1;
-  # fi
+  else
+    # The following will use data as it is prepared by the new prep_althingi_data.sh
+    utils/slurm.pl $datadir/log/prep_punct_data.log \
+      punctuator/local/prep_punct_data2.sh \
+      --id $id --ignore-commas $ignore_commas \
+      text_PunctuationTraining.txt $datadir || exit 1;
+  fi
+  
+  if [ $two_stage = true ]; then
+    # Scripts called by this one have not been reviewed. I have not used the
+    # 2nd stage data so far exept in one test.
+    utils/slurm.pl --mem 8G --time 2-00 $datadir/log/prep_punct_data_2nd_stage.log \
+      punctuator/local/prep_punct_data_2nd_stage.sh \
+      --id $id --ignore-commas $ignore_commas \
+      $input_2nd_stage $ali_dir $datadir_2nd_stage || exit 1;
+  fi
   
 fi
 
@@ -133,7 +142,7 @@ if [ $stage -le 3 ]; then
     for dataset in dev test; do
       (
 	utils/slurm.pl --mem 4G $modeldir/log/punctuator_2nd_stage_${dataset}.log \
-          THEANO_FLAGS='device=cpu' python punctuator/punctuator_filein.py $modeldir/Model_stage2_althingi${id}${suffix}_h256_lr0.02.pcl ${datadir_2nd_stage}/althingi.${dataset}.txt ${datadir_2nd_stage}/${dataset}_punctuated_stage1${id}${suffix}.txt 1  || error 1 "punct: punctuator_filein.py failed on 2nd stage model";
+          THEANO_FLAGS='device=cpu' python punctuator/punctuator_filein.py $modeldir/Model_stage2_althingi${id}${suffix}_h256_lr0.02.pcl ${datadir_2nd_stage}/althingi.${dataset}.txt ${datadir_2nd_stage}/${dataset}_punctuated_stage2${id}${suffix}.txt 1  || error 1 "punct: punctuator_filein.py failed on 2nd stage model";
       ) &
     done
     wait

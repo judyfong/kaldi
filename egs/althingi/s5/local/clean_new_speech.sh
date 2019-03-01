@@ -100,7 +100,7 @@ if [ $stage -le 2 ]; then
   # 6) Remove punctuations which is safe to remove
   # 7) Remove commas used as quotation marks, remove or change "..." -> "." and "??+" -> "?"
   # 8) Deal with double punctuation after words/numbers
-  # 9) Remove "ja" from numbers written like "22ja",
+  # 9) Remove "ja" from numbers written like "22ja" and fix some incorrectly written units (in case manually written),
   # 10) Fix spelling errors like "be4stu" and "o0g",
   # 11) Rewrite website names,
   # 12) In an itemized list, lowercase what comes after the numbering.
@@ -132,11 +132,11 @@ if [ $stage -le 2 ]; then
       -e 's:[^a-záðéíóúýþæöA-ZÁÉÍÓÚÝÞÆÖ0-9 \.,?!:;/%‰°º—–²³¼¾½ _-]+::g' -e 's: |__+: :g' \
       -e 's: ,,: :g' -e 's:\.\.+ ([A-ZÁÐÉÍÓÚÝÞÆÖ]):. \1:g' -e 's:\.\.+::g' -e 's:([^a-záðéíóúýþæö ]) ?\?\?+:\1:g' -e 's:\?\?+ ([A-ZÁÐÉÍÓÚÝÞÆÖ]):? \1:g' -e 's:\?\?+::g' \
       -e 's:\b([^0-9 .,:;?!]+)([.,:;?!]+)([.,:;?!]):\1 \3 :g' -e 's:\b([0-9]+[.,:;?!])([.,:;?!]):\1 \2 :g' -e 's:\b(,[0-9]+)([.,:;?!]):\1 \2 :g' \
-      -e 's:([0-9]+)ja\b:\1:g' \
+      -e 's:([0-9]+)ja\b:\1:g' -e 's:([ck]?m)2: \1²:g' -e 's:([ck]?m)3: \1³:g' -e 's: ([kgmt])[wV] : \1W :g' -e 's:Wst:\L&:g' \
       -e 's:\b([a-záðéíóúýþæö]+)[0-9]([a-záðéíóúýþæö]+):\1\2:g' \
       -e 's:www\.:w w w :g' -e 's:\.(is|net|com|int)\b: punktur \1:g' \
       -e 's:\b([0-9]\.) +([A-ZÁÐÉÍÓÚÝÞÆÖ]):\1 \l\2:g' \
-      -e 's:([^ 0-9])–([^ 0-9]):\1 \2:g' -e 's:([^ ])–([^ ]):\1 til \2:g' -e 's:([0-9]\.?)tilstr[^ 0-9]*?\.?([0-9]):\1 til \2:g' -e 's:([0-9\.%])-+([0-9]):\1 til \2:g' \
+      -e 's:([^ ])[–-]([^ 0-9]):\1 \2:g' -e 's:([^ ])–([^ ]):\1 til \2:g' -e 's:([0-9]\.?)tilstr[^ 0-9]*?\.?([0-9]):\1 til \2:g' -e 's:([0-9\.%])-+([0-9]):\1 til \2:g' \
       -e 's:([0-9]+),([0-46-9]):\1 komma \2:g' -e 's:([0-9]+),5([0-9]):\1 komma 5\2:g' \
       < ${intermediate}/text_noRoman.txt \
     | perl -pe 's/ (0(?!,5))/ $1 /g' | perl -pe 's/komma (0? ?)(\d)(\d)(\d)(\d?)/komma $1$2 $3 $4 $5/g' \
@@ -154,7 +154,7 @@ if [ $stage -le 2 ]; then
          -e 's:([0-9]+)\.([0-9]{3})\b\.?:\1\2:g' \
          -e 's:([0-9]{1,2})\.([0-9]{1,2})\b:\1 \2:g' -e 's:([0-9]{1,2})\.([0-9]{1,2})\b\.?:\1 \2 :g' \
          -e 's:\b([0-9]+)([^0-9 ,.])([0-9]):\1 \2 \3:g' -e 's:\b([A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö]+)\.?-?([0-9]+)\b:\1 \2:g' -e 's:\b([0-9,]+%?\.?)-?([A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö]+)\b:\1 \2:g' \
-         -e 's: [.,:;?!]([^ 0-9]): \1:g' \
+         -e 's: ([.,:;?!])([^ ]): \1 \2:g' \
          -e 's: *%:% :g' -e 's:([°º]) c :°c :g' -e 's: 0([0-9]): 0 \1:g' \
          -e 's:\b([a-záðéíóúýþæö][A-ZÁÐÉÍÓÚÝÞÆÖ][^a-záðéíóúýþæö]):\u\1:g' \
          -e 's/[^A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö0-9\.,?!:; %‰°º²³]+//g' -e 's/ [^ ]*[A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö]+[0-9]+[^ ]*/ <unk>/g' -e 's: [0-9]{10,}: <unk>:g' -e 's/ +/ /g' \
@@ -187,7 +187,9 @@ if [ $stage -le 3 ]; then
             < $tmp/acro.tmp > $tmp/asletters.tmp || error 14 $LINENO ${error_array[14]};
       
       cat $tmp/asletters.tmp $tmp/abbr_acro_as_letters \
-      | sort -u > $tmp/asletters_tot.tmp || error 14 $LINENO ${error_array[14]};
+	| sort -u > $tmp/asletters_tot.tmp || error 14 $LINENO ${error_array[14]};
+    else
+      cp $tmp/abbr_acro_as_letters $tmp/asletters_tot.tmp || error 14 $LINENO ${error_array[14]};
     fi
   else
     cp $tmp/abbr_acro_as_letters $tmp/asletters_tot.tmp || error 14 $LINENO ${error_array[14]};
@@ -239,7 +241,7 @@ if [ $stage -le 4 ]; then
   # Exclude words that are abbreviations, acronyms as letters
   # or writing notations which are incorrect or discouraged by Althingi.
   comm -23 <(cut -d' ' -f2- ${intermediate}/text_exp2.txt \
-    | tr ' ' '\n' | egrep -v '[0-9%‰°º²³,.:;?! ]' \
+    | tr ' ' '\n' | egrep -v '[0-9%‰°º²³,.:;?!<> ]' \
     | egrep -v "\b$(cat $tmp/abbr_pattern.tmp)\b" \
     | grep -vf $tmp/abbr_acro_as_letters | grep -vf $bad_words \
     | sort -u | egrep -v '^\s*$' ) \

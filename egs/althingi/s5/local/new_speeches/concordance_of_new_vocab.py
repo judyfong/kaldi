@@ -20,17 +20,17 @@ def find_concordance(textlist, vocabulary):
     for word in vocabulary:
         i=[word]
         pos = textlist.index(word) 
-        if pos < 5 and pos > l-6: 
+        if pos < 6 and pos > l-7: 
             i.append(' '.join(textlist))
-        elif pos < 5: 
-            i.append(' '.join(textlist[:pos+6]))
-        elif pos > l-6: 
-            i.append(' '.join(textlist[pos-5:]))
+        elif pos < 6: 
+            i.append(' '.join(textlist[:pos+7]))
+        elif pos > l-7: 
+            i.append(' '.join(textlist[pos-6:]))
         else: 
-            i.append(' '.join(textlist[pos-5:pos+6]))
+            i.append(' '.join(textlist[pos-6:pos+6]))
         d.append('\t'.join(i))
     return d
-            
+
 if __name__ == "__main__":
 
     # The arguments are the input text, vocabulary and output files

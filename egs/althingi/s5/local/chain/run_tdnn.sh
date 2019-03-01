@@ -251,15 +251,15 @@ if [ $stage -le 15 ]; then
     (
       num_jobs=`cat $data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       steps/nnet3/decode.sh \
-	--acwt 1.0 --post-decode-acwt 10.0 \
-	--nj $num_jobs --cmd "$decode_cmd --time 0-06" $iter_opts \
-	--online-ivector-dir $exp/nnet3/ivectors_${decode_set} \
-	$graph_dir $data/${decode_set}_hires \
-	$dir/decode_${decode_set}${decode_iter:+_$decode_iter}_3gsmall || exit 1;
+        --acwt 1.0 --post-decode-acwt 10.0 \
+        --nj $num_jobs --cmd "$decode_cmd --time 0-06" $iter_opts \
+        --online-ivector-dir $exp/nnet3/ivectors_${decode_set} \
+        $graph_dir $data/${decode_set}_hires \
+        $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_3gsmall || exit 1;
       steps/lmrescore_const_arpa.sh \
-	--cmd "$decode_cmd" \
-	$decoding_lang $rescoring_lang $data/${decode_set}_hires \
-	$dir/decode_${decode_set}${decode_iter:+_$decode_iter}_{3gsmall,5g} || exit 1;
+        --cmd "$decode_cmd" \
+        $decoding_lang $rescoring_lang $data/${decode_set}_hires \
+        $dir/decode_${decode_set}${decode_iter:+_$decode_iter}_{3gsmall,5g} || exit 1;
     ) || touch $dir/.error &
   done
   wait

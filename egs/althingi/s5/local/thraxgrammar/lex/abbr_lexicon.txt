@@ -135,6 +135,7 @@ mwst	megavattstund
 mwst	megavattstunda
 mwst	megavattstundir
 mwst	megavattstundum
+möo	með öðrum orðum
 nk	næstkomandi
 nkr	norskar krónur
 Norðaust	Norðausturkjördæmi

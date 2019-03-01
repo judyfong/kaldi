@@ -30,7 +30,8 @@ lm_transcripts_archive=$root_lm_transcripts_archive
 lm_training_dir=$root_lm_training
 current_LM_training_texts=$(ls -t $lm_training_dir/*.txt | head -n1)
 lm_modeldir=$root_lm_modeldir/$d
-current_lmdir=$(ls -td $root_lm_modeldir/20* | head -n1)
+current_lmdir=$(ls -td $root_lm_modeldir/20*/lang_* | head -n1)
+current_lmdir=$(dirname $current_lmdir)
 
 # Temporary dir used when creating data/lang dirs in local/prep_lang.sh
 localdict=$root_localdict # Byproduct of local/prep_lang.sh
@@ -52,7 +53,13 @@ if [ $stage -le 1 ]; then
   echo "$0: $prondir/prondict.${d}.txt already exists. Are you sure you want to overwrite it?" \
   && exit 1;
 
-  if [ ls $lm_transcript_dir/*.txt &>/dev/null ]; then
+  n_trans=$(ls $lm_transcript_dir/ | wc -l)
+  if [ $n_trans -gt 1 ]; then
+    if [ $current_LM_training_texts = $lm_training_dir/LMtext.${d}.txt ]; then
+      echo "The current LM training texts were created today"
+      echo "We won't override them"
+      exit 0;
+    fi
     echo "Update the LM training texts"
     cat $current_LM_training_texts $lm_transcript_dir/*.txt > $lm_training_dir/LMtext.${d}.txt
     mv $lm_transcript_dir/*.txt $lm_transcripts_archive/
@@ -62,7 +69,8 @@ if [ $stage -le 1 ]; then
   fi
 
   # Update the prondict if there is new confirmed vocabulary, and move those vocab files to the archive
-  if [ ls $confirmed_vocab_dir/*.txt &>/dev/null ]; then
+  n_vocab=$(ls $confirmed_vocab_dir | wc -l)
+  if [ $n_vocab -gt 1 ]; then
     echo "Update the pronunciation dictionary"
     cat $confirmed_vocab_dir/*.txt $current_prondict | sort -u > $prondir/prondict.${d}.txt
     mv $confirmed_vocab_dir/*.txt $vocab_archive/ 
@@ -123,11 +131,11 @@ if [ $stage -le 5 ]; then
   
 fi
 
-if [ $stage -le 6 ]; then
+# if [ $stage -le 6 ]; then
 
-  echo "Update latest"
-  local/update_latest.sh || error 1 "ERROR: update_latest.sh failed"
+#   echo "Update latest"
+#   local/update_latest.sh || error 1 "ERROR: update_latest.sh failed"
 
-fi
+# fi
 
 exit 0;

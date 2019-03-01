@@ -18,6 +18,7 @@ if [ $# -ne 3 ]; then
   echo "e.g.: $0 /data/local/corpus_20180612 132 148" >&2
   exit 1;
 fi
+
 # $data is defined in path.conf
 corpusdir=$1; shift #/data/althingi/corpus_jun2018
 start=$1; shift #146

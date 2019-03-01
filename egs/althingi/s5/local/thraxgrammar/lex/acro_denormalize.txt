@@ -109,7 +109,9 @@ e b	EB
 h b	HB
 h f	hf
 h í	HÍ
+h m	HM
 h s	HS
+i p	IP
 k b	KB
 k í	KÍ
 l h	LH
@@ -120,6 +122,7 @@ m r	MR
 m s	MS
 s a	SA
 s f	SF
+s í	SÍ
 s p	SP
 t f	TF
 t h	Th

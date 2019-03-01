@@ -95,7 +95,7 @@ if [ $stage -le 3 ]; then
         cp ${dir}/split${nj}/cleantext.${i}.txt ${dir}/split${nj}/cleantext_afterWordMapping.${i}.txt
       fi
       # I get problems if encounter more than one space between words after the thrax step. Temporary fix is this:
-      sed -i -re 's:([0-9]) (%|‰):\1\2:g' -e 's: +: :g' ${dir}/split${nj}/cleantext_afterWordMapping.${i}.txt
+      sed -i -re 's:([0-9]) (%|‰):\1\2:g' -e 's:< ([a-z]+) >:<\1>:g' -e 's: +: :g' ${dir}/split${nj}/cleantext_afterWordMapping.${i}.txt
     ) &
   done
   wait;

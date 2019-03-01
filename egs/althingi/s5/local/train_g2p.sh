@@ -24,13 +24,13 @@ cleanup () {
 trap cleanup EXIT
 
 # Remove foreign words
-comm -23 <(sort -u $prondict) <(sort -u $foreign) > $tmp/g2p_all.txt || exit 1;
+#comm -23 <(sort -u $prondict) <(sort -u $foreign) > $tmp/g2p_all.txt || exit 1;
 
 # 1) Make a train and a test lex
 #    Randomly select 200 words for a test set
-sort -R $tmp/g2p_all.txt > ${tmp}/shuffled_prondict.tmp
-head -n 200 ${tmp}/shuffled_prondict.tmp | sort > ${dictdir}/g2p_test.${d}.txt
-tail -n +201 ${tmp}/shuffled_prondict.tmp | sort > ${dictdir}/g2p_train.${d}.txt
+#sort -R $tmp/g2p_all.txt > ${tmp}/shuffled_prondict.tmp
+#head -n 200 ${tmp}/shuffled_prondict.tmp | sort > ${dictdir}/g2p_test.${d}.txt
+#tail -n +201 ${tmp}/shuffled_prondict.tmp | sort > ${dictdir}/g2p_train.${d}.txt
 
 # 2) Train a model
 #    Train the first model, will be rather poor because it is only a unigram

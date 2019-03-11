@@ -11,4 +11,4 @@ d=$(date +'%Y%m%dT%H:%M:%S')
 logdir=$root_logdir/update_LM_and_graph
 mkdir -p $logdir
 
-srun -n1 --exclusive local/new_speeches/update_pron_and_LM.sh --stage $stage &> $logdir/update.$d.log
+srun -n1 --exclusive local/new_speeches/update_LM_and_graph.sh --stage $stage &> $logdir/update.$d.log

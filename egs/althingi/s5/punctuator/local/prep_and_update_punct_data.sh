@@ -1,4 +1,4 @@
-#!/bin/bash -eu
+#!/bin/bash -e
 
 set -o pipefail
 
@@ -9,7 +9,7 @@ d=$(date +'%Y%m%d')
 
 stage=0
 id=
-ignore_commas=true
+ignore_commas=false
 suffix=
 $ignore_commas && suffix=_noCOMMA
 
@@ -18,15 +18,15 @@ $ignore_commas && suffix=_noCOMMA
 
 # These paths are defined in path.conf
 prondict=$(ls -t $root_lexicon/prondict.*.txt | head -n1)
-abbr_list=$(ls -t $root_text_norm_listdir/abbreviation_list.*.txt | head -n1)
 punct_transcripts=$root_punctuation_transcripts
-punct_transcirpts_archive=$root_punct_transcripts_archive
+punct_transcripts_archive=$root_punct_transcripts_archive
+mkdir -p $punct_transcripts_archive
 
-if [ $suffix = "_noCOMMA" ]; then
-  current_punct_data=$(ls -td $root_punctuation_datadir/*/first_stage_noCOMMA | head -n1)
+if [ "$suffix" = "_noCOMMA" ]; then
+  current_punct_data=$(dirname $(ls -t $root_punctuation_datadir/*/first_stage_noCOMMA/althingi.train.txt | head -n1))
   new_datadir=$root_punctuation_datadir/$d/first_stage_noCOMMA
 else
-  current_punct_data=$(ls -td $root_punctuation_datadir/*/first_stage | head -n1)
+  current_punct_data=$(dirname $(ls -t $root_punctuation_datadir/*/first_stage/althingi.train.txt | head -n1))
   new_datadir=$root_punctuation_datadir/$d/first_stage
 fi
 
@@ -39,7 +39,7 @@ cleanup () {
 trap cleanup EXIT
 
 cat $punct_transcripts/*.txt > $tmp/new_transcripts.txt
-mv $punct_transcripts/*.txt $punct_transcripts_archive/
+mv -t $punct_transcripts_archive/ $punct_transcripts/*.txt
 
 echo "Preprocess the data for training"
 utils/slurm.pl --mem 8G ${new_datadir}/log/preprocessing_trainingdata_cs.log \
@@ -47,8 +47,8 @@ utils/slurm.pl --mem 8G ${new_datadir}/log/preprocessing_trainingdata_cs.log \
 cat $current_punct_data/althingi.train.txt $tmp/new_transcripts_processed.txt > ${new_datadir}/althingi.train.txt
 
 # Use the same dev and test data as before
-cat $current_punct_data/althingi.dev.txt ${new_datadir}/althingi.dev.txt
-cat $current_punct_data/althingi.test.txt ${new_datadir}/althingi.test.txt
+cp $current_punct_data/althingi.dev.txt ${new_datadir}/althingi.dev.txt
+cp $current_punct_data/althingi.test.txt ${new_datadir}/althingi.test.txt
 
 # If I want to ignore commas in the training:
 if [ $ignore_commas = true ]; then

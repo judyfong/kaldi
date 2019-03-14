@@ -61,7 +61,7 @@ if [ $stage -le 1 ]; then
       exit 0;
     fi
     echo "Update the LM training texts"
-    cat $current_LM_training_texts $lm_transcript_dir/*.txt > $lm_training_dir/LMtext.${d}.txt
+    cat $current_LM_training_texts $lm_transcript_dir/*.txt | egrep -v '^\s*$' > $lm_training_dir/LMtext.${d}.txt
     mv $lm_transcript_dir/*.txt $lm_transcripts_archive/
   else
     echo "There are no new transcripts to add to the language models"

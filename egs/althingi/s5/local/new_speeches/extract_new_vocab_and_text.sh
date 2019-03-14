@@ -76,6 +76,12 @@ if [ $stage -le 1 ]; then
           -e "s:^.*:$speechname &:" -e 's: +: :g' \
   > $intermediate/text_orig.txt || error 13 $LINENO ${error_array[13]};
 
+  # Quit if the text is missing
+  if egrep -q 'rad[0-9][^ ]+ *$' $intermediate/text_orig.txt ; then
+    echo "The XML for $speechname is empty"
+    exit 1
+  fi
+
   echo "Extract the speaker ID"
   spkID=$(perl -ne 'print "$1\n" if /\bskst=\"([^\"]+)/' $infile | head -n1)
   

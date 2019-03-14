@@ -43,7 +43,7 @@ done
 
 # Quit if the text is missing
 if egrep -q 'rad[0-9][^ ]+ *$' $textin ; then
-  echo "The XML for $speechname is empty"
+  echo "The XML for $(basename $(dirname $textin)) is empty"
   exit 1
 fi
 

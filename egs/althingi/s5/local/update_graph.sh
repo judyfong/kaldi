@@ -32,6 +32,6 @@ for f in cmvn_opts extractor final.ie.id final.mdl frame_subsampling_factor tree
 done
 ln -s $(dirname $decoding_lang) $outdir/lmdir
 
-echo $lmdir > lminfo
+echo $lmdir > $outdir/lminfo
 
 exit 0;

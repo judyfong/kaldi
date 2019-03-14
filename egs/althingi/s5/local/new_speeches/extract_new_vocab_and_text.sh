@@ -53,7 +53,8 @@ for f in $infile $g2p; do
 done
 
 if [ -d $outdir ]; then 
-  echo "$outdir already exists" && exit 1
+  echo "$outdir already exists, I remove it"
+  rm -r $outdir
 fi
 
 intermediate=$outdir/intermediate
@@ -115,7 +116,7 @@ fi
 if [ $stage -le 3 ]; then
 
   echo "Expand numbers and abbreviations"
-  local/expand_small.sh --nj 1 $outdir/cleantext.txt ${outdir}/text_expanded \
+  local/new_speeches/expand_text.sh $outdir/cleantext.txt ${outdir}/text_expanded \
     || error 1 "Expansion failed";
   # Sometimes the "og" in e.g. "hundrað og sextíu" is missing
   perl -pe 's/(hundr[au]ð) ([^ ]+tíu|tuttugu) (?!og)/$1 og $2 $3/g' \

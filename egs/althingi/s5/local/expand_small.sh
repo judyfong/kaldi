@@ -106,6 +106,8 @@ if [ $stage -le 4 ]; then
   echo "Expand"
   $decode_cmd JOB=1:$nj ${dir}/log/expand-numbers.JOB.log expand-numbers --word-symbol-table=$base_norm_model/baseLM_words.txt ark,t:$dir/split${nj}/cleantext_afterWordMapping.JOB.txt $base_norm_model/base_expand_to_words.fst $base_norm_model/base_expansionLM_${order}g.fst ark,t:$dir/split${nj}/text_expanded_${order}g.JOB.txt
 
+  echo "Check if all the speeches were expanded"
+  join -1 1 -2 1 <(egrep "(^[0-9]{10} *$)|(rad[0-9T]+ *$)" ${dir}/split${nj}/text_expanded_${order}g.*.txt | cut -d':' -f2- | sed 's/ *//g' | sort) <(sort ${dir}/split${nj}/cleantext_afterWordMapping.*.txt) > ${dir}/split${nj}/text_notexpanded_${order}g.txt
 fi
 
 if [ $stage -le 5 ]; then
@@ -122,8 +124,6 @@ if [ $stage -le 5 ]; then
   done
   wait;
   
-  echo "Check if all the speeches were expanded"
-  join -1 1 -2 1 <(egrep "(^[0-9]{10} *$)|(rad[0-9T]+ *$)" ${dir}/split${nj}/text_expanded_${order}g.*.txt | sed 's/ *//g' | sort) <(sort ${dir}/split${nj}/cleantext_afterWordMapping.*.txt) > ${dir}/split${nj}/text_notexpanded_${order}g.txt
   # Ignore lines which were not expanded
   if [ $nj -eq 1 ]; then
     grep -vFf <(cut -d" " -f1 ${dir}/split${nj}/text_notexpanded_${order}g.txt) ${dir}/split${nj}/text_expanded_${order}g.*.wOOV.txt | sort -n > ${dir}/split${nj}/text_expanded_${order}g_wOOV.txt

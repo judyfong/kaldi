@@ -75,14 +75,11 @@ if [ $stage -le 4 ]; then
   $decode_cmd ${dir}/log/expand-numbers.log expand-numbers --word-symbol-table=$base_norm_model/baseLM_words.txt ark,t:$dir/cleantext_afterWordMapping.txt $base_norm_model/base_expand_to_words.fst $base_norm_model/base_expansionLM_${order}g.fst ark,t:$dir/text_expanded_${order}g.txt
 
   echo "Check if all the speeches were expanded"
-  join -j1 <(egrep "rad[0-9T]+ *$" ${dir}/text_expanded_${order}g.txt | cut -d':' -f2- | sed 's/ *//g' | sort) <(sort ${dir}/cleantext_afterWordMapping.txt) > ${dir}/text_notexpanded_${order}g.txt
-
-  if [[ -s ${dir}/text_notexpanded_${order}g.txt ]]; then
+  if egrep -q "rad[0-9T]+ *$" ${dir}/text_expanded_${order}g.txt; then
     echo "The speech was not expanded"
     exit 1;
   else
     echo "The speech is expanded :)"
-    # If LM utterances then I remove the uttIDs
   fi
 fi
 
@@ -107,7 +104,7 @@ if [ $stage -le 6 ]; then
     echo "  If so, please delete and then rerun this part"
     exit 1;
   else
-    cp ${dir}/text_expanded_${order}g_wOOV.txt ${outfile}
+    cp ${dir}/text_expanded_${order}g.wOOV.txt ${outfile}
   fi
 fi
 

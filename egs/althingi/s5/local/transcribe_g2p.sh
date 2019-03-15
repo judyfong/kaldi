@@ -44,9 +44,6 @@ model=$1; shift
 wordlist=$1     ; shift
 #model=$model_dir/g2p.mdl
 
-
-
 g2p.py --apply $wordlist --model $model --encoding="UTF-8"
-                
 
 exit 0

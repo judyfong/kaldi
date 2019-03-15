@@ -126,9 +126,9 @@ if [ $stage -le 5 ]; then
   
   # Ignore lines which were not expanded
   if [ $nj -eq 1 ]; then
-    grep -vFf <(cut -d" " -f1 ${dir}/split${nj}/text_notexpanded_${order}g.txt) ${dir}/split${nj}/text_expanded_${order}g.*.wOOV.txt | sort -n > ${dir}/split${nj}/text_expanded_${order}g_wOOV.txt
+    grep -vFf <(cut -d" " -f1 ${dir}/split${nj}/text_notexpanded_${order}g.txt) ${dir}/split${nj}/text_expanded_${order}g.*.wOOV.txt | sort -n > ${dir}/split${nj}/text_expanded_${order}g.wOOV.txt
   else
-    grep -vFf <(cut -d" " -f1 ${dir}/split${nj}/text_notexpanded_${order}g.txt) ${dir}/split${nj}/text_expanded_${order}g.*.wOOV.txt | cut -d":" -f2- | sort -n > ${dir}/split${nj}/text_expanded_${order}g_wOOV.txt
+    grep -vFf <(cut -d" " -f1 ${dir}/split${nj}/text_notexpanded_${order}g.txt) ${dir}/split${nj}/text_expanded_${order}g.*.wOOV.txt | cut -d":" -f2- | sort -n > ${dir}/split${nj}/text_expanded_${order}g.wOOV.txt
   fi
   
   if [[ -s ${dir}/split${nj}/text_notexpanded_${order}g.txt ]]; then
@@ -139,9 +139,9 @@ if [ $stage -le 5 ]; then
   else
     echo "All speeches were expanded :)"
     # If LM utterances then I remove the uttIDs
-    if egrep -q "^[0-9]{10}" ${dir}/split${nj}/text_expanded_${order}g_wOOV.txt; then
-      cut -d" " -f2- ${dir}/split${nj}/text_expanded_${order}g_wOOV.txt \
-      > $dir/tmp && mv $dir/tmp ${dir}/split${nj}/text_expanded_${order}g_wOOV.txt
+    if egrep -q "^[0-9]{10}" ${dir}/split${nj}/text_expanded_${order}g.wOOV.txt; then
+      cut -d" " -f2- ${dir}/split${nj}/text_expanded_${order}g.wOOV.txt \
+      > $dir/tmp && mv $dir/tmp ${dir}/split${nj}/text_expanded_${order}g.wOOV.txt
     fi
   fi  
 fi
@@ -157,7 +157,7 @@ if [ $stage -le 6 ]; then
     echo "  If so, please delete and then rerun this part"
     exit 1;
   else
-    cp ${dir}/split${nj}/text_expanded_${order}g_wOOV.txt ${outfile}
+    cp ${dir}/split${nj}/text_expanded_${order}g.wOOV.txt ${outfile}
   fi
 fi
 

@@ -109,6 +109,7 @@ egs/*/s*/local/punctuation/auxiliary
 egs/althingi/s5/ivector_clustering
 egs/*/s*/steps
 egs/*/s*/utils
+egs/*/s*/rnnlm
 egs/*/s*/punctuator/theano-env/local/bin
 egs/*/s*/punctuator/theano-env/local/include
 egs/*/s*/punctuator/theano-env/local/lib

@@ -1,11 +1,11 @@
 export ASSET_ROOT=/home/staff/inga
 export KALDI_ROOT=`pwd`/../../..
 [ -f $KALDI_ROOT/tools/env.sh ] && . $KALDI_ROOT/tools/env.sh
-export PATH=utils/:$KALDI_ROOT/tools/openfst/bin:/opt/mitlm/bin:/opt/sequitur/bin:/opt/kenlm/build/bin:$PWD:$PATH
+export PATH=$PWD/utils/:$KALDI_ROOT/tools/openfst/bin:$PWD/tools/mitlm/bin:$PWD/tools/sequitur/bin:$PWD/tools/kenlm/build/bin:$PWD:$PATH
 [ ! -f $KALDI_ROOT/tools/config/common_path.sh ] && echo >&2 "The standard file $KALDI_ROOT/tools/config/common_path.sh is not present -> Exit!" && exit 1
 . $KALDI_ROOT/tools/config/common_path.sh
 
-#PYTHONPATH=$PYTHONPATH:/opt/sequitur/lib/python2.7/site-packages/:~/.local/lib/python2.7/site-packages/:punctuator/
+#PYTHONPATH=$PYTHONPATH:$PWD/tools/sequitur/lib/python2.7/site-packages/:~/.local/lib/python2.7/site-packages/:punctuator/
 #export PYTHONPATH
 export CONDAPATH=$ASSET_ROOT/miniconda2/bin
 # # For libgpuarray, used in theano back end

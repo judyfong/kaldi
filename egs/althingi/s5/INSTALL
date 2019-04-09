@@ -1,0 +1,39 @@
+These instructions are for a Debian system.
+This file assumes this is a fresh install of the repo
+  where all you want to do is decode audio files from existing models.
+
+(1)
+First, run the usual kaldi installations in kaldi/tools and kaldi/src
+
+(2)
+Make sure to install the necessary external tools mentioned on kaldi/egs/althingi/README.md
+
+sudo pip install Theano
+
+
+(3)
+Modify cmd.sh to run from your local computer or from a cluster
+
+(4)
+Modify path.sh to use the relevant paths
+
+(5)
+In recognize/local/denormalize.sh remove the command, 'srun' if running locally,
+ from the line after this line: echo "Extract the numbers before punctuation"
+ and from Punctuate and Reinserting numbers. Basically remove srun if you're 
+ not running from a slurm configuration.
+
+(6)
+Install KenLM and all dependencies to opt /opt/kenlm/build/bin/lmplz
+Install pip if you don't already have it.
+ Install python package: nltk
+ While running, python, the installation instructions are
+    >>> import nltk
+    >>> nltk.download('punkt')  <--- This only has to happen once
+
+(7)
+Obtain the existing models in a tar.gz file, or as a folder, from the repository owner and save
+ them within the althingi/s5 directory.
+The installation instructions are
+  ./gitinstall.sh
+  

@@ -107,6 +107,11 @@ egs/*/s*/local/recognize/auxiliary
 egs/*/s*/local/punctuation/processed_data*
 egs/*/s*/local/punctuation/auxiliary
 egs/althingi/s5/ivector_clustering
+egs/*/s*/steps
+egs/*/s*/utils
+egs/*/s*/punctuator/theano-env/local/bin
+egs/*/s*/punctuator/theano-env/local/include
+egs/*/s*/punctuator/theano-env/local/lib
 
 # /tools/
 /tools/pocolm/

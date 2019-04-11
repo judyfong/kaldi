@@ -57,9 +57,9 @@ lmdir=$acoustic_model/lmdir \
 #[ -z $rnnlmdir ] && rnnlmdir=$(ls -td $root_rnnlm/2* | head -n1) || error 1 "Failed setting rnnlmdir variable";
 graph=$acoustic_model/graph_3gsmall \
     || error 1 "Failed setting graph variable";
-[ -z $punct_model ] && punct_model=$(ls -t $root_punctuation_modeldir/2*/*.pcl | head -n1) \
+[ -z $punct_model ] && punct_model=$(ls -t $root_punctuation_modeldir/2*/Model_althingi*.pcl | head -n1) \
     || error 1 "Failed setting punct_model variable";
-[ -z $paragraph_model ] && paragraph_model=$(ls -t $root_paragraph_modeldir/2*/*.pcl | head -n1) \
+[ -z $paragraph_model ] && paragraph_model=$(ls -t $root_paragraph_modeldir/2*/Model_althingi*.pcl | head -n1) \
     || error 1 "Failed setting paragraph_model variable";
 [ -z $text_norm ] && text_norm=$(ls -td $root_text_norm_modeldir/2* | head -n1) \
     || error 1 "Failed setting text_norm variable";

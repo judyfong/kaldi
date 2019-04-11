@@ -98,12 +98,12 @@ cat ${dir}/split${nj}/reseg_text_pause_punct.* | sort -u | egrep -v '^ *$' > ${d
 # 2) When applying the punctuation model the "%" is included in <NUM> hence I need to collapse them:
 sed -re 's/>([^ ]+?-rad)/>\n\1/g' \
     -e 's:<NUM> <sil=[0-9.]+> % (<sil=[0-9.]+>):<NUM> \1:g' \
-  < $outfile \
-  | sort -u > ${outfile}.edited
+  < ${dir}/reseg_text_pause_punct.txt \
+  | sort -u > ${dir}/reseg_text_pause_punct.edited.txt
 
 # Split up to train, dev and test set
-nlines20=$(echo $((($(wc -l ${outfile}.edited | cut -d" " -f1)+1)/20)))
-sort -R ${outfile}.edited | cut -d" " -f2- > ${tmp}/shuffled.tmp
+nlines20=$(echo $((($(wc -l ${dir}/reseg_text_pause_punct.edited.txt | cut -d" " -f1)+1)/20)))
+sort -R ${dir}/reseg_text_pause_punct.edited.txt | cut -d" " -f2- > ${tmp}/shuffled.tmp
 
 head -n $[$nlines20/2] ${tmp}/shuffled.tmp \
   > ${dir}/althingi.dev.txt || exit 1;

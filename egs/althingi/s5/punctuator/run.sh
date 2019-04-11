@@ -142,7 +142,7 @@ if [ $stage -le 3 ]; then
     for dataset in dev test; do
       (
 	utils/slurm.pl --mem 4G $modeldir/log/punctuator_2nd_stage_${dataset}.log \
-          THEANO_FLAGS='device=cpu' python punctuator/punctuator_filein.py $modeldir/Model_stage2_althingi${id}${suffix}_h256_lr0.02.pcl ${datadir_2nd_stage}/althingi.${dataset}.txt ${datadir_2nd_stage}/${dataset}_punctuated_stage2${id}${suffix}.txt 1  || error 1 "punct: punctuator_filein.py failed on 2nd stage model";
+          THEANO_FLAGS='device=cpu' python punctuator/punctuator_filein.py $modeldir/Model_stage2_althingi${id}${suffix}_h256_lr0.02.pcl ${datadir}/althingi.${dataset}.txt ${datadir}/${dataset}_punctuated_stage2${id}${suffix}.txt 1  || error 1 "punct: punctuator_filein.py failed on 2nd stage model";
       ) &
     done
     wait

@@ -5,7 +5,23 @@
 . ./local/array.sh
 
 asrlm_modeldir=/jarnsmidur/asr-lm_models
-# Check if a new AM model directory was created at least an hour ago
+trans_out=$root_transcription_dir
+lirfa_audio=$root_lirfa_audio
+
+tmp=$(mktemp -d)
+cleanup () {
+    rm -rf "$tmp"
+}
+trap cleanup EXIT
+
+# Check if a new decoding graph was created at least an hour ago
+# NOTE! I find this a bit uncomfortable. Is it possible to rather get a message when local/new_speeches/update_LM_and_graph.sh has finished?
+new_HCLG=$(find $asrlm_modeldir/acoustic_model/chain/5.4/tdnn_*/*/graph_3gsmall/HCLG.fst -cmin +60 -ctime -2 | tail -n1)
+if [ -z "$new_HCLG" ]; then
+  echo "No new decoding graph found, exit the script.";
+  exit 0;
+fi
+
 # Newest AM dir
 am_modeldir=$(ls -td $asrlm_modeldir/acoustic_model/*/*/*/* | head -n1)
 
@@ -17,10 +33,6 @@ am_date=$(basename $am_modeldir)
 middle_ampath=$(dirname $am_modeldir | cut -d'/' -f$[$n+2]-)
 
 # Newest language models
-# NOTE! This won't work because the symlink will be broken on the decoding server
-# How to solve it?
-# I need to create a info file or something like that in the AM modeldir that tells what version of the lm was used
-#lmdir=$(readlink -f $am_modeldir/lmdir)
 lm_modeldir=$(cat $am_modeldir/lminfo)
 lm_date=$(basename $lm_modeldir)
 middle_lmpath=language_model
@@ -54,6 +66,47 @@ if [ $d = $am_date ]; then
   echo "I won't overwrite it"
 else
   local/update_latest.sh || error 1 "ERROR: update_latest.sh failed"
+fi
+
+echo "Test decoding three speeches using the new ASR version"
+fail=0
+empty=0
+for nb in 1 2 3; do 
+  audio=$(ls -t $lirfa_audio | head -n3 | tail -n$nb)
+  speechname=$(basename "$audio")
+  speechname="${speechname%.*}"
+  reftext=$trans_out/$speechname/$speechname.txt
+  if [ -s $audio -a -s $reftext ]; then
+    testout=$tmp/speechname
+    mkdir -p $testout
+
+    local/recognize/recognize.sh --trim 0 --rnnlm false $audio $testout &> $testout/$speechname.log
+
+    echo "Compare it with an earlier transcription"
+    compute-wer --text --mode=present ark:$reftext ark,p:$testout/$speechname.txt >& $testout/edit_dist$nb
+
+    WEDcomp=$(grep WER $testout/edit_dist$nb | utils/best_wer.sh | cut -d' ' -f2)
+    WEDcomp_int=${WEDcomp%.*}
+    if [ $WEDcomp_int < 90 ]; then
+      echo "FAILED: Bad comparison between new and old transcription of $speechname."
+      fail=$[$fail+1]
+    fi
+  else
+    echo "$audio is empty or $reftext is non-existent"
+    empty=$[$empty+1]
+  fi
+done
+
+if [ $fail -eq 3 ]; then
+  echo "FAILED: Bad comparison for all speeches"
+  echo "Maybe something is wrong with the new ASR version"
+  echo "Revert to using the old one"
+  mv $root_bundle/.oldlatest $root_bundle/latest
+  exit 1;
+elif [ $empty -eq 3 ]; then
+  echo "Non-existent audio or reference text for all speeches"
+  echo "Something is wrong"
+  exit 1;
 fi
 
 exit 0;

@@ -23,27 +23,32 @@ insspace = "".utf8 : " ".utf8;
 
 unitnames = n.units;
 neutralunitnames = n.neutral_units;
-numbernames_10plus_and_0 = n.NUMBERNAMES_10_to_999999_and_0; #n.NUMBERNAMES_10plus_and_0;
-ordinalnames = o.ORDINALNAMES_to_abbreviate; # Does not expand 1. and 2.
+numbernames_11plus_and_0 = n.NUMBERNAMES_11_to_999999_and_0; #n.NUMBERNAMES_11plus_and_0;
+ordinalnames = o.ORDINALNAMES_to_abbreviate; # Does not expand 1.-10.
 ordinal = Invert[ordinalnames];
 #namesnumber = f.NAMESNUMBER2;
 
+ten = "tíu".utf8 : "10".utf8;
 units = Invert[unitnames];
 neutralunits = Invert[neutralunitnames];
+
+units_plus = ten | units;
+neutralunits_plus = ten | neutralunits;
+
 #namesnumber = Invert[numbernames];
-namesnumber_10plus_and_0 = Invert[numbernames_10plus_and_0];
+namesnumber_11plus_and_0 = Invert[numbernames_11plus_and_0];
 
 # Abbreviations used in Alþingi paired with their expansions
 abbr = Optimize[StringFile['local/thraxgrammar/lex/abbreviate_words.txt','utf8','utf8']];
 abbr2 = Optimize[StringFile['local/thraxgrammar/lex/abbreviate_if_preceded_wNumber.txt','utf8','utf8']];
 abbr3 = Optimize[StringFile['local/thraxgrammar/lex/abbreviate_if_followed_byNumber.txt','utf8','utf8']];
-first_second_tenth = Optimize[StringFile['local/thraxgrammar/lex/first_second_tenth.txt','utf8','utf8']];
+first_to_tenth = Optimize[StringFile['local/thraxgrammar/lex/first_to_tenth.txt','utf8','utf8']];
 half_expand = Optimize[StringFile['local/thraxgrammar/lex/half.txt','utf8','utf8']];
 half = Invert[half_expand];
 kjordaemi = Optimize[StringFile['local/thraxgrammar/lex/kjordaemi_abbr.txt','utf8','utf8']];
 
-ABBR_NUMBER_10plus_and_0 = Optimize[
-                     CDRewrite[namesnumber_10plus_and_0 delspace,
+ABBR_NUMBER_11plus_and_0 = Optimize[
+                     CDRewrite[namesnumber_11plus_and_0 delspace,
                      ("[BOS]".utf8 | " ".utf8),
                      ("[EOS]".utf8 | " ".utf8),
                      c.whole_alphabet*,
@@ -51,7 +56,7 @@ ABBR_NUMBER_10plus_and_0 = Optimize[
                      'obl']];
 
 abbr_neutral_unit_CDbefore = Optimize[
-                     CDRewrite[neutralunits,
+                     CDRewrite[neutralunits_plus,
                      ("númer ".utf8 | "til ".utf8),
                      (" ".utf8 | "[EOS]".utf8),
                      c.whole_alphabet*,
@@ -59,7 +64,7 @@ abbr_neutral_unit_CDbefore = Optimize[
                      'obl']];
 
 abbr_neutral_unit_CDafter = Optimize[
-                     CDRewrite[neutralunits,
+                     CDRewrite[neutralunits_plus,
                      ("[BOS]".utf8 | " ".utf8),
                      ( " til ".utf8),
                      c.whole_alphabet*,
@@ -67,7 +72,7 @@ abbr_neutral_unit_CDafter = Optimize[
                      'obl']];
 
 abbr_unit_CDbefore = Optimize[
-                     CDRewrite[units,
+                     CDRewrite[units_plus,
                      ("komma ".utf8),
                      (" ".utf8 | "[EOS]".utf8),
                      c.whole_alphabet*,
@@ -75,12 +80,14 @@ abbr_unit_CDbefore = Optimize[
                      'obl']];
 
 abbr_unit_CDafter = Optimize[
-                    CDRewrite[units,
+                    CDRewrite[units_plus,
                     ("[BOS]".utf8 | " ".utf8),
-                    (" komma".utf8 | " og hálf".utf8
-                    | " prósent".utf8 | " prómill".utf8
-                    | " gráð".utf8 | " krón".utf8
-                    | " millj".utf8 c.alphabet+ " krón".utf8),
+                    " ".utf8 ("komma".utf8 | "og hálf".utf8
+                    | "prósent".utf8 | "prómill".utf8
+                    | "gráð".utf8 | "krón".utf8
+                    | "millj".utf8 c.alphabet+ " krón".utf8
+                    | ("fer".utf8 | "rúm".utf8)? ("kíló".utf8 | "sentí".utf8? "metr".utf8)
+                    | "gígav".utf8 | "megav".utf8 | "terav".utf8),
                     c.whole_alphabet*,
                     'ltr',
                     'obl']];
@@ -96,7 +103,7 @@ abbr_half = Optimize[
 # I'm thinking about the case when I have f.ex. "zero point one three
 # seven"
 abbr_unit_CDbefore2 = Optimize[
-                      CDRewrite[units,
+                      CDRewrite[units_plus,
                       (c.Digits " ".utf8),
                       (" ".utf8 | "[EOS]".utf8),
                       c.whole_alphabet*,
@@ -105,8 +112,8 @@ abbr_unit_CDbefore2 = Optimize[
 
 # Abbreviate "first" and "second" if a followed by any of the
 # following:
-abbr_first_second_tenth = Optimize[
-                     CDRewrite[first_second_tenth,
+abbr_first_to_tenth = Optimize[
+                     CDRewrite[first_to_tenth,
                      (" ".utf8 | "[BOS]".utf8),
                      ( " árgang".utf8 | " grein".utf8 | " málsgrein".utf8
                      | " umræð".utf8 | " lið".utf8 | " minni hluta".utf8
@@ -129,10 +136,10 @@ abbr_ratio = Optimize[
              'ltr',
              'obl']];
 
-ABBR_NUMBER = Optimize[ABBR_NUMBER_10plus_and_0 @
+ABBR_NUMBER = Optimize[ABBR_NUMBER_11plus_and_0 @
 abbr_neutral_unit_CDbefore @  abbr_unit_CDbefore @
 abbr_neutral_unit_CDafter @ abbr_unit_CDafter @
-abbr_unit_CDbefore2 @ abbr_first_second_tenth @ abbr_half @ abbr_ratio];
+abbr_unit_CDbefore2 @ abbr_first_to_tenth @ abbr_half @ abbr_ratio];
 
 
 # This abbreviates at least one rewritable word or number, per
@@ -412,18 +419,17 @@ vg = CDRewrite[(" ".utf8 : " – ".utf8),
                 'ltr',
                 'obl'];
 
-upptalning_lex = Optimize[StringFile['local/thraxgrammar/lex/ordinals_neutral_3-9.txt','utf8','utf8']];
-upptalning = CDRewrite[upptalning_lex,
-                ("Í ".utf8 | "í ".utf8),
-                " lagi ".utf8,
-                c.whole_alphabet*,
-                'ltr',
-                'obl'];
+#upptalning_lex = Optimize[StringFile['local/thraxgrammar/lex/ordinals_neutral_3-9.txt','utf8','utf8']];
+#upptalning = CDRewrite[upptalning_lex,
+                # ("Í ".utf8 | "í ".utf8),
+                # " lagi ".utf8,
+                # c.whole_alphabet*,
+                # 'ltr',
+                # 'obl'];
 
 DENORM = Optimize[name_casing @ acro_denorm @ law_nr @ endash @ kl @
 decimal1 @ decimal2 @ ratio1 @ ratio2 @ rm_space_bf_punct @ celsius @
-url @ ogeda @ committee @ minister @ ministry @ insert_dash @ dr @ vg
-@ upptalning];
+url @ ogeda @ committee @ minister @ ministry @ insert_dash @ dr @ vg];
 
 export ABBR_AND_DENORM = ArcSort[
                     Optimize[ABBREVIATE @ DENORM],

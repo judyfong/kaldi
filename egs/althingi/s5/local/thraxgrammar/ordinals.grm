@@ -56,8 +56,15 @@ ordUnits3to9 = Optimize[StringFile['local/thraxgrammar/lex/ordinals_units_3-9.tx
 'utf8', 'utf8']];
 ord11_to_19 = Optimize[StringFile['local/thraxgrammar/lex/ordinals_11-19.txt', 'utf8', 'utf8']];
 
+# export ORDINALNAMES_to_abbreviate = Optimize[
+#   (ordUnits3to9 <-0.5>) |
+#   (ord11_to_19 <-1>) |
+#   (ordinals_20_to_99 <-2>) |
+#   (ordinals_100_to_999 <-10>)]
+# ;
+
+# In most cases they want the first ten ordinals written out
 export ORDINALNAMES_to_abbreviate = Optimize[
-  (ordUnits3to9 <-0.5>) |
   (ord11_to_19 <-1>) |
   (ordinals_20_to_99 <-2>) |
   (ordinals_100_to_999 <-10>)]

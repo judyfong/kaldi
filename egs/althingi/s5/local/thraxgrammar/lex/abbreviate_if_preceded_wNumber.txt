@@ -10,6 +10,9 @@ ferkílómetrum	km²
 fermetra	m²
 fermetrar	m²
 fermetrum	m²
+fersentímetra	cm²
+fersentímetrar	cm²
+fersentímetrum	cm²
 gráða	°
 gráðu	°
 gráður	°
@@ -89,6 +92,14 @@ prósenti	%
 prósents	%
 prósentum	%
 prósenta	%
+rúmmetri	m³
+rúmmetra	m³
+rúmmetrar	m³
+rúmmetrum	m³
+rúmsentímetri	cm³
+rúmsentímetra	cm³
+rúmsentímetrar	cm³
+rúmsentímetrum	cm³
 sentímetri	cm
 sentímetra	cm
 sentímetrar	cm

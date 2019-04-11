@@ -71,28 +71,25 @@ fi
 echo "Test decoding three speeches using the new ASR version"
 fail=0
 empty=0
-for nb in 1 2 3; do 
-  audio=$(ls -t $lirfa_audio | head -n3 | tail -n$nb)
-  speechname=$(basename "$audio")
-  speechname="${speechname%.*}"
+for audio in $(ls -t $lirfa_audio | head -n3); do 
+  speechname="${audio%.*}"
   reftext=$trans_out/$speechname/$speechname.txt
-  if [ -s $audio -a -s $reftext ]; then
+  if [ -s $lirfa_audio/$audio -a -s $reftext ]; then
     testout=$tmp/speechname
     mkdir -p $testout
 
-    local/recognize/recognize.sh --trim 0 --rnnlm false $audio $testout &> $testout/$speechname.log
+    local/recognize/recognize.sh --trim 0 --rnnlm false $lirfa_audio/$audio $testout &> $testout/$speechname.log
 
     echo "Compare it with an earlier transcription"
-    compute-wer --text --mode=present ark:$reftext ark,p:$testout/$speechname.txt >& $testout/edit_dist$nb
-
-    WEDcomp=$(grep WER $testout/edit_dist$nb | utils/best_wer.sh | cut -d' ' -f2)
+    compute-wer --text --mode=present ark:<(tr "\n" " " < $reftext | sed -e '$a\' | sed -r 's:^.*:1 &:') ark,p:<(tr "\n" " " < $testout/$speechname/$speechname.txt | sed -e '$a\' | sed -r 's:^.*:1 &:') >& $testout/edit_dist_$speechname
+    WEDcomp=$(grep WER $testout/edit_dist_$speechname | utils/best_wer.sh | cut -d' ' -f2)
     WEDcomp_int=${WEDcomp%.*}
-    if [ $WEDcomp_int < 90 ]; then
+    if [ $WEDcomp_int -gt 10 ]; then
       echo "FAILED: Bad comparison between new and old transcription of $speechname."
       fail=$[$fail+1]
     fi
   else
-    echo "$audio is empty or $reftext is non-existent"
+    echo "$lirfa_audio/$audio is empty or $reftext is non-existent"
     empty=$[$empty+1]
   fi
 done

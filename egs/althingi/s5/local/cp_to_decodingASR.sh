@@ -14,6 +14,9 @@ cleanup () {
 }
 trap cleanup EXIT
 
+testout=$tmp # Used when testing whether the new ASR version, i.e. latest, is ok.
+mkdir -p $testout
+
 # Check if a new decoding graph was created at least an hour ago
 # NOTE! I find this a bit uncomfortable. Is it possible to rather get a message when local/new_speeches/update_LM_and_graph.sh has finished?
 new_HCLG=$(find $asrlm_modeldir/acoustic_model/chain/5.4/tdnn_*/*/graph_3gsmall/HCLG.fst -cmin +60 -ctime -2 | tail -n1)
@@ -75,10 +78,8 @@ for audio in $(ls -t $lirfa_audio | head -n3); do
   speechname="${audio%.*}"
   reftext=$trans_out/$speechname/$speechname.txt
   if [ -s $lirfa_audio/$audio -a -s $reftext ]; then
-    testout=$tmp/speechname
-    mkdir -p $testout
 
-    local/recognize/recognize.sh --trim 0 --rnnlm false $lirfa_audio/$audio $testout &> $testout/$speechname.log
+    srun local/recognize/recognize.sh --trim 0 --rnnlm false $lirfa_audio/$audio $testout &> $testout/$speechname.log
 
     echo "Compare it with an earlier transcription"
     compute-wer --text --mode=present ark:<(tr "\n" " " < $reftext | sed -e '$a\' | sed -r 's:^.*:1 &:') ark,p:<(tr "\n" " " < $testout/$speechname/$speechname.txt | sed -e '$a\' | sed -r 's:^.*:1 &:') >& $testout/edit_dist_$speechname
@@ -98,7 +99,8 @@ if [ $fail -eq 3 ]; then
   echo "FAILED: Bad comparison for all speeches"
   echo "Maybe something is wrong with the new ASR version"
   echo "Revert to using the old one"
-  mv $root_bundle/.oldlatest $root_bundle/latest
+  second_newest=$(ls -td $root_bundle/2* | head -n2 | tail -n1)
+  ln -s $second_newest $root_bundle/latest
   exit 1;
 elif [ $empty -eq 3 ]; then
   echo "Non-existent audio or reference text for all speeches"

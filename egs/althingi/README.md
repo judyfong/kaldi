@@ -5,20 +5,11 @@
 
 ### ABOUT THE ALTHINGI PARLIAMENTARY SPEECH CORPUS
 
-This is an aligned and segmented corpus of 6493 Althingi recordings with 196 speakers. The recordings consist of 199,614 segments, with average duration of 9.8 seconds. A file called segments links each text segment to its place in the audio files. The total duration of the data set is 542 hours and 25 minutes of data and it contains 4,583,751 word tokens.
-The corpus is split up into a training-, development- and an evaluation set. The training set contains speeches from 2005 to 2015, with a total duration of 514.5 hours. The speeches from 2016 were split evenly between the development- and evaluation sets, with 14 hours in duration each. The evaluation set is cleaner than the development set, and both are cleaner than the training set.
-
-#### LEXICON/PRONUNCIATION DICTIONARY
-
-The pronunciation dictionary is based on an edited version of Hjal’s pronunciation dictionary (E. Rögnvaldsson, 2003), which is available at Málföng, plus common words from the Althingi texts and from Málrómur (J. Guðnason et al., 2012). It currently contains ~181,000 words. Sequitur’s grapheme to phoneme converter (M. Bisani et al., 2008), trained on the edited pronunciation dictionary from Hjal, plus the Málrómur data, was used to get the phonemes for the new words from the Althingi data. 
-
-#### LANGUAGE MODELS
-
-The language models were built using transcripts of Althingi speeches dating back to 2003, excluding speeches from 2016 (~35M word tokens). One is a pruned trigram model, used in decoding. The other one is a unpruned constant arpa 5-gram model, used for rescoring decoding results. 
+All performed speeches in the Icelandic parliament, Althingi, are transcribed and published. Our corpus consists of 130 thousand Althingi speeches, aligned and segmented, with 309 speakers. The total duration of the data set is roughly 6300 hours and it contains about 60M word tokens. 
 
 #### TO DOWNLOAD THE DATA, PRONUNCIATION DICTIONARY AND LANGUAGE MODELS
 
-The data, pronunciation dictionary and language models are available at [www.malfong.is](http://www.malfong.is/index.php?lang=en&pg=althingisraedur)
+The data for acoustic model training, language modelling and post processing of the ASR output are available at [www.malfong.is](http://www.malfong.is/index.php?lang=en&pg=althingisraedur)
 The original data, which consists of whole parliamentary speeches, that are not ready for speech recognition, are also available there.
 
 #### PUBLICATION ON ALTHINGI DATA AND ASR #####
@@ -50,11 +41,19 @@ The subdirectory of this directory, s5, contains scripts for the following three
 - [FFmpeg](https://ffmpeg.org/): Used for silence detection when using the ASR to recognize long speeches.
 - [Punctuator2](https://github.com/ottokart/punctuator2):  For punctuation restoration. (It is already in ```egs/althingi/s5/punctuator2```)
   - Requires: [Theano](https://github.com/Theano/Theano) and python 2.7 and numpy
-- Most python scripts in the repo use python3 but punctuator2 scripts use python2.7
+- Most python scripts in the repo use python3 but punctuator2 and some Kaldi scripts use python2.7
+
+#### INSTALLATION
+
+ For Debian installation follow the instructions in `s5/installdebian.sh`
 
 #### WER RESULTS OBTAINED USING OUR CORPORA AND SETTINGS.
 
-Using this data, pronunciation dictionary and language model, an automatic speech recognizer with a 10.23% word error rate has been developed. This error rate was obtained using an acoustic model based on lattice-free maximum mutual information neural network architecture with both time-delay and long short term memory layers. It is based on the Switchboard recipe in the Kaldi toolkit (D. Povey et al., 2011) [http://kaldi-asr.org](http://kaldi-asr.org/).
+Using a 1215 hour, recleaned and resegmented subset of the data corpus, with n-gram language models, an automatic speech recognizer with a 8.52% word error rate has been developed. Re-scoring with RNN language models, we can get the WER down to 7.91%. The acoustic model used is a factorized form of time-delay neural networks. The recipe is based on the Switchboard recipe in the Kaldi toolkit (D. Povey et al., 2011) [http://kaldi-asr.org](http://kaldi-asr.org/).
+
+#### DOCUMENTATION
+
+Further information about where to store data and models, how to run the ASR and how to update the different parts of it are in the file `ASRdocumentation.md`
 
 License
 ----

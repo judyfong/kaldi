@@ -142,11 +142,7 @@ The script `extract_new_vocab_and_text.sh` in `local/new_speeches` is run automa
 
 An editor can view the new vocabulary and decide whether to save it or not. Saved new words end up in another directory called `confirmed_vocab` in the same place as the `new_vocab` dir.
 
-The script `update_LM_and_graph.sh` will be run regularly to update the LMs and decoding graph used in the latest bundle, i.e. latest version of the ASR. It checks if there are any new language model texts in `data/language_model/transcripts` and the LM training corpus is updated. If there are no new files the script exits. If there are any vocabulary files in `confirmed_vocab`, the pronunciation dictionary is updated. The sbatch script `run_LM_update.sbatch` runs it on the Slurm queue. For now there is a cron job which runs the lexicon, LM and graph updates once a month.
-
-This is run on the language model server at Althingi. To update the ASR used for decoding we need to copy the new LMs and graph over to the decoding server and update the bundle called `latest`.
-
-The script `cp_to_decodingASR.sh` in `local` is used to copy the models over and update `latest`.
+The script `update_LM_and_graph.sh` will be run regularly to update the LMs and decoding graph used in the latest bundle, i.e. latest version of the ASR. It checks if there are any new language model texts in `data/language_model/transcripts` and the LM training corpus is updated. If there are no new files the script exits. If there are any vocabulary files in `confirmed_vocab`, the pronunciation dictionary is updated. The sbatch script `run_LM_update.sbatch` runs it on the Slurm queue. For now there is a cron job which runs the lexicon, LM and graph updates once a month. It is run on the language model server at Althingi. The script `cp_to_decodingASR.sh` in `local` is run on the decoding server to copy the models over and update `latest`.
 
 ### 7. Updating the punctuation model ###
 The punctuation model is obtained using the recipe for punctuator 2: <https://github.com/ottokart/punctuator2> . 

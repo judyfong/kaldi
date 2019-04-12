@@ -1,4 +1,11 @@
-export ASSET_ROOT=/home/staff/inga
+if [[ $(hostname -f) == terra.hir.is ]]; then
+  export ASSET_ROOT=/home/staff/inga
+elif [[ $(hostname -f) == ASR-Server.althingi.is ]]; then
+  export ASSET_ROOT=/jarnsmidur
+elif [[ $(hostname -f) == asr-lm.althingi.is ]]; then
+  export ASSET_ROOT=/opt/jarnsmidur
+fi
+
 export KALDI_ROOT=$(readlink -f $(pwd)/../../..)
 [ -f $KALDI_ROOT/tools/env.sh ] && . $KALDI_ROOT/tools/env.sh
 export PATH=utils/:$KALDI_ROOT/tools/openfst/bin:/opt/mitlm/bin:/opt/sequitur/bin:/opt/kenlm/build/bin:$PWD:$PATH

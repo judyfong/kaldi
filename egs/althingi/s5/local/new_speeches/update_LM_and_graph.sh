@@ -131,11 +131,4 @@ if [ $stage -le 5 ]; then
   
 fi
 
-# if [ $stage -le 6 ]; then
-
-#   echo "Update latest"
-#   local/update_latest.sh || error 1 "ERROR: update_latest.sh failed"
-
-# fi
-
 exit 0;

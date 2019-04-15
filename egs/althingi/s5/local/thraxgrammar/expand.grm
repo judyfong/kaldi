@@ -97,7 +97,6 @@ numbernames = n.NUMBERNAMES;
 ordinalnames = o.ORDINALNAMES;
 
 # Abbreviations used in Alþingi paired with their expansions
-#abbr_expansion = Optimize[StringFile['text_norm/lex/abbr_lexicon.txt','utf8','utf8']];
 abbr_lex = Optimize[StringFile['local/thraxgrammar/lex/abbr_lexicon.txt','utf8','utf8']];
 
 # Optional expansion

@@ -24,9 +24,10 @@ g2p=$(ls -t $root_g2p/*/g2p.mdl | head -n1)
 amdir=$root_am_transcripts
 lmdir=$root_lm_transcripts
 punctdir=$root_punctuation_transcripts
+paragraphdir=$root_paragraph_transcripts
 vocabdir=$root_new_vocab
 concordancedir=$root_vocab_concordance
-mkdir -p $amdir $lmdir $punctdir $vocabdir $concordancedir
+mkdir -p $amdir $lmdir $punctdir $paragraphdir $vocabdir $concordancedir
 
 # NOTE! We have environment problems. Quick fix is:
 export LANG=en_US.UTF-8
@@ -85,13 +86,16 @@ if [ $stage -le 1 ]; then
 
   echo "Extract the speaker ID"
   spkID=$(perl -ne 'print "$1\n" if /\bskst=\"([^\"]+)/' $infile | head -n1)
-  
-  # utils/slurm.pl $outdir/log/extract_text.log python3 local/extract_text.py $datadir $intermediate/text_orig.txt
-  # ret=$?
-  # if [ $ret -ne 0 ]; then
-  #   error 1 $LINENO "extract_text.py failed";
-  # fi
 
+  # Extract and prepare the text for paragraph model training
+  sed -re 's:<!--[^>]*?-->|<truflun>[^<]*?</truflun>|<atburður>[^<]*?</atburður>|<málsheiti>[^<]*?</málsheiti>: :g' -e 's:</mgr><mgr>: EOP :g' -e 's:<[^>]*?>: :g' \
+    -e 's:^rad[0-9T]+ ::' \
+    -e 's:\([^/()<>]*?\)+: :g' -e 's: ,,: :g' -e 's:\.\.+ :. :g' -e 's: ([,.:;?!] ):\1:g' \
+    -e 's:[^a-záðéíóúýþæöA-ZÁÉÍÓÚÝÞÆÖ0-9 \.,?!:;/%‰°º—–²³¼¾½ _-]+::g' -e 's: |_+: :g' \
+    -e 's: $: EOP :' -e 's:[[:space:]]+: :g' \
+    -e 's:(EOP )+:EOP :g' -e 's:([—,—]) EOP:\1:g' -e 's:([A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö0-9]) EOP :\1. :g' -e 's:EOP[,.:;?!] :EOP :g' \
+    < $infile > $paragraphdir/${spkID}-${speechname}.txt
+  
   echo "Clean the text for all uses (AM, LM and for punctuation modelling)"
   local/clean_new_speech.sh --stage $clean_stage $intermediate/text_orig.txt $outdir/cleantext.txt $outdir/punct_text.txt $outdir/new_vocab.txt || error 1 "ERROR: clean_new_speech.sh failed";
 
@@ -132,9 +136,6 @@ if [ $stage -le 3 ]; then
           -e 's: +: :g' \
     > $lmdir/${spkID}-${speechname}.txt || exit 1;
 
-  # Extract the speaker IDs
-  ID=$(egrep "<ræða .*? skst=" $infile | sed -re 's:.*?id="([^\"]+?)".*?skst="([^\"]+?)".*?:\1 \2:g' | cut -d' ' -f2)
-  
   echo "Remove punctuations to make the text better fit for acoustic modelling. Add a spkID."
   sed -re 's: [^A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö ] : :g' -e 's: +: :g' -e "s:.*:${ID}-&:" \
       < ${outdir}/text_expanded > $amdir/${spkID}-${speechname}.txt || exit 1;

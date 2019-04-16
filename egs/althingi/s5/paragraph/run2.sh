@@ -16,8 +16,6 @@ continue_with_previous=false    # continue training an existing model
 #date
 d=$(date +'%Y%m%d')
 
-source activate thenv || error 11 ${error_array[11]};
-
 # The root dirs are defined in conf/path.conf (set in path.sh)
 transcript_dir=$root_paragraph_transcripts
 transcripts_archive=$transcript_dir/archive

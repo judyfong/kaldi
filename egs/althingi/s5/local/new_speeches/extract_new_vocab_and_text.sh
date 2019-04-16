@@ -88,13 +88,17 @@ if [ $stage -le 1 ]; then
   spkID=$(perl -ne 'print "$1\n" if /\bskst=\"([^\"]+)/' $infile | head -n1)
 
   # Extract and prepare the text for paragraph model training
-  sed -re 's:<!--[^>]*?-->|<truflun>[^<]*?</truflun>|<atburður>[^<]*?</atburður>|<málsheiti>[^<]*?</málsheiti>: :g' -e 's:</mgr><mgr>: EOP :g' -e 's:<[^>]*?>: :g' \
-    -e 's:^rad[0-9T]+ ::' \
-    -e 's:\([^/()<>]*?\)+: :g' -e 's: ,,: :g' -e 's:\.\.+ :. :g' -e 's: ([,.:;?!] ):\1:g' \
-    -e 's:[^a-záðéíóúýþæöA-ZÁÉÍÓÚÝÞÆÖ0-9 \.,?!:;/%‰°º—–²³¼¾½ _-]+::g' -e 's: |_+: :g' \
-    -e 's: $: EOP :' -e 's:[[:space:]]+: :g' \
-    -e 's:(EOP )+:EOP :g' -e 's:([—,—]) EOP:\1:g' -e 's:([A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö0-9]) EOP :\1. :g' -e 's:EOP[,.:;?!] :EOP :g' \
-    < $infile > $paragraphdir/${spkID}-${speechname}.txt
+  tr "\n" " " < $infile \
+    | sed -re 's:(.*)?<ræðutexti>(.*)</ræðutexti>(.*):\2:' \
+  -e 's:<!--[^>]*?-->|<truflun>[^<]*?</truflun>|<atburður>[^<]*?</atburður>|<málsheiti>[^<]*?</málsheiti>: :g'
+  -e 's:</mgr><mgr>: EOP :g' -e 's:<[^>]*?>: :g' \
+  -e 's:^ +::' \
+  -e 's:\([^/()<>]*?\)+: :g' -e 's: ,,: :g' -e 's:\.\.+ :. :g' -e 's: ([,.:;?!] ):\1:g' \
+  -e 's:[^a-záðéíóúýþæöA-ZÁÉÍÓÚÝÞÆÖ0-9 \.,?!:;/%‰°º—–²³¼¾½ _-]+::g' -e 's: |_+: :g' \
+  -e 's: $: EOP :' -e 's:[[:space:]]+: :g' \
+  -e 's:(EOP )+:EOP :g' -e 's:([—,—]) EOP:\1:g' \
+  -e 's:([A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö0-9]) EOP :\1. :g' -e 's:EOP[,.:;?!] :EOP :g' \
+  | sed -e '$a\' > $paragraphdir/${spkID}-${speechname}.txt
   
   echo "Clean the text for all uses (AM, LM and for punctuation modelling)"
   local/clean_new_speech.sh --stage $clean_stage $intermediate/text_orig.txt $outdir/cleantext.txt $outdir/punct_text.txt $outdir/new_vocab.txt || error 1 "ERROR: clean_new_speech.sh failed";

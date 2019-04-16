@@ -26,13 +26,15 @@ mkdir -p $transcripts_archive $datadir/log $modeldir/log
 
 source $CONDAPATH/activate thenv || error 11 ${error_array[11]};
 
-if [ $stage -le -1 ]; then
+if [ $stage -le 0 ]; then
 
   n_trans=$(ls $transcript_dir/ | wc -l)
   if [ $n_trans -gt 1 ]; then
     echo "Combine new transcripts with the current training set"
     cat $currentdata/althingi.train.txt $transcript_dir/*.txt | egrep -v '^\s*$' > $datadir/althingi.train.txt
     mv -t $transcripts_archive $transcript_dir/*.txt
+    cp $currentdata/althingi.dev.txt $datadir/althingi.dev.txt
+    cp $currentdata/althingi.test.txt $datadir/althingi.test.txt
   else
     echo "There are no new transcripts to add to the paragraph model"
     exit 0;

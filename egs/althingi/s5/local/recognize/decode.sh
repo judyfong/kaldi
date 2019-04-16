@@ -124,7 +124,7 @@ fi
 if [ $stage -le 2 ]; then
   if ! $skip_diagnostics ; then
     [ ! -z $iter ] && iter_opt="--iter $iter"
-    local/recognize/analyze_lats.sh --cmd "$cmd" --model-dir $model_dir $iter_opt $graphdir $dir || exit 1;
+    local/recognize/analyze_lats.sh --cmd "$cmd" --model-dir $model_dir $iter_opt $graphdir $dir
   fi
 fi
 

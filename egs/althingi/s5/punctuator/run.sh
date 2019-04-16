@@ -100,7 +100,7 @@ if [ $stage -le 1 ]; then
   fi
   
   echo "Convert data"
-  if [ -e $datadir_2nd_stage/althingi.train.txt ]; then
+  if [ $two_stage = true -a -e $datadir_2nd_stage/althingi.train.txt ]; then
     utils/slurm.pl --mem 12G --time 0-12:00 $datadir/log/data${id}${suffix}_w2nd_stage.log \
       python punctuator/data.py ${datadir} ${datadir_2nd_stage} || error 1 "punct: data.py w/2nd stage failed"
     #sbatch --get-user-env --mem 12G --time 0-12:00 --job-name=data_2nd_stage --output=$datadir/log/data${id}${suffix}_w2nd_stage.log --wrap="srun python punctuator/data.py ${datadir} ${datadir_2nd_stage}"
@@ -118,7 +118,7 @@ if [ $stage -le 2 ]; then
     python punctuator/main.py $modeldir althingi${id}${suffix} 256 0.02 || error 1 "punct: main.py failed"
   #sbatch --get-user-env --job-name=main_first_stage --output=$modeldir/log/main_first_stage${id}$suffix.log --gres=gpu:1 --mem=12G --time=0-10:00 --wrap="srun python punctuator/main.py $modeldir althingi${id}${suffix} 256 0.02"
 
-  if [ -e $datadir_2nd_stage/althingi.train.txt ]; then
+  if [ $two_stage = true -a -e $datadir_2nd_stage/althingi.train.txt ]; then
     echo "Train the 2nd stage"
     utils/slurm.pl --gpu 1 --mem 12G --time 0-10:00 $modeldir/log/main_2nd_stage${id}$suffix.log \
       python punctuator/main2.py $modeldir althingi${id}${suffix} 256 0.02 $modeldir/Model_althingi${id}${suffix}_h256_lr0.02.pcl || error 1 "punct: main2.py failed"
@@ -137,7 +137,7 @@ if [ $stage -le 3 ]; then
   done
   wait
   
-  if [ -e $datadir_2nd_stage/althingi.train.txt ]; then
+  if [ $two_stage = true -a -e $datadir_2nd_stage/althingi.train.txt ]; then
     echo "Punctuate the dev and test sets using the 2nd stage model"
     for dataset in dev test; do
       (
@@ -162,7 +162,7 @@ if [ $stage -le 4 ]; then
     ) &
   done
   
-  if [ -e $datadir_2nd_stage/althingi.train.txt ]; then
+  if [ $two_stage = true -a -e $datadir_2nd_stage/althingi.train.txt ]; then
     for f in dev test; do
       (
         python punctuator/error_calculator.py \

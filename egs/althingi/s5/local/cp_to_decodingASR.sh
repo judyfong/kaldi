@@ -4,9 +4,15 @@
 . ./local/utils.sh
 . ./local/array.sh
 
-asrlm_modeldir=/jarnsmidur/asr-lm_models
+asrlm_modeldir=/jarnsmidur/asr-lm_models # This is the LM server model dir mounted on the decoding server
+decode_amdir=$root_modeldir/$middle_ampath
+decode_lmdir=$root_lm_modeldir
+decode_textnormdir=$root_text_norm_modeldir
+decode_punctuation=$root_punctuation_modeldir
+decode_paragraph=$root_paragraph_modeldir
 trans_out=$root_transcription_dir
 lirfa_audio=$root_lirfa_audio
+bundle=$root_bundle
 
 tmp=$(mktemp -d)
 cleanup () {
@@ -25,10 +31,9 @@ if [ -z "$new_HCLG" ]; then
   exit 0;
 fi
 
+# Copy the new LMs and decoding graph from the LM server to the decoding server
 # Newest AM dir
 am_modeldir=$(ls -td $asrlm_modeldir/acoustic_model/*/*/*/* | head -n1)
-
-# Copy the new LMs and decoding graph from the LM server to the decoding server
 
 # The pathnames are not the same in the beginning, between the two servers, cut away what is different
 n=$(echo $asrlm_modeldir | egrep -o '/' | wc -l)
@@ -39,9 +44,6 @@ middle_ampath=$(dirname $am_modeldir | cut -d'/' -f$[$n+2]-)
 lm_modeldir=$(cat $am_modeldir/lminfo)
 lm_date=$(basename $lm_modeldir)
 middle_lmpath=language_model
-
-decode_amdir=$root_modeldir/$middle_ampath
-decode_lmdir=$root_lm_modeldir
 
 if [ -d $decode_lmdir/$lm_date ]; then
   echo "Language model dir already exists on the decoding server"
@@ -62,8 +64,33 @@ else
   ln -sf $decode_lmdir/$lm_date $decode_amdir/$am_date/lmdir
 fi
 
+# Check if there are new versions of the Thrax denormalization FSTs or punct. or paragraph models
+# New text de-normalization FSTs
+newest_lm_textnorm=$(ls -td $asrlm_modeldir/text_norm/2* | head -n1)
+newest_decode_textnorm=$(ls -td $decode_textnormdir/2* | head -n1)
+if [ $newest_lm_textnorm -nt $newest_decode_textnorm ]; then
+  echo "The LM server contains newer text normalization FSTs"
+  cp -r $newest_lm_textnorm $decode_textnormdir
+fi
+
+# Comment out since not yet possible to update these models on the LM server
+# # New punctuation and paragraph model
+# newest_lm_punct=$(ls -td $asrlm_modeldir/punctuation/2* | head -n1)
+# newest_decode_punct=$(ls -td $decode_punctuation/2* | head -n1)
+# if [ $newest_lm_punct -nt $newest_decode_punct ]; then
+#   echo "The LM server contains a newer punctuation model"
+#   cp -r $newest_lm_punct $decode_punctuation
+# fi
+
+# newest_lm_paragraph=$(ls -td $asrlm_modeldir/paragraph/2* | head -n1)
+# newest_decode_paragraph=$(ls -td $decode_paragraph/2* | head -n1)
+# if [ $newest_lm_paragraph -nt $newest_decode_paragraph ]; then
+#   echo "The LM server contains a newer paragraph model"
+#   cp -r $newest_lm_paragraph $decode_paragraph
+# fi
+
 echo "Update latest"
-d=$(basename $(ls -td $root_bundle/20* | head -n1))
+d=$(basename $(ls -td $bundle/20* | head -n1))
 if [ $d = $am_date ]; then
   echo "The latest bundle is already from $am_date"
   echo "I won't overwrite it"
@@ -99,8 +126,8 @@ if [ $fail -eq 3 ]; then
   echo "FAILED: Bad comparison for all speeches"
   echo "Maybe something is wrong with the new ASR version"
   echo "Revert to using the old one"
-  second_newest=$(ls -td $root_bundle/2* | head -n2 | tail -n1)
-  ln -s $second_newest $root_bundle/latest
+  second_newest=$(ls -td $bundle/2* | head -n2 | tail -n1)
+  ln -s $second_newest $bundle/latest
   exit 1;
 elif [ $empty -eq 3 ]; then
   echo "Non-existent audio or reference text for all speeches"

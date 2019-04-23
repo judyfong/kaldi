@@ -90,7 +90,7 @@ if [ $stage -le 1 ]; then
   # Extract and prepare the text for paragraph model training
   tr "\n" " " < $infile \
     | sed -re 's:(.*)?<ræðutexti>(.*)</ræðutexti>(.*):\2:' \
-  -e 's:<!--[^>]*?-->|<truflun>[^<]*?</truflun>|<atburður>[^<]*?</atburður>|<málsheiti>[^<]*?</málsheiti>: :g'
+  -e 's:<!--[^>]*?-->|<truflun>[^<]*?</truflun>|<atburður>[^<]*?</atburður>|<málsheiti>[^<]*?</málsheiti>: :g' \
   -e 's:</mgr><mgr>: EOP :g' -e 's:<[^>]*?>: :g' \
   -e 's:^ +::' \
   -e 's:\([^/()<>]*?\)+: :g' -e 's: ,,: :g' -e 's:\.\.+ :. :g' -e 's: ([,.:;?!] ):\1:g' \

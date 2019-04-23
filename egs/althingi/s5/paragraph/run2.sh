@@ -51,7 +51,7 @@ if [ $stage -le 1 ]; then
   fi
 
   echo "Process data" # I need to do this differently. Otherwise the insertion of paragraphs will be way to slow
-  utils/slurm.pl --mem 12G --time 0-2:00 $datadir/log/data.log \
+  utils/slurm.pl --mem 12G $datadir/log/data.log \
     python paragraph/data.py ${datadir} || exit 1;
 fi
 

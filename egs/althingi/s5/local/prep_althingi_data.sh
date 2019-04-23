@@ -186,7 +186,7 @@ if [ $stage -le 3 ]; then
       python3 -c "
 import re
 import sys
-roman_path='/home/staff/inga/kaldi/egs/althingi/s5/local'
+roman_path='$KALDI_ROOT/egs/althingi/s5/local'
 if not roman_path in sys.path:
     sys.path.append(roman_path)
 import roman
@@ -213,11 +213,11 @@ for line in text:
 text.close()
 text_out.close()
 "
-  ret=$?
-  if [ $ret -ne 0 ]; then
-    error 1 $LINENO "Failed rewriting Roman numerals";
-  fi
-    ) &
+    ret=$?
+    if [ $ret -ne 0 ]; then
+      error 1 $LINENO "Failed rewriting Roman numerals";
+    fi
+      ) &
   done
   wait;
 fi

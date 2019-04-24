@@ -178,6 +178,8 @@ fi
 
 if [[ $(hostname -f) == terra.hir.is ]]; then
   source $CONDAPATH/deactivate
+else
+  conda $CONDAPATH/deactivate
 fi
 
 exit 0;

@@ -87,4 +87,8 @@ if [ $stage -le 4 ]; then
   done
 fi
 
-source $CONDAPATH/deactivate
+if [[ $(hostname -f) == terra.hir.is ]]; then
+  source $CONDAPATH/deactivate
+else
+  conda $CONDAPATH/deactivate
+fi

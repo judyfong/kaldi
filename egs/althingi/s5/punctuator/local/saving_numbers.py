@@ -1,5 +1,8 @@
 # coding: utf-8
 
+# NOTE I can not use nltk's word_tokenize since the input does not contain punctuations
+# and word_tokenize takes ordinal periods as EOS periods if a number comes after.
+
 from __future__ import division
 from nltk.tokenize import word_tokenize
 
@@ -12,11 +15,11 @@ numbers = re.compile(r"\d")
 is_number = lambda x: len(numbers.sub("", x)) / len(x) < 0.6
 
 def process_line(line):
-
-    tokens = word_tokenize(line)
+    
+    tokens = line.split()
     output_tokens = []
     num_list = []
-    
+
     for token in tokens:
         if is_number(token):
             output_tokens.append(NUM)

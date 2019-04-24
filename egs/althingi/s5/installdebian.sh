@@ -131,8 +131,15 @@ conda install mkl-service
 #touch /home/lirfa/.conda/envs/thenv/lib/python2.7/site-packages/paths.pth
 conda install Theano
 
-#make sure cmake is at least 2.3
-#install libgpuru if haven't already
+# I need a gpu backend - NOTE! Fails on the lm server!
+# Follow the instructions here: http://deeplearning.net/software/libgpuarray/installation.html
+# The main things we need to install are
+#make sure cmake is at least 3.0
+conda install cython
+conda install nose
+git clone https://github.com/Theano/libgpuarray.git
+cd libgpuarray
+# And follow instructions
 
 # (5)
 # Modify cmd.sh to run from your local computer or from a cluster

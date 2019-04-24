@@ -25,7 +25,7 @@ if __name__ == "__main__":
             else:
                 if token.isupper():
                     out_f.write(('' if first else ' ') + token)
-                else
+                else:
                     out_f.write(('' if first else ' ') + (token.title() if last_was_eos else token))
 
             last_was_eos = token in EOS_TOKENS

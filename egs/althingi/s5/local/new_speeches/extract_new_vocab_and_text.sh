@@ -143,7 +143,7 @@ if [ $stage -le 3 ]; then
     > $lmdir/${spkID}-${speechname}.$text_ext || exit 1;
 
   echo "Remove punctuations to make the text better fit for acoustic modelling. Add a spkID."
-  sed -re 's: [^A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö ] : :g' -e 's: +: :g' -e "s:.*:${ID}-&:" \
+  sed -re 's: [^A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö ] : :g' -e 's: +: :g' -e "s:.*:${spkID}-&:" \
       < ${outdir}/text_expanded > $amdir/${spkID}-${speechname}.$text_ext || exit 1;
   
 fi

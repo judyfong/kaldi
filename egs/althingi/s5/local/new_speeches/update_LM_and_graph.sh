@@ -96,7 +96,7 @@ if [ $stage -le 2 ]; then
       $lm_modeldir/lang
   #else
   #  mkdir -p $lm_modeldir
-  #  cp $current_lmdir/lang $lm_modeldir
+  #  cp -r $current_lmdir/lang $lm_modeldir
   #fi
   
 fi

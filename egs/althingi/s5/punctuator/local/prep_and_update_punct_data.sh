@@ -17,7 +17,7 @@ $ignore_commas && suffix=_noCOMMA
 . ./utils/parse_options.sh
 
 # These paths are defined in path.conf
-prondict=$(ls -t $root_lexicon/prondict.*.txt | head -n1)
+prondict=$(ls -t $root_lexicon/prondict.* | head -n1)
 punct_transcripts=$root_punctuation_transcripts
 punct_transcripts_archive=$root_punct_transcripts_archive
 mkdir -p $punct_transcripts_archive
@@ -38,8 +38,8 @@ cleanup () {
 }
 trap cleanup EXIT
 
-cat $punct_transcripts/*.txt > $tmp/new_transcripts.txt
-mv -t $punct_transcripts_archive/ $punct_transcripts/*.txt
+cat $punct_transcripts/*.* > $tmp/new_transcripts.txt
+mv -t $punct_transcripts_archive/ $punct_transcripts/*.*
 
 echo "Preprocess the data for training"
 utils/slurm.pl --mem 8G ${new_datadir}/log/preprocessing_trainingdata_cs.log \

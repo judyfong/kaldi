@@ -31,8 +31,8 @@ if [ $stage -le 0 ]; then
   n_trans=$(ls $transcript_dir/ | wc -l)
   if [ $n_trans -gt 1 ]; then
     echo "Combine new transcripts with the current training set"
-    cat $currentdata/althingi.train.txt $transcript_dir/*.txt | egrep -v '^\s*$' > $datadir/althingi.train.txt
-    mv -t $transcripts_archive $transcript_dir/*.txt
+    cat $currentdata/althingi.train.txt $transcript_dir/*.* | egrep -v '^\s*$' > $datadir/althingi.train.txt
+    mv -t $transcripts_archive $transcript_dir/*.*
     cp $currentdata/althingi.dev.txt $datadir/althingi.dev.txt
     cp $currentdata/althingi.test.txt $datadir/althingi.test.txt
   else

@@ -23,7 +23,7 @@ lowercase=false
 Leipzig_corpus=$root_leipzig_corpus/isl_sentences_10M.txt
 manually_fixed_data=$root_manually_fixed/althingi100_textCS
 utf8syms=$root_listdir/utf8.syms
-prondict=$(ls -t $root_lexicon/prondict.*.txt | head -n1)
+prondict=$(ls -t $root_lexicon/prondict.* | head -n1)
 thraxfstdir=$(ls -dt $root_text_norm_modeldir/20* | head -n1)
 fstdir=$root_base_text_norm_model
 

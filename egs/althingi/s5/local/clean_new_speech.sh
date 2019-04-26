@@ -5,6 +5,7 @@ set -o pipefail
 # This script cleans up text, which can later be processed further to be used in AMs, LMs or punctuation models.
 
 stage=-1
+lex_ext=txt
 
 . ./path.sh
 . parse_options.sh || exit 1;
@@ -31,11 +32,11 @@ cleanup () {
 }
 trap cleanup EXIT
 
-prondict=$(ls -t $root_lexicon/prondict.*.txt | head -n1) 
-bad_words=$(ls -t $root_listdir/discouraged_words.*.txt | head -n1)
-cut -f1 $root_thraxgrammar_lex/abbr_lexicon.txt | tr " " "\n" | sort -u > $tmp/abbr_list
-cut -f2 $root_thraxgrammar_lex/ambiguous_personal_names.txt > $tmp/ambiguous_names
-cut -f2 $root_thraxgrammar_lex/acro_denormalize.txt > $tmp/abbr_acro_as_letters
+prondict=$(ls -t $root_lexicon/prondict.* | head -n1) 
+bad_words=$(ls -t $root_listdir/discouraged_words.* | head -n1)
+cut -f1 $root_thraxgrammar_lex/abbr_lexicon.$lex_ext | tr " " "\n" | sort -u > $tmp/abbr_list
+cut -f2 $root_thraxgrammar_lex/acro_denormalize.$lex_ext > $tmp/abbr_acro_as_letters
+cut -f2 $root_thraxgrammar_lex/ambiguous_personal_names.$lex_ext > $tmp/ambiguous_names
 
 for f in $textin $prondict $bad_words $tmp/abbr_list $tmp/abbr_acro_as_letters $tmp/ambiguous_names; do
   [ ! -f $f ] && echo "$0: expected $f to exist" && exit 1;

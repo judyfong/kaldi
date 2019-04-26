@@ -103,6 +103,7 @@ egs/*/s*/paragraph/log
 egs/*/s*/paragraph/processed_data
 egs/*/s*/local/auxiliary
 egs/*/s*/local/new_speeches/auxiliary
+egs/*/s*/punctuator/local/auxiliary
 egs/*/s*/local/recognize/auxiliary
 egs/*/s*/local/punctuation/processed_data*
 egs/*/s*/local/punctuation/auxiliary

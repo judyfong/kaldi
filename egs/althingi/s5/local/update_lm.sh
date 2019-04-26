@@ -14,8 +14,8 @@ carpa=true
 #date
 d=$(date +'%Y%m%d')
 
-prondict=$(ls -t $root_lexicon/prondict.*.txt | head -n1)
-lm_trainingset=$(ls -t $root_lm_training/* | head -n1)
+prondict=$(ls -t $root_lexicon/prondict.* | head -n1)
+lm_trainingset=$(ls -tp $root_lm_training/* | grep -v / | head -n1)
 lm_modeldir=$root_lm_modeldir/$d
 localdict=$root_localdict
 

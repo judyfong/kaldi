@@ -14,7 +14,7 @@ $ignore_commas && suffix=_noCOMMA
 . ./utils/parse_options.sh
 
 # These paths are defined in path.conf
-prondict=$(ls -t $root_lexicon/prondict.*.txt | head -n1)
+prondict=$(ls -t $root_lexicon/prondict.* | head -n1)
 all=$root_intermediate
 
 if [ $# -ne 3 ]; then

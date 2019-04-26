@@ -37,9 +37,7 @@ sed -re 's/[^a-záðéíóúýþæöA-ZÁÉÍÓÚÝÞÆÖ0-9 \.,?!:;\/%‰°º&�
 python3 -c "
 import re
 import sys
-roman_path='/home/staff/inga/kaldi/egs/althingi/s5/local'
-if not roman_path in sys.path:
-    sys.path.append(roman_path)
+sys.path.insert(0,'local')
 import roman
 text = open('${dir}/roman.tmp', 'r')
 text_out = open('${dir}/noRoman.tmp', 'w')

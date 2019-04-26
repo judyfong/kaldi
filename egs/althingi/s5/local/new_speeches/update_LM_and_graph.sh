@@ -11,6 +11,7 @@ set -o pipefail
 # Otherwise some vocab could be moved straight to the archive and not to the pron dict.
 
 stage=0
+pronext=txt
 
 . ./path.sh # the $root_* variable are defined here
 . ./cmd.sh
@@ -24,11 +25,11 @@ d=$(date +'%Y%m%d')
 confirmed_vocab_dir=$root_confirmed_vocab
 vocab_archive=$root_confirmed_vocab_archive
 prondir=$root_lexicon
-current_prondict=$(ls -t $prondir/prondict.*.txt | head -n1)
+current_prondict=$(ls -t $prondir/prondict.* | head -n1)
 lm_transcript_dir=$root_lm_transcripts
 lm_transcripts_archive=$root_lm_transcripts_archive
 lm_training_dir=$root_lm_training
-current_LM_training_texts=$(ls -t $lm_training_dir/*.txt | head -n1)
+current_LM_training_texts=$(ls -tp $lm_training_dir | grep -v / | head -n1)
 lm_modeldir=$root_lm_modeldir/$d
 current_lmdir=$(ls -td $root_lm_modeldir/20*/lang_* | head -n1)
 current_lmdir=$(dirname $current_lmdir)
@@ -49,8 +50,8 @@ trap cleanup EXIT
 if [ $stage -le 1 ]; then
 
   # Do I want to overwrite or not?
-  [ -f $prondir/prondict.${d}.txt ] && \
-  echo "$0: $prondir/prondict.${d}.txt already exists. Are you sure you want to overwrite it?" \
+  [ -f $prondir/prondict.${d}.* ] && \
+  echo "$0: $prondir/prondict.${d}.$pronext already exists. Are you sure you want to overwrite it?" \
   && exit 1;
 
   n_trans=$(ls $lm_transcript_dir/ | wc -l)
@@ -61,8 +62,8 @@ if [ $stage -le 1 ]; then
       exit 0;
     fi
     echo "Update the LM training texts"
-    cat $current_LM_training_texts $lm_transcript_dir/*.txt | egrep -v '^\s*$' > $lm_training_dir/LMtext.${d}.txt
-    mv -t $lm_transcripts_archive $lm_transcript_dir/*.txt 
+    cat $current_LM_training_texts $lm_transcript_dir/*.* | egrep -v '^\s*$' > $lm_training_dir/LMtext.${d}.txt
+    mv -t $lm_transcripts_archive $lm_transcript_dir/*.* 
   else
     echo "There are no new transcripts to add to the language models"
     exit 0;
@@ -72,8 +73,8 @@ if [ $stage -le 1 ]; then
   n_vocab=$(ls $confirmed_vocab_dir | wc -l)
   if [ $n_vocab -gt 1 ]; then
     echo "Update the pronunciation dictionary"
-    cat $confirmed_vocab_dir/*.txt $current_prondict | sort -u > $prondir/prondict.${d}.txt
-    mv $confirmed_vocab_dir/*.txt $vocab_archive/ 
+    cat $confirmed_vocab_dir/*.* $current_prondict | sort -u > $prondir/prondict.${d}.$pronext
+    mv $confirmed_vocab_dir/*.* $vocab_archive/ 
   fi
     
 fi
@@ -83,7 +84,7 @@ if [ $stage -le 2 ]; then
   echo "Update the lang dir"
 
   # Make lang dir
-  prondict=$(ls -t $prondir/prondict.*.txt | head -n1)
+  prondict=$(ls -t $prondir/prondict.* | head -n1)
   if [ $prondict != $current_prondict ]; then
     [ -d $localdict ] && rm -r $localdict
     mkdir -p $localdict $lm_modeldir/lang
@@ -106,7 +107,7 @@ if [ $stage -le 3 ]; then
   $train_cmd --mem 12G $lm_modeldir/log/make_LM_3gsmall.log \
     local/make_LM.sh \
       --order 3 --small true --carpa false \
-      $(ls -t $lm_training_dir/*.txt | head -n1) $lm_modeldir/lang \
+      $(ls -tp $lm_training_dir/* | grep -v / | head -n1) $lm_modeldir/lang \
       $localdict/lexicon.txt $lm_modeldir \
     || error 1 "Failed creating a pruned trigram language model"
 
@@ -118,7 +119,7 @@ if [ $stage -le 4 ]; then
   $train_cmd --mem 20G $lm_modeldir/log/make_LM_5g.log \
     local/make_LM.sh \
       --order 5 --small false --carpa true \
-      $(ls -t $lm_training_dir/*.txt | head -n1) $lm_modeldir/lang \
+      $(ls -tp $lm_training_dir/* | grep -v / | head -n1) $lm_modeldir/lang \
       $localdict/lexicon.txt $lm_modeldir \
     || error 1 "Failed creating an unpruned 5-gram language model"
   

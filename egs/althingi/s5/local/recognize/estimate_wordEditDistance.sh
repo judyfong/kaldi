@@ -10,19 +10,13 @@ lowercase=false
 ignore_punctuations=false
 abbr_extra=false
 suffix=
+lex_ext=txt
+bundle=latest
 
 echo "$0 $@"  # Print the command line for logging
 . ./path.sh
 . ./utils/parse_options.sh
 . ./conf/path.conf
-
-tmp=$(mktemp -d)
-cleanup () {
-    rm -rf "$tmp"
-}
-trap cleanup EXIT
-
-cut -f1 $root_thraxgrammar_lex/abbr_lexicon.txt | tr " " "\n" | sort -u > $tmp/abbr_list
 
 if [ $# -ne 3 ]; then
     echo "Usage: $0 [options] <textfile1> <textfile2> <output-dir>"
@@ -41,6 +35,19 @@ mkdir -p $dir
 
 base=$(basename "$textfile1")
 base="${base%.*}"
+
+tmp=$(mktemp -d)
+cleanup () {
+    rm -rf "$tmp"
+}
+trap cleanup EXIT
+
+utf8syms=$bundle/utf8.syms
+normdir=$bundle/text_norm
+cut -f1 $root_thraxgrammar_lex/abbr_lexicon.$lex_ext | tr " " "\n" | sort -u > $tmp/abbr_list
+
+
+
 
 # Make the abbreviation regex pattern used in punctuation cleaning and correcting capitalization
 cat $tmp/abbr_list <(sed -r 's:.*:\u&:' $tmp/abbr_list) \
@@ -98,7 +105,13 @@ if [ $abbreviate = true ]; then
     # Try to get rid of inconsistencies in denormalization in human transcripts
     d=$(basename $(dirname $textfile1))
     if [ "$d" = "Lestur_clean" ]; then
-      fststringcompile ark:$dir/text1.tmp ark:- | fsttablecompose --match-side=left ark,t:- text_norm/ABBREVIATE.fst ark:- | fsts-to-transcripts ark:- ark,t:- | int2sym.pl -f 2- text_norm/utf8.syms | cut -d" " -f2- | sed -re 's: ::g' -e 's:0x0020: :g' | tr "\n" " " | sed -re 's:.*:1 &:' -e "s/[[:space:]]+/ /g" > $dir/tmp && mv $dir/tmp $dir/text1.tmp
+      fststringcompile ark:$dir/text1.tmp ark:- \
+	| fsttablecompose --match-side=left ark,t:- $normdir/ABBREVIATE.fst ark:- \
+	| fsts-to-transcripts ark:- ark,t:- \
+	| int2sym.pl -f 2- ${utf8syms} | cut -d" " -f2- \
+	| sed -re 's: ::g' -e 's:0x0020: :g' \
+	| tr "\n" " " | sed -re 's:.*:1 &:' -e "s/[[:space:]]+/ /g" \
+	> $dir/tmp && mv $dir/tmp $dir/text1.tmp
     fi
   fi
 fi

@@ -75,7 +75,7 @@ if [ $stage -le -1 ]; then
 	--ignore-commas $ignore_commas || exit 1;
 
   else
-    # The following will use data as it is prepared by the new prep_althingi_data.sh
+    # The following will use data as it is prepared by the clean_new_speech.sh
     utils/slurm.pl $datadir/log/prep_punct_data.log \
       punctuator/local/prep_punct_data2.sh \
       --id $id --ignore-commas $ignore_commas \
@@ -84,7 +84,7 @@ if [ $stage -le -1 ]; then
   
   if [ $two_stage = true ]; then
     # Scripts called by this one have not been reviewed. I have not used the
-    # 2nd stage data so far exept in one test.
+    # 2nd stage data so far exept in a few tests.
     utils/slurm.pl --mem 8G --time 2-00 $datadir/log/prep_punct_data_2nd_stage.log \
       punctuator/local/prep_punct_data_2nd_stage.sh \
       --id $id --ignore-commas $ignore_commas \

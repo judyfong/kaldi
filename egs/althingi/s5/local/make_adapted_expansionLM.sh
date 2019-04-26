@@ -17,7 +17,7 @@ order=4
 . ./conf/path.conf
 
 utf8syms=$root_listdir/utf8.syms
-prondict=$(ls -t $root_lexicon/prondict.*.txt | head -n1)
+prondict=$(ls -t $root_lexicon/prondict.* | head -n1)
 
 if [ $# -ne 4 ]; then
   echo "This script makes an expansion language model by adding the training data we are going to"

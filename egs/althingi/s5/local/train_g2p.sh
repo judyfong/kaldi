@@ -11,8 +11,8 @@ n=4 # Number of training iterations
 d=$(date +'%Y%m%d')
 
 dictdir=$root_lexicon
-prondict=$(ls -t $dictdir/prondict.*.txt | head -n1)
-foreign=$(ls -t $dictdir/foreign_wtrans.*.txt | head -n1)
+prondict=$(ls -t $dictdir/prondict.* | head -n1)
+foreign=$(ls -t $dictdir/foreign_wtrans.* | head -n1)
 modeldir=$root_g2p/$d #data/local/g2p
 intermediate=$modeldir/intermediate
 mkdir -p $modeldir/log $intermediate

@@ -9,6 +9,7 @@ set -o pipefail
 
 stage=-1
 nj=24
+lex_ext=txt
 
 . ./path.sh # Needed for KALDI_ROOT and ASSET_ROOT
 . ./cmd.sh
@@ -23,13 +24,13 @@ cleanup () {
 trap cleanup EXIT
 
 utf8syms=$root_listdir/utf8.syms
-prondict=$(ls -t $root_lexicon/prondict.*.txt | head -n1)
+prondict=$(ls -t $root_lexicon/prondict.* | head -n1)
 # All root_* variables are defined in path.conf
-acronyms_as_words=$(ls -t $root_capitalization/acronyms_as_words.*.txt | head -n1)
-named_entities=$(ls -t $root_capitalization/named_entities.*.txt | head -n1)
-cut -f1 $root_thraxgrammar_lex/abbr_lexicon.txt | tr " " "\n" | sort -u > $tmp/abbr_list
-cut -f2 $root_thraxgrammar_lex/acro_denormalize.txt > $tmp/abbr_acro_as_letters
-cut -f2 $root_thraxgrammar_lex/ambiguous_personal_names.txt > $tmp/ambiguous_names
+acronyms_as_words=$(ls -t $root_capitalization/acronyms_as_words.* | head -n1)
+named_entities=$(ls -t $root_capitalization/named_entities.* | head -n1)
+cut -f1 $root_thraxgrammar_lex/abbr_lexicon.$lex_ext | tr " " "\n" | sort -u > $tmp/abbr_list
+cut -f2 $root_thraxgrammar_lex/acro_denormalize.$lex_ext > $tmp/abbr_acro_as_letters
+cut -f2 $root_thraxgrammar_lex/ambiguous_personal_names.$lex_ext > $tmp/ambiguous_names
 
 if [ $# -ne 3 ]; then
   echo "This script cleans Icelandic parliamentary data, as obtained from the parliament."

@@ -2,6 +2,8 @@
 
 set -o pipefail
 
+lex_ext=txt
+
 . ./path.sh
 . parse_options.sh || exit 1;
 
@@ -30,10 +32,10 @@ cleanup () {
 }
 trap cleanup EXIT
 
-prondict=$(ls -t $root_lexicon/prondict.*.txt | head -n1)
-acro_as_words=$(ls -t $root_capitalization/acronyms_as_words.*.txt | head -n1)
-named_entities=$(ls -t $root_capitalization/named_entities.*.txt | head -n1)
-cut -f2 $root_thraxgrammar_lex/ambiguous_personal_names.txt > $tmp/ambiguous_names
+prondict=$(ls -t $root_lexicon/prondict.* | head -n1)
+acro_as_words=$(ls -t $root_capitalization/acronyms_as_words.* | head -n1)
+named_entities=$(ls -t $root_capitalization/named_entities.* | head -n1)
+cut -f2 $root_thraxgrammar_lex/ambiguous_personal_names.$lex_ext > $tmp/ambiguous_names
 
 for f in $acro_as_words $tmp/ambiguous_names $named_entities $prondict $wordlist $textin; do
   [ ! -f $f ] && echo "$0: expected $f to exist" && exit 1;

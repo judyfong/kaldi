@@ -9,6 +9,8 @@ set -o pipefail
 stage=0
 clean_stage=0
 expand_stage=0
+vocab_ext=tsv
+text_ext=txt
 
 . ./path.sh # the $root_* variable are defined here
 . parse_options.sh || exit 1;
@@ -98,13 +100,13 @@ if [ $stage -le 1 ]; then
   -e 's: $: EOP :' -e 's:[[:space:]]+: :g' \
   -e 's:(EOP )+:EOP :g' -e 's:([—,—]) EOP:\1:g' \
   -e 's:([A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö0-9]) EOP :\1. :g' -e 's:EOP[,.:;?!] :EOP :g' \
-  | sed -e '$a\' > $paragraphdir/${spkID}-${speechname}.txt
+  | sed -e '$a\' > $paragraphdir/${spkID}-${speechname}.$text_ext
   
   echo "Clean the text for all uses (AM, LM and for punctuation modelling)"
   local/clean_new_speech.sh --stage $clean_stage $intermediate/text_orig.txt $outdir/cleantext.txt $outdir/punct_text.txt $outdir/new_vocab.txt || error 1 "ERROR: clean_new_speech.sh failed";
 
   # Save the new punctuation training text
-  sed -r "s:^$speechname ::" < $outdir/punct_text.txt > $punctdir/${spkID}-${speechname}.txt
+  sed -r "s:^$speechname ::" < $outdir/punct_text.txt > $punctdir/${spkID}-${speechname}.$text_ext
 fi
 
 if [ $stage -le 2 ]; then
@@ -112,7 +114,7 @@ if [ $stage -le 2 ]; then
   if [ -s $outdir/new_vocab.txt ]; then
     echo "Get the phonetic transcriptions of the new vocabulary"
     local/transcribe_g2p.sh $g2p $outdir/new_vocab.txt \
-      > $vocabdir/${spkID}-${speechname}.txt \
+      > $vocabdir/${spkID}-${speechname}.$vocab_ext \
     || error 1 "ERROR: transcribe_g2p.sh failed"
   fi
   
@@ -138,30 +140,24 @@ if [ $stage -le 3 ]; then
     | sed -re 's:[.:?!]+ *$::g' -e 's:[.:?!]+ :\n:g' \
           -e 's:[^A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö \n]::g' \
           -e 's: +: :g' \
-    > $lmdir/${spkID}-${speechname}.txt || exit 1;
+    > $lmdir/${spkID}-${speechname}.$text_ext || exit 1;
 
   echo "Remove punctuations to make the text better fit for acoustic modelling. Add a spkID."
   sed -re 's: [^A-ZÁÐÉÍÓÚÝÞÆÖa-záðéíóúýþæö ] : :g' -e 's: +: :g' -e "s:.*:${ID}-&:" \
-      < ${outdir}/text_expanded > $amdir/${spkID}-${speechname}.txt || exit 1;
+      < ${outdir}/text_expanded > $amdir/${spkID}-${speechname}.$text_ext || exit 1;
   
 fi
 
 if [ $stage -le 4 ]; then
-  if [ -s $vocabdir/${spkID}-${speechname}.txt ]; then
+  if [ -s $vocabdir/${spkID}-${speechname}.$vocab_ext ]; then
     echo "Find the concordance of the new words"
     python local/new_speeches/concordance_of_new_vocab.py \
-      $amdir/${spkID}-${speechname}.txt $vocabdir/${spkID}-${speechname}.txt \
-      $concordancedir/${spkID}-${speechname}.txt \
+      $amdir/${spkID}-${speechname}.$text_ext $vocabdir/${spkID}-${speechname}.$vocab_ext \
+      $concordancedir/${spkID}-${speechname}.$vocab_ext \
       || error 1 $LINENO "Failed to find the concordance of the new words";
   fi
 fi
     
-# NOTE! Fix uttIDs!
-
-# # Extract the speaker IDs
-# cat $datadir/*.xml | egrep "<ræða .*? skst=" | sed -re 's:.*?id="([^\"]+?)".*?skst="([^\"]+?)".*?:\1 \2:g' -e 's:r20:rad20:' -e 's/[:-]//g' | awk '{print $0, $2"-"$1}'> $train_data_dir/language_model/$d/uttname_spkid_uttid.txt
-
-
 # Remove $outdir if all previous steps finished successfully
 #rm -r $outdir
 

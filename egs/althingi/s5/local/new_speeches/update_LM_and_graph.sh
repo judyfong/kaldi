@@ -85,7 +85,8 @@ if [ $stage -le 2 ]; then
 
   # Make lang dir
   prondict=$(ls -t $prondir/prondict.* | head -n1)
-  if [ $prondict != $current_prondict ]; then
+  # I comment out the if loop since for now I tend to manually fix the pronunciation dictionary from time to time
+  #if [ $prondict != $current_prondict ]; then
     [ -d $localdict ] && rm -r $localdict
     mkdir -p $localdict $lm_modeldir/lang
     
@@ -93,10 +94,10 @@ if [ $stage -le 2 ]; then
       $prondict        \
       $localdict   \
       $lm_modeldir/lang
-  else
-    mkdir -p $lm_modeldir
-    cp $current_lmdir/lang $lm_modeldir
-  fi
+  #else
+  #  mkdir -p $lm_modeldir
+  #  cp $current_lmdir/lang $lm_modeldir
+  #fi
   
 fi
 

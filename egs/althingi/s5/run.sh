@@ -65,7 +65,7 @@ base_expansionLM_datadir=$root_expansionLM_cs_data
 manually_fixed_data=$root_manually_fixed/althingi100_textCS
 
 # Newest pronunciation dictionary
-prondict=$(ls -t $root_lexicon/prondict.*.txt | head -n1)
+prondict=$(ls -t $root_lexicon/prondict.* | head -n1)
 
 # Listdir
 listdir=$root_listdir

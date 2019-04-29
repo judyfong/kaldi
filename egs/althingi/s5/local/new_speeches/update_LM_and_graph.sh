@@ -11,7 +11,7 @@ set -o pipefail
 # Otherwise some vocab could be moved straight to the archive and not to the pron dict.
 
 stage=0
-pronext=txt
+pronext=tsv
 
 . ./path.sh # the $root_* variable are defined here
 . ./cmd.sh
@@ -73,7 +73,7 @@ if [ $stage -le 1 ]; then
   n_vocab=$(ls $confirmed_vocab_dir | wc -l)
   if [ $n_vocab -gt 1 ]; then
     echo "Update the pronunciation dictionary"
-    cat $confirmed_vocab_dir/*.* $current_prondict | sort -u > $prondir/prondict.${d}.$pronext
+    cat $confirmed_vocab_dir/*.* $current_prondict | egrep -v '^\s*$' | sort -u > $prondir/prondict.${d}.$pronext
     mv $confirmed_vocab_dir/*.* $vocab_archive/ 
   fi
     

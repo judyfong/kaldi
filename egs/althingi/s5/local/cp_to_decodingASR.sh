@@ -20,7 +20,7 @@ cleanup () {
 }
 trap cleanup EXIT
 
-testout=$tmp # Used when testing whether the new ASR version, i.e. latest, is ok.
+testout=temp/cp_to_decoding #$tmp # Used when testing whether the new ASR version, i.e. latest, is ok.
 mkdir -p $testout
 
 # Check if a new decoding graph was created at least an hour ago
@@ -53,6 +53,7 @@ else
   mkdir -p $decode_lmdir
   cp -r $asrlm_modeldir/$middle_lmpath/$lm_date $decode_lmdir
 fi
+wait;
 
 if [ -d $decode_amdir/$am_date ]; then
   echo "Acoustic model dir already exists on the decoding server"
@@ -134,5 +135,7 @@ elif [ $empty -eq 3 ]; then
   echo "Something is wrong"
   exit 1;
 fi
+
+#rm -r $testout
 
 exit 0;

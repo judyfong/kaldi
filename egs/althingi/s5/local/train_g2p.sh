@@ -46,7 +46,7 @@ done
 g2p.py --model ${intermediate}/g2p_${n}.${d}.mdl --encoding="UTF-8" --test ${dictdir}/g2p_test.${d}.txt || exit 1;
 
 # If happy with the model I would rename it to g2p.mdl
-# mv ${intermediate}/g2p_${n}.mdl ${modeldir}/g2p.mdl
+mv ${intermediate}/g2p_${n}.mdl ${modeldir}/g2p.mdl
 
 # 4) Transcribe new words.
 #   Prepare a list of words you want to transcribe as a simple text

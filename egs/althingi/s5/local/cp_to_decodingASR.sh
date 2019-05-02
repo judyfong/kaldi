@@ -108,7 +108,7 @@ for audio in $(ls -t $lirfa_audio | head -n3); do
   reftext=$trans_out/$speechname/$speechname.txt
   if [ -s $lirfa_audio/$audio -a -s $reftext ]; then
 
-    srun local/recognize/recognize.sh --trim 0 --rnnlm false $lirfa_audio/$audio $testout &> $testout/$speechname.log
+    local/recognize/recognize.sh --trim 0 --rnnlm false $lirfa_audio/$audio $testout &> $testout/$speechname.log
 
     echo "Compare it with an earlier transcription"
     compute-wer --text --mode=present ark:<(tr "\n" " " < $reftext | sed -e '$a\' | sed -r 's:^.*:1 &:') ark,p:<(tr "\n" " " < $testout/$speechname/$speechname.txt | sed -e '$a\' | sed -r 's:^.*:1 &:') >& $testout/edit_dist_$speechname
@@ -137,6 +137,7 @@ elif [ $empty -eq 3 ]; then
   exit 1;
 fi
 
-#rm -r $testout
+rm -r $testout
+echo "Done"
 
 exit 0;

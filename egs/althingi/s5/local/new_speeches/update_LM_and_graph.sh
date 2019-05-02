@@ -133,4 +133,5 @@ if [ $stage -le 5 ]; then
   
 fi
 
+echo "Done"
 exit 0;

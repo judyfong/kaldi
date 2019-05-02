@@ -105,8 +105,8 @@ egs/*/s*/local/auxiliary
 egs/*/s*/local/new_speeches/auxiliary
 egs/*/s*/punctuator/local/auxiliary
 egs/*/s*/local/recognize/auxiliary
-egs/*/s*/local/punctuation/processed_data*
-egs/*/s*/local/punctuation/auxiliary
+egs/*/s*/local/keras_punctuation/processed_data*
+egs/*/s*/local/keras_punctuation/auxiliary
 egs/althingi/s5/ivector_clustering
 
 # /tools/

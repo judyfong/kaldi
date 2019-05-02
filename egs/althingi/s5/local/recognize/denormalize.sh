@@ -46,12 +46,13 @@ done
 
 echo "Abbreviate"
 # Numbers are not in the words.txt file. Hence I can't compose with an utf8-to-words.fst file. Also, remove uttIDs
-fststringcompile ark:$ifile ark:- \
+cut -d' ' -f2- $ifile | tr "\n" " " | sed -r 's:.*:1 &:' \
+  | fststringcompile ark:- ark:- \
   | fsttablecompose --match-side=left ark,t:- $normdir/ABBR_AND_DENORM.fst ark:- \
   | fsts-to-transcripts ark:- ark,t:- \
   | int2sym.pl -f 2- ${utf8syms} | cut -d" " -f2- \
   | sed -re 's: ::g' -e 's:0x0020: :g' \
-  | tr "\n" " " | sed -r "s/ +/ /g" \
+  | sed -r "s/ +/ /g" \
   > ${intermediate}/thrax_out.tmp || error 8 ${error_array[8]};
 
 # Need to activate the conda environment for the punctuation and paragraph models

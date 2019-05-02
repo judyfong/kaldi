@@ -5,7 +5,7 @@
 . ./local/array.sh
 
 asrlm_modeldir=/jarnsmidur/asr-lm_models # This is the LM server model dir mounted on the decoding server
-decode_amdir=$root_modeldir/$middle_ampath
+decode_modeldir=$root_modeldir
 decode_lmdir=$root_lm_modeldir
 decode_textnormdir=$root_text_norm_modeldir
 decode_punctuation=$root_punctuation_modeldir
@@ -39,6 +39,7 @@ am_modeldir=$(ls -td $asrlm_modeldir/acoustic_model/*/*/*/* | head -n1)
 n=$(echo $asrlm_modeldir | egrep -o '/' | wc -l)
 am_date=$(basename $am_modeldir)
 middle_ampath=$(dirname $am_modeldir | cut -d'/' -f$[$n+2]-)
+decode_amdir=$decode_modeldir/$middle_ampath
 
 # Newest language models
 lm_modeldir=$(cat $am_modeldir/lminfo)

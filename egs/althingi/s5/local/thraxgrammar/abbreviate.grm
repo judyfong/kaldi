@@ -226,7 +226,7 @@ personal_names = Optimize[StringFile['local/thraxgrammar/lex/ambiguous_personal_
 amb_pers_names1 = Optimize[
                       CDRewrite[personal_names delspace,
                       ("[BOS]".utf8 | " ".utf8),
-                      " ".utf8 c.ALPHABET c.alphabet+ ("son".utf8 | "syni".utf8 |
+                      " ".utf8 c.ALPHABET c.alphabet+ ("son".utf8 "ar".utf8? | "syni".utf8 |
                       "dóttur".utf8 | "dóttir".utf8 | "sen".utf8)
                       c.u8_punct? ("[EOS]".utf8 | " ".utf8),
                       c.whole_alphabet*,

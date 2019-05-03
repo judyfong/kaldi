@@ -82,9 +82,9 @@ abbr_unit_CDbefore = Optimize[
 abbr_unit_CDafter = Optimize[
                     CDRewrite[units_plus,
                     ("[BOS]".utf8 | " ".utf8),
-                    " ".utf8 ("komma".utf8 | "og hálf".utf8
+                    " ".utf8 ("og hálf".utf8 c.alphabet* " ".utf8)? ("komma".utf8
                     | "prósent".utf8 | "prómill".utf8
-                    | "gráð".utf8 | "krón".utf8
+                    | "gráð".utf8 | "krón".utf8 | "milljarð".utf8 | "milljörðum".utf8
                     | "millj".utf8 c.alphabet+ " krón".utf8
                     | ("fer".utf8 | "rúm".utf8)? ("kíló".utf8 | "sentí".utf8? "metr".utf8)
                     | "gígav".utf8 | "megav".utf8 | "terav".utf8),

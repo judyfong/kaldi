@@ -1,5 +1,7 @@
 #!/bin/bash -e
 
+maxtime=1 # Time in days from the decoding graph creation
+
 . ./path.sh
 . ./local/utils.sh
 . ./local/array.sh
@@ -25,7 +27,7 @@ mkdir -p $testout
 
 # Check if a new decoding graph was created at least an hour ago
 # NOTE! I find this a bit uncomfortable. Is it possible to rather get a message when local/new_speeches/update_LM_and_graph.sh has finished?
-new_HCLG=$(find $asrlm_modeldir/acoustic_model/chain/5.4/tdnn_*/*/graph_3gsmall/HCLG.fst -cmin +60 -ctime -2 | tail -n1)
+new_HCLG=$(find $asrlm_modeldir/acoustic_model/chain/5.4/tdnn_*/*/graph_3gsmall/HCLG.fst -cmin +60 -ctime -$maxtime | tail -n1)
 if [ -z "$new_HCLG" ]; then
   echo "No new decoding graph found, exit the script.";
   exit 0;
@@ -132,7 +134,7 @@ if [ $fail -eq 3 ]; then
   ln -s $second_newest $bundle/latest
   exit 1;
 elif [ $empty -eq 3 ]; then
-  echo "Non-existent audio or reference text for all speeches"
+  echo "FAILED: Non-existent audio or reference text for all speeches"
   echo "Something is wrong"
   exit 1;
 fi

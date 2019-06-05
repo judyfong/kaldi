@@ -11,7 +11,8 @@ export alphabet = Optimize[
            "r".utf8 | "s".utf8 | "t".utf8 | "u".utf8 | "ú".utf8 |
            "v".utf8 | "x".utf8 | "y".utf8 | "ý".utf8 | "þ".utf8 |
            "æ".utf8 | "ö".utf8 | "å".utf8 | "ä".utf8 | "ø".utf8 |
-           "c".utf8 | "q".utf8 | "w".utf8 | "z".utf8 | "ü".utf8 | "ç".utf8];
+           "c".utf8 | "q".utf8 | "w".utf8 | "z".utf8 | "ü".utf8 | 
+           "ç".utf8 | "ë".utf8 ];
 
 
 # I also need to capitalize
@@ -24,7 +25,7 @@ export ALPHABET = Optimize[
            "V".utf8 | "X".utf8 | "Y".utf8 | "Ý".utf8 | "Þ".utf8 |
            "Æ".utf8 | "Ö".utf8 | "Å".utf8 | "Ä".utf8 | "Ø".utf8 |
            "C".utf8 | "Q".utf8 | "W".utf8 | "Z".utf8 | "Ü".utf8 |
-           "Ç".utf8];
+           "Ç".utf8 | "Ë".utf8 ];
 
 export u8_punct = Optimize[
            ".".utf8 | ",".utf8 | ":".utf8 | ";".utf8 | "?".utf8 |

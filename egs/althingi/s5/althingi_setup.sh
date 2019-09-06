@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Copyright 2019 Reykjavik University (Author: Inga Rún Helgadóttir)
+# Apache 2.0
 # Run from the s5 dir
 
 # ASSET_ROOT is defined in path.sh and path.sh runs
@@ -21,7 +23,7 @@ tmp.sh
 
 # thraxgrammar_lex is a symlink not a directory so
 rm -r $root_thraxgrammar_lex
-ln -s $ASSET_ROOT/ASR/local/thraxgrammar/lex $root_text_norm_listdir/thraxgrammar_lex
+ln -sfn $ASSET_ROOT/ASR/local/thraxgrammar/lex $root_text_norm_listdir/thraxgrammar_lex
 
 # Remove tmp.sh
 rm tmp.sh

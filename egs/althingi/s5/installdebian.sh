@@ -146,7 +146,7 @@ cd ASR
 . ./path.sh
 ln -sfn ../../wsj/s5/utils utils
 ln -sfn ../../wsj/s5/steps steps
-ln -sfn ../../wsj/s5/rnnlm rnnlm
+ln -sfn ../../../scripts/rnnlm rnnlm
 
 # (7)
 # Install a virtual python 3.5 environment

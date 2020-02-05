@@ -82,10 +82,6 @@ tmp*
 /src/kaldi.mk.bak
 
 # /egs/
-/egs/*/s*/mfcc
-/egs/*/s*/plp
-/egs/*/s*/exp
-/egs/*/s*/data
 /egs/*/s*/exp100
 /egs/*/s*/text_norm/*
 /egs/*/s*/recognize/*
@@ -108,12 +104,19 @@ egs/*/s*/local/recognize/auxiliary
 egs/*/s*/slurm-*.out
 egs/*/s*/local/keras_punctuation/processed_data*
 egs/*/s*/local/keras_punctuation/auxiliary
+/egs/*/*/mfcc
+/egs/*/*/plp
+/egs/*/*/exp
+/egs/*/*/data
+/egs/*/*/wav
+/egs/*/*/enhan
 
 # /tools/
 /tools/pocolm/
 /tools/ATLAS/
 /tools/atlas3.8.3.tar.gz
 /tools/irstlm/
+/tools/mitlm/
 /tools/openfst
 /tools/openfst-1.3.2.tar.gz
 /tools/openfst-1.3.2/
@@ -184,3 +187,9 @@ tools/openfst-1.6.1/
 /tools/cub-1.8.0.zip
 /tools/cub-1.8.0/
 /tools/cub
+/tools/python/
+
+# These CMakeLists.txt files are all genareted on the fly at the moment.
+# They are added here to avoid accidently checkin.
+/src/**/CMakeLists.txt
+/build*
